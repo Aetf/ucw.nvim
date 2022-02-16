@@ -1,0 +1,21 @@
+local M = {}
+
+M.url = 'lukas-reineke/indent-blankline.nvim'
+M.description = 'Show indentation guide'
+
+-- ways to activate this
+M.activation = {
+  wanted_by = {
+    'target.tui'
+  }
+}
+
+function M.config()
+  require('indent_blankline').setup {
+    space_char_blankline = ' ',
+    show_current_context = true,
+    show_current_context_start = true,
+  }
+end
+
+return M
