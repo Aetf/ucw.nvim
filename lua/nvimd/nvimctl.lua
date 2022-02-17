@@ -4,6 +4,7 @@ local L = vim.loop
 local F = vim.fn
 ---@diagnostic disable-next-line: unused-local
 local A = vim.api
+
 ---@diagnostic disable-next-line: unused-local
 local utils = require('nvimd.utils')
 local resolver = require('nvimd.resolver')
@@ -114,7 +115,7 @@ function nvimctl:start(unit_name)
             table.insert(stack, v)
           end
         else
-          print('Skiping wanting already started ' .. v)
+          require('nvimd.utils.log').trace('Skiping wanting already started', { curr = curr, want = v })
         end
       end
       for _, v in pairs(cunit.requires) do
@@ -126,13 +127,13 @@ function nvimctl:start(unit_name)
             table.insert(stack, v)
           end
         else
-          print('Skiping requiring already started ' .. v)
+          require('nvimd.utils.log').trace('Skiping wanting already started', { curr = curr, require = v })
         end
       end
     end
   end
 
-  print('Adding before/after constrains')
+  require('nvimd.utils.log').trace('Adding before/after constrains', { start = unit_name })
   for name, cnode in pairs(graph) do
     local unit = self.resolver:load_unit(name)
     -- handle after
@@ -143,8 +144,7 @@ function nvimctl:start(unit_name)
     end
   end
 
-  print('Generated transaction graph')
-  print(vim.inspect(graph))
+  require('nvimd.utils.log').trace('Generated transaction graph', { start = unit_name, graph = graph })
 
   -- prune the graph with disabled units
   -- by doing a DFS following required_by
@@ -198,8 +198,7 @@ function nvimctl:start(unit_name)
     end
   end
 
-  print('Pruned transaction graph')
-  print(vim.inspect(graph))
+  require('nvimd.utils.log').trace('Pruned transaction graph', { start = unit_name, graph = graph })
 
   -- topological sort and start any units without pending
   local ready = {}
@@ -239,23 +238,23 @@ function nvimctl:activate(unit_name)
   unit.started = true
 
   if unit.pack_name then
-    print(string.format('[nvimd] Activating %s: packadd %s', unit.name, unit.pack_name))
+    require('nvimd.utils.log').info('Activating', unit.name, 'pack', unit.pack_name)
     local cmd = string.format('packadd %s', unit.pack_name)
-    local ok, _ = pcall(vim.cmd, cmd)
+    local ok, err_msg = pcall(vim.cmd, cmd)
     if not ok then
-      print('[nvimd] Failed to activate ', unit.name)
+      require('nvimd.utils.log').error('Failed to activate', unit.name, err_msg)
       return
     end
   end
   if unit.config then
-    local ok, _ pcall(unit.config)
+    local ok, err_msg = pcall(unit.config)
     if not ok then
-      print('[nvimd] Failed to activate ', unit.name)
+      require('nvimd.utils.log').error('Failed to activate', unit.name, err_msg)
       return
     end
-    print(string.format('[nvimd] Configuring %s', unit.name))
+    require('nvimd.utils.log').info('Configuring', unit.name)
   end
-  print(string.format('[nvimd] Activated %s', unit.name))
+  require('nvimd.utils.log').info('Activated', unit.name)
 
   return unit
 end
