@@ -1,4 +1,5 @@
 local A = vim.api
+local F = vim.fn
 
 local M = {}
 
@@ -41,6 +42,18 @@ local function consolidate_unnamed()
   end
 end
 
+-- sometimes NvimTree leaves behind a buffer named `[NvimTree]` after restoring,
+-- despite we close it before saving the session.
+local function remove_nvimtree()
+  for _, buf in pairs(A.nvim_list_bufs()) do
+    local name = A.nvim_buf_get_name(buf)
+    print(string.format('Got buf %d: %s, %s', buf, name, F.fnamemodify(name, ':t')))
+    if name == 'NvimTree' or F.fnamemodify(name, ':t') == 'NvimTree' then
+      A.nvim_buf_delete(buf, {})
+    end
+  end
+end
+
 function M.config()
   require('auto-session').setup {
     auto_session_suppress_dirs = {'~/', '~/develop', '/dev/shm', '/tmp'},
@@ -49,6 +62,7 @@ function M.config()
     },
     post_restore_cmds = {
       consolidate_unnamed,
+      remove_nvimtree
     }
   }
 end
