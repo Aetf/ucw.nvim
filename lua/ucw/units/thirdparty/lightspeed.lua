@@ -20,7 +20,7 @@ local map = require('ucw.utils').map
 
 function M.config()
   -- use bidirection s
-  map('n', 's', '<Plug>Lightspeed_omni_s', { remap = false })
+  map('n', 's', '<Plug>Lightspeed_omni_s', { noremap = false })
 end
 
 
