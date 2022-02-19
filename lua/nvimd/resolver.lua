@@ -52,8 +52,8 @@ end
 ---@field wants string[]
 ---@field before string[]
 ---@field after string[]
----@field activation.cmd string|string[]
----@field activation.module string
+---@field activation.cmd? string|string[]
+---@field activation.module? string
 ---@field activation.wanted_by string[]
 ---@field activation.required_by string[]
 ---@field pack_name? string The name used for packadd
