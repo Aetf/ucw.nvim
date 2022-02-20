@@ -30,6 +30,3 @@ if utils.is_gui() then
 else
   nvimctl:start 'target.tui'
 end
-
--- Lazy loading plugin management, see comments in it for more details
--- require('ucw.plugins').setup()
