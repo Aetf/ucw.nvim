@@ -134,7 +134,7 @@ log.new = function(config, standalone)
       return log_at_level(i, x, make_string, ...)
     end
 
-    obj[("fmt_%s" ):format(x.name)] = function()
+    obj[("fmt_%s" ):format(x.name)] = function(...)
       return log_at_level(i, x, function(...)
         local passed = {...}
         local fmt = table.remove(passed, 1)
@@ -143,7 +143,7 @@ log.new = function(config, standalone)
           table.insert(inspected, vim.inspect(v))
         end
         return string.format(fmt, unpack(inspected))
-      end)
+      end, ...)
     end
   end
 end
