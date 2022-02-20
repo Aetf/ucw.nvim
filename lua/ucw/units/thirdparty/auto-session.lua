@@ -45,7 +45,6 @@ end
 local function remove_nvimtree()
   for _, buf in pairs(A.nvim_list_bufs()) do
     local name = A.nvim_buf_get_name(buf)
-    print(string.format('Got buf %d: %s, %s', buf, name, F.fnamemodify(name, ':t')))
     if name == 'NvimTree' or F.fnamemodify(name, ':t') == 'NvimTree' then
       A.nvim_buf_delete(buf, {})
     end
