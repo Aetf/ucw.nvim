@@ -5,7 +5,9 @@ M.description = 'Use the same key for window/tab nagivation, also requires tmux 
 
 -- ways to activate this
 M.activation = {
-  module = 'Navigator',
+  wanted_by = {
+    'target.basic'
+  }
 }
 
 function M.config()

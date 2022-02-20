@@ -15,9 +15,6 @@ M.activation = {
   cmd = {
     'Neogit',
   },
-  module = {
-    'neogit',
-  },
 }
 
 M.config = function()

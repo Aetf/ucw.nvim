@@ -3,6 +3,9 @@ local M = {}
 M.url = 'stevearc/dressing.nvim'
 M.description = 'Use telescope for vim.ui'
 
+M.requires = {
+  'telescope',
+}
 M.after = {
   'telescope',
 }

@@ -6,7 +6,7 @@ M.description = 'Fuzzy finder'
 M.wants = {
   'plenary',
   'nvim-web-devicons', -- icons
-  'nvim-treesitter', -- finder/preview
+  'treesitter', -- finder/preview
 }
 M.after = {
   'plenary',
@@ -15,7 +15,6 @@ M.after = {
 -- ways to activate this
 M.activation = {
   cmd = 'Telescope',
-  module = 'telescope',
   wanted_by = {}
 }
 

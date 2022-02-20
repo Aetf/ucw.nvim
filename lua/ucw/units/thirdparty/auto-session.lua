@@ -6,9 +6,7 @@ local M = {}
 M.url = 'rmagatti/auto-session'
 M.description = 'Automatically save session based on path'
 
-M.wants = {
-  'session-lens',
-}
+M.wants = { }
 
 -- ways to activate this
 M.activation = {

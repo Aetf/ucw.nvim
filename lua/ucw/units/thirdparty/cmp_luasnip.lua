@@ -4,12 +4,19 @@ M.url = 'saadparwaiz1/cmp_luasnip'
 M.description = 'Provide luasnip as a source to nvim-cmp'
 
 -- If there's no nvim-cmp, no need to load this
-M.requires = {
+M.requisite = {
   'nvim-cmp',
   'luasnip',
 }
 M.after = {
   'nvim-cmp'
+}
+
+M.activation = {
+  wanted_by = {
+    'luasnip',
+    'nvim-cmp',
+  }
 }
 
 function M.config()

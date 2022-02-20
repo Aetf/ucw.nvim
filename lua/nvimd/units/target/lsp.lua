@@ -3,7 +3,7 @@ local M = {}
 M.description = 'LSP related'
 
 M.wants = {
-  'target.syntax'
+  'target.completion'
 }
 
 return M

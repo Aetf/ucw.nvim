@@ -4,7 +4,6 @@ M.url = 'L3MON4D3/LuaSnip'
 M.description = 'Snips'
 
 M.wants = {
-  'cmp_luasnip',
   'friendly-snippets',
 }
 

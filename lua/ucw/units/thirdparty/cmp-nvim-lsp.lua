@@ -3,9 +3,16 @@ local M = {}
 M.url = 'hrsh7th/cmp-nvim-lsp'
 M.description = 'Nvim LSP source for nvim-cmp'
 
-M.requires = {
+M.requisite = {
   'nvim-cmp',
   'target.lsp',
+}
+
+M.activation = {
+  wanted_by = {
+    'nvim-cmp',
+    'target.lsp',
+  }
 }
 
 function M.config()

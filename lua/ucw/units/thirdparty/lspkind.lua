@@ -3,9 +3,11 @@ local M = {}
 M.url = 'onsails/lspkind-nvim'
 M.description = 'Vscode-like pictograms for neovim lsp completion items'
 
-M.requires('cmp')
+M.requires = {
+  'nvim-cmp',
+}
 M.after = {
-  'nvim-cmp'
+  'nvim-cmp',
 }
 
 -- configs
@@ -32,10 +34,10 @@ function M.config()
   local lspkind = require('lspkind')
   cmp.setup {
     formatting = {
-      format = lspkind.cmp_format{
-	mode = 'symbol_text',
-	maxwidth = 50,
-	before = format_item,
+        format = lspkind.cmp_format{
+        mode = 'symbol_text',
+        maxwidth = 50,
+        before = format_item,
       },
     },
   }

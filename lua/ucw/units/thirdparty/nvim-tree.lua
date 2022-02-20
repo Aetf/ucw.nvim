@@ -9,7 +9,6 @@ M.wants = {
 
 -- ways to activate this
 M.activation = {
-  module = 'nvim-tree',
   cmd = {
     'NvimTreeOpen',
     'NvimTreeClose',

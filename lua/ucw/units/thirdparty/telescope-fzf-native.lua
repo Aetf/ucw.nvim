@@ -4,6 +4,9 @@ M.url = 'nvim-telescope/telescope-fzf-native.nvim'
 M.description = 'Native sorting algorithm for telescope'
 M.run = 'make'
 
+M.requisite = {
+  'telescope',
+}
 M.after = {
   'telescope',
 }
