@@ -37,18 +37,14 @@ end
 ---@param unit_name string
 function nvimctl:enable(unit_name)
   local unit = self.resolver.load_unit(unit_name)
-  if not unit then
-    return
-  end
+  assert(unit ~= nil, "Nonexisting unit " .. unit_name)
   unit.disabled = false
 end
 
 ---@param unit_name string
 function nvimctl:disable(unit_name)
   local unit = self.resolver.load_unit(unit_name)
-  if not unit then
-    return
-  end
+  assert(unit ~= nil, "Nonexisting unit " .. unit_name)
   unit.disabled = true
 end
 
@@ -56,19 +52,24 @@ end
 ---@return boolean
 function nvimctl:is_disabled(unit_name)
   local unit = self.resolver.load_unit(unit_name)
-  if not unit then
-    return nil
-  end
+  assert(unit ~= nil, "Nonexisting unit " .. unit_name)
   return unit.disabled
 end
 
 ---@param unit_name string
 function nvimctl:status(unit_name)
-  local unit = self.resolver:load_unit(unit_name)
-  if not unit then
-    return
+  local unit, errors = self.resolver:load_unit(unit_name)
+  if unit then
+    print(vim.inspect(unit))
+  else
+    local formatted = {}
+    for _, info in pairs(errors) do
+      local unit_module, err = unpack(info)
+      err = string.gsub(err, '(\n\t*)', '%1\t')
+      table.insert(formatted, string.format('\nFailed to load from %s.%s:\n\t%s', unit_module, unit_name, err))
+    end
+    error(table.concat(formatted))
   end
-  print(vim.inspect(unit))
 end
 
 

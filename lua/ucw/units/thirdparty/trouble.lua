@@ -5,9 +5,13 @@ M.description = 'Fancy problem list'
 
 -- ways to activate this
 M.activation = {
+  cmd = {
+    'Trouble',
+    'TroubleToggle',
+  },
   wanted_by = {
     'target.lsp'
-  }
+  },
 }
 
 function M.config()

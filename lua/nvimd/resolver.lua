@@ -103,6 +103,7 @@ function resolver:load_unit(name)
   -- do a merge here to always deep copy the default unit
   local unit = self.units[name] or utils.deepcopy(default_unit)
   local found = false
+  local errors = {}
   -- try load it, note that we do not break, but merge all units with the same name
   for _, parent in pairs(self.units_modules) do
     local unit_module = parent .. '.' .. name
@@ -121,13 +122,15 @@ function resolver:load_unit(name)
       unit.name = name
       unit.loaded = true
       table.insert(unit.sources, unit_module)
+    else
+      table.insert(errors, { unit_module, loaded })
     end
   end
   if found then
     self.units[name] = unit
     return unit
   else
-    return nil
+    return nil, errors
   end
 end
 
