@@ -82,12 +82,33 @@ end
 ---@param name string
 ---@return nvimd.UnitNode
 local function get_node(graph, name)
-  graph[name] = graph[name] or {
-    pending = 0,
-    strong = 0,
-    weak = 0,
-  }
+  if graph[name] == nil then
+    graph[name] = {
+      pending = 0,
+      strong = 0,
+      weak = 0,
+    }
+  end
   return graph[name]
+end
+
+---Check if a vunit is started and if not add it to current graph, maintaining rc counts.
+---@param graph table<string, nvimd.UnitNode>
+---@param stack string[]
+---@param curr string
+---@param vunit nvimd.Unit
+---@param rc_prop string
+---@param cause string
+local function expand_node(graph, stack, curr, vunit, rc_prop, cause)
+  if vunit and not vunit.started then
+    local vnode = get_node(graph, vunit.name)
+    vnode[rc_prop] = vnode[rc_prop] + 1
+    if rc_prop == 'strong' and vnode[rc_prop] == 1 then
+      -- first time see this node, add to stack to explore it
+      table.insert(stack, vunit.name)
+    end
+    require('nvimd.utils.log').fmt_trace('dep %30s -- %8s --> %-30s (strong: %d, weak: %d)', curr, rc_prop, vunit.name, vnode.strong, vnode.weak)
+  end
 end
 
 ---start a unit as well as any dependencies
@@ -102,9 +123,9 @@ function nvimctl:start(unit_name)
     return
   end
 
-  get_node(graph, unit_name).strong = 1
   -- prepare a transaction including all units
-  -- use DFS to recursively add all wants and requires
+  -- use DFS to recursively add all wants and requires as strong hold, requisite as weak hold
+  get_node(graph, unit_name).strong = 1 -- extra 1 strong on the starting unit
   local stack = {unit_name}
   while #stack > 0 do
     local curr = table.remove(stack)
@@ -116,43 +137,16 @@ function nvimctl:start(unit_name)
       -- handle wants/requires
       for _, v in pairs(cunit.wants) do
         local vunit = self.resolver:load_unit(v)
-        if vunit and not vunit.started then
-          local vnode = get_node(graph, v)
-          vnode.weak = vnode.weak + 1
-          require('nvimd.utils.log').trace('Add want dependency', { curr = curr, want = v })
-          if vnode.weak + vnode.strong == 1 then
-            -- first time see this node, add to explore it
-            table.insert(stack, v)
-          end
-        else
-          require('nvimd.utils.log').trace('Skiping wanting already started', { curr = curr, want = v })
-        end
+        expand_node(graph, stack, curr, vunit, 'strong', 'wants')
       end
       for _, v in pairs(cunit.requires) do
         local vunit = self.resolver:load_unit(v)
-        if vunit and not vunit.started then
-          local vnode = get_node(graph, v)
-          vnode.strong = vnode.strong + 1
-          require('nvimd.utils.log').trace('Add require dependency', { curr = curr, require = v })
-          if vnode.strong + vnode.weak == 1 then
-            -- first time see this node, add to explore it
-            table.insert(stack, v)
-          end
-        else
-          require('nvimd.utils.log').trace('Skiping wanting already started', { curr = curr, require = v })
-        end
+        expand_node(graph, stack, curr, vunit, 'strong', 'requires')
       end
-    end
-  end
-
-  require('nvimd.utils.log').trace('Adding before/after constrains', { start = unit_name })
-  for name, cnode in pairs(graph) do
-    local unit = self.resolver:load_unit(name)
-    -- handle after only is enough, because units are resolved to have symmetric before/after
-    for _, v in pairs(unit.after) do
-      if graph[v] then
-        require('nvimd.utils.log').trace('Handle after', { curr = curr, after = v })
-        cnode.pending = cnode.pending + 1
+      -- handle requisite
+      for _, v in pairs(cunit.requisite) do
+        local vunit = self.resolver:load_unit(v)
+        expand_node(graph, stack, curr, vunit, 'weak', 'requisite')
       end
     end
   end
@@ -163,46 +157,45 @@ function nvimctl:start(unit_name)
     return
   end
 
-  -- prune the graph with disabled units
+  -- prune the graph with disabled units and strong count == 0 units
   -- by doing a DFS following required_by
   local seen = {}
   stack = {}
   for n, v in pairs(self.resolver.units) do
-    if v.disabled then
+    if v.disabled and graph[n] ~= nil then
+      table.insert(stack, n)
+    end
+  end
+  for n, vnode in pairs(graph) do
+    if vnode.strong == 0 then
       table.insert(stack, n)
     end
   end
   while #stack > 0 do
     local curr = table.remove(stack)
-    assert(curr ~= unit_name, string.format( "Failed to start %s, some of its required dependencies are disabled", unit_name))
+    assert(curr ~= unit_name, string.format( "Failed to start %s, some of its required dependencies are disabled or not started", unit_name))
 
     seen[curr] = true
     local cunit = self.resolver:load_unit(curr)
-    assert(cunit ~= nil, "The graph here is trusted, check code")
+    assert(cunit ~= nil, "The graph here should be trusted, check code")
     if graph[curr] then
+      require('nvimd.utils.log').trace('prune ', curr)
       graph[curr] = nil
       -- update rc on upstream units
-      for _, v in pairs(cunit.requires) do
-        if graph[v] then
-          graph[v].strong = graph[v].strong - 1
-          if graph[v].strong == 0 and graph[v].weak == 0 then
-            table.insert(stack, v)
+      for _, tbl in pairs({cunit.requires, cunit.wants}) do
+        for _, v in pairs(tbl) do
+          if graph[v] then
+            graph[v].strong = graph[v].strong - 1
+            if graph[v].strong == 0 then
+              table.insert(stack, v)
+            end
           end
         end
       end
-      for _, v in pairs(cunit.wants) do
+      for _, v in pairs(cunit.requisite) do
         if graph[v] then
           graph[v].weak = graph[v].weak - 1
-          if graph[v].strong == 0 and graph[v].weak == 0 then
-            table.insert(stack, v)
-          end
-        end
-      end
-      -- remove curr from others pending array
-      for _, v in pairs(cunit.before) do
-        if graph[v] then
-          graph[v].pending = graph[v].pending - 1
-          assert(graph[v].pending >= 0, 'something wrong with pending?')
+          assert(graph[v].weak >= 0, 'something wrong with weak?')
         end
       end
     end
@@ -213,9 +206,30 @@ function nvimctl:start(unit_name)
         table.insert(stack, v)
       end
     end
+    for _, v in pairs(cunit.activation.requisite_of) do
+      if not seen[v] then
+        table.insert(stack, v)
+      end
+    end
   end
 
   require('nvimd.utils.log').trace('Pruned transaction graph', { start = unit_name, graph = graph })
+
+  if not next(graph) then
+    return
+  end
+
+  require('nvimd.utils.log').trace('Adding before/after constrains', { start = unit_name })
+  for name, cnode in pairs(graph) do
+    local unit = self.resolver:load_unit(name)
+    -- handle after only is enough, because units are resolved to have symmetric before/after
+    for _, v in pairs(unit.after) do
+      if graph[v] then
+        cnode.pending = cnode.pending + 1
+        require('nvimd.utils.log').fmt_trace('order %30s ---> %-30s (pending: %d)', v, name, cnode.pending)
+      end
+    end
+  end
 
   -- topological sort and start any units without pending
   local ready = {}
@@ -236,6 +250,7 @@ function nvimctl:start(unit_name)
       for _, v in pairs(unit.before) do
         if graph[v] then
           graph[v].pending = graph[v].pending - 1
+          require('nvimd.utils.log').fmt_trace('order %30s ---> %-30s (pending: %d)', name, v, graph[v].pending)
           if graph[v].pending == 0 then
             table.insert(ready, v)
           end
@@ -246,13 +261,12 @@ function nvimctl:start(unit_name)
 
   if to_activate > 0 then
     local cycle = {}
-    for _, v in pairs(graph) do
-      if v.pending ~= 0 then
-        table.insert(cycle, v.name)
+    for n, v in pairs(graph) do
+      if v.pending > 0 then
+        table.insert(cycle, n)
       end
     end
     require('nvimd.utils.log').warn('Circular ordering dependency detected among: ', to_activate, vim.inspect(cycle))
-    require('nvimd.utils.log').warn('To activate ', to_activate, vim.inspect(graph))
   end
 end
 
@@ -291,14 +305,16 @@ function nvimctl:activate(unit_name)
   return unit
 end
 
----actually load packages and run their config functions from a compiled file.
+---load packages and run their config functions from a compiled file.
 ---if the compiled file is not found, this simply returns false.
 ---in that case, just call nvimctl:sync and try boot again.
 function nvimctl:boot()
+  -- TODO
 end
 
 ---generate packer.nvim spec and call PackerSync to install and compile file
 function nvimctl:sync()
+  -- TODO
 end
 
 ---reload all units
@@ -325,28 +341,23 @@ function nvimctl:reload()
     end
   end
 
-  -- handle default dependencies for targets
+  -- handle default dependencies for targets, be careful to add both directions
+  -- target units automatically gain after for all of their wants/requires dependencies
   for name, unit in pairs(self.resolver.units) do
     if string.match(name, '^target%.', 1) then
-      for _, v in pairs(unit.wants) do
-        table.insert(unit.after, v)
+      for _, tbl in pairs({unit.wants, unit.requires, unit.requisite}) do
+        for _, v in pairs(tbl) do
+          table.insert(unit.after, v)
+        end
       end
-      for _, v in pairs(unit.requires) do
-        table.insert(unit.after, v)
-      end
+      utils.bidi_edge(unit, 'after', 'before', function(m) return r:load_unit(m) end)
     end
   end
 
   -- register activation triggers for units that have them
   for name, unit in pairs(self.resolver.units) do
-    if unit.activation.cmd then
-      if type(unit.activation.cmd) == 'string' then
-        unit.activation.cmd = {unit.activation.cmd}
-      end
+    if next(unit.activation.cmd) then
       table.insert(self.triggers, trigger.add_cmds(unit.activation.cmd, name, self))
-    end
-    if unit.activation.module then
-      table.insert(self.triggers, trigger.add_module(unit.activation.module, name, self))
     end
   end
 

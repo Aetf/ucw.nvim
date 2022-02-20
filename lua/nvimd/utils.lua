@@ -34,4 +34,30 @@ function M.is_dir(path)
   return stats and stats.type == 'directory'
 end
 
+---Get the property `prop` specified as dot separated path from `obj`, creating empty table for
+---all levels if not exists
+function M.prop_get_table(obj, prop)
+  for key in prop:gmatch "[^.]+" do
+    if obj[key] == nil then
+      obj[key] = {}
+    end
+    obj = obj[key]
+  end
+  return obj
+end
+
+---for target unit in unit[prop_from], set corresponding target_unit[prop_to] = unit.name
+function M.bidi_edge(unit, prop_from, prop_to, load)
+  for _, want in pairs(M.prop_get_table(unit, prop_from)) do
+    local target_unit = load(want)
+    if target_unit then
+      if not vim.tbl_contains(M.prop_get_table(target_unit, prop_to), unit.name) then
+        table.insert(M.prop_get_table(target_unit, prop_to), unit.name)
+      end
+    else
+      require('nvimd.utils.log').fmt_warn('%s references non-existing unit: %s', unit.name, want)
+    end
+  end
+end
+
 return M

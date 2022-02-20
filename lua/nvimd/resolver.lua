@@ -48,14 +48,15 @@ end
 ---@field name string
 ---@field url string
 ---@field description string
----@field requires string[]
----@field wants string[]
+---@field requires string[] Similar to wants, but declares a stronger requirement dependency.
+---@field wants string[] Configures (weak) requirement dependencies on other units.
+---@field requisite string[] Similar to requires. However, if the units listed here are not started already, they will not be started and the starting of this unit will fail immediately.
 ---@field before string[]
 ---@field after string[]
----@field activation.cmd? string|string[]
----@field activation.module? string
+---@field activation.cmd string|string[]
 ---@field activation.wanted_by string[]
 ---@field activation.required_by string[]
+---@field activation.requisite_of string[]
 ---@field pack_name? string The name used for packadd
 ---@field config? fun() Optional config function
 ---@field sources string[] Where this unit is defined
@@ -81,7 +82,6 @@ local default_unit = {
 
   activation = {
     cmd = {},
-    module = {},
     wanted_by = {},
     required_by = {},
   },
@@ -103,7 +103,7 @@ function resolver:load_unit(name)
   -- do a merge here to always deep copy the default unit
   local unit = self.units[name] or utils.deepcopy(default_unit)
   local found = false
-  -- try load it, not that we do not break
+  -- try load it, note that we do not break, but merge all units with the same name
   for _, parent in pairs(self.units_modules) do
     local unit_module = parent .. '.' .. name
     local present, loaded = pcall(require, unit_module)
@@ -179,49 +179,32 @@ function resolver:resolve_unit(unit)
     return
   end
   assert(unit.name and unit.name ~= "", "Invalid unit name")
+  -- set its pack name, usually this is the git clone folder name
   if unit.url and unit.url ~= "" then
     unit.pack_name = F.fnamemodify(unit.url, ':t')
   end
-  -- set its pack name, usually this is the git clone folder name
-  -- wants and wanted_by
-  for _, want in pairs(unit.wants) do
-    local target_unit = self:load_unit(want)
-    if target_unit and not vim.tbl_contains(target_unit.activation.wanted_by, unit.name) then
-      table.insert(target_unit.activation.wanted_by, unit.name)
-    end
+
+  -- normalize a few types
+  if type(unit.activation.cmd) == 'string' then
+    unit.activation.cmd = {unit.activation.cmd}
   end
-  for _, wanted_by in pairs(unit.activation.wanted_by) do
-    local target_unit = self:load_unit(wanted_by)
-    if target_unit and not vim.tbl_contains(target_unit.wants, unit.name) then
-      table.insert(target_unit.wants, unit.name)
-    end
+
+  -- resolve all bidirectional edges
+  local function load(name)
+    return self:load_unit(name)
   end
-  -- requires and required_by
-  for _, v in pairs(unit.requires) do
-    local target_unit = self:load_unit(v)
-    if target_unit and not vim.tbl_contains(target_unit.activation.required_by, unit.name) then
-      table.insert(target_unit.activation.required_by, unit.name)
-    end
-  end
-  for _, required_by in pairs(unit.activation.required_by) do
-    local target_unit = self:load_unit(required_by)
-    if target_unit and not vim.tbl_contains(target_unit.requires, unit.name) then
-      table.insert(target_unit.requires, unit.name)
-    end
-  end
-  -- before and after
-  for _, v in pairs(unit.before) do
-    local target_unit = self:load_unit(v)
-    if target_unit and not vim.tbl_contains(target_unit.after, unit.name) then
-      table.insert(target_unit.after, unit.name)
-    end
-  end
-  for _, v in pairs(unit.after) do
-    local target_unit = self:load_unit(v)
-    if target_unit and not vim.tbl_contains(target_unit.before, unit.name) then
-      table.insert(target_unit.before, unit.name)
-    end
-  end
+
+  utils.bidi_edge(unit, 'wants', 'activation.wanted_by', load)
+  utils.bidi_edge(unit, 'activation.wanted_by', 'wants', load)
+
+  utils.bidi_edge(unit, 'requires', 'activation.required_by', load)
+  utils.bidi_edge(unit, 'activation.required_by', 'requires', load)
+
+  utils.bidi_edge(unit, 'requisite', 'activation.requisite_of', load)
+  utils.bidi_edge(unit, 'activation.requisite_of', 'requisite', load)
+
+  utils.bidi_edge(unit, 'before', 'after', load)
+  utils.bidi_edge(unit, 'after', 'before', load)
 end
 
 return resolver

@@ -1,4 +1,6 @@
 local M = {}
+local log = require('nvimd.utils.log')
+local utils = require('nvimd.utils')
 
 local counter = 0
 local function gen_global_name()
@@ -12,7 +14,6 @@ end
 ---@field nvimctl nvimd.nvimctl
 ---@field unit_name string
 ---@field cmds string[]
----@field module? string
 local Trigger = {}
 
 function Trigger.new(unit_name, nvimctl)
@@ -26,7 +27,6 @@ function Trigger.new(unit_name, nvimctl)
   self.nvimctl = nvimctl
 
   self.cmds = {}
-  self.module = nil
 
   return self
 end
@@ -37,19 +37,21 @@ end
 ---@param cause.mods? string
 ---@param cause.bang? string
 ---@param cause.args? string
----@param cause.module? string
 function Trigger:trigger(cause)
     self:remove()
 
+    if self.activated then
+        return
+    end
+
     self.activated = true
 
-    self.nvimctl.start(self.unit_name)
+    self.nvimctl:start(self.unit_name)
 
     if cause.cmd then
         local lines = cause.l1 == cause.l2 and '' or (cause.l1 .. ',' .. cause.l2)
-        vim.cmd(fmt('%s %s%s%s %s', cause.mods or '', lines, cause.cmd, cause.bang, cause.args))
+        vim.cmd(string.format('%s %s%s%s %s', cause.mods or '', lines, cause.cmd, cause.bang, cause.args))
     end
-    -- no extra thing to do for cause.module
 end
 
 function Trigger:remove()
@@ -57,10 +59,7 @@ function Trigger:remove()
         return
     end
     for _, cmd in pairs(self.cmds) do
-        vim.cmd([[!delcommand ]] .. cmd)
-    end
-    if self.module then
-        package.preload[self.module] = nil
+        vim.cmd([[delcommand! ]] .. cmd)
     end
     if self.global then
         _G[self.global] = nil
@@ -75,30 +74,12 @@ function Trigger:arm_cmds(cmds)
     end
 end
 
----@param module string
-function Trigger:arm_module(module)
-    self.module = module
-    package.preload[module] = function(modname)
-        self:trigger({ module = modname })
-        return require(modname)
-    end
-end
-
 ---@param cmds string[]
 ---@param unit_name string
 ---@return nvimd.Trigger
 function M.add_cmds(cmds, unit_name, nvimctl)
     local t = Trigger.new(unit_name, nvimctl)
     t:arm_cmds(cmds)
-    return t
-end
-
----@param module string
----@param unit_name string
----@return nvimd.Trigger
-function M.add_module(module, unit_name, nvimctl)
-    local t = Trigger.new(unit_name, nvimctl)
-    t:arm_module(module)
     return t
 end
 
