@@ -18,7 +18,7 @@ if vim.g.neovide then
 end
 
 local nvimd = require('nvimd')
-local nvimctl = nvimd.setup {
+_G.nvimctl = nvimd.setup {
   units_modules ={
     'ucw.units.thirdparty',
     'ucw.units.user',
@@ -26,9 +26,9 @@ local nvimctl = nvimd.setup {
 }
 
 if utils.is_gui() then
-  nvimctl:start 'target.tui'
-else
   nvimctl:start 'target.gui'
+else
+  nvimctl:start 'target.tui'
 end
 
 -- Lazy loading plugin management, see comments in it for more details
