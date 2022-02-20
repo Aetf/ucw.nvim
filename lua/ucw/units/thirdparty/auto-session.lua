@@ -15,6 +15,10 @@ M.activation = {
   }
 }
 
+local function close_nvimtree()
+  vim.cmd [[tabdo NvimTreeClose]]
+end
+
 -- allow at most one unnamed, unmodified buffer, closing all others
 local function consolidate_unnamed()
   local consolidated = nil
@@ -53,13 +57,15 @@ end
 
 function M.config()
   require('auto-session').setup {
+    log_level = 'warn',
     auto_session_suppress_dirs = {'~/', '~/develop', '/dev/shm', '/tmp'},
     pre_save_cmds = {
       'tabdo NvimTreeClose',
+      remove_nvimtree,
     },
     post_restore_cmds = {
+      remove_nvimtree,
       consolidate_unnamed,
-      remove_nvimtree
     }
   }
 end
