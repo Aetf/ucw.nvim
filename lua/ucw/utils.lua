@@ -81,7 +81,7 @@ local function buf_kill(kill_cmd, bufnr, force)
     for _, win in ipairs(windows) do
       -- try to use the window's alternate buffer first
       local alt_buf = vim.api.nvim_win_call(win, function() vim.fn.bufnr('#') end)
-      if is_normal_buffer(alt_buf) then
+      if alt_buf and is_normal_buffer(alt_buf) then
         next_buffer = alt_buf
       end
       vim.api.nvim_win_set_buf(win, next_buffer)
