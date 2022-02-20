@@ -9,18 +9,9 @@ M.wants = {
 
 -- ways to activate this
 M.activation = {
-  cmd = {
-    'NvimTreeOpen',
-    'NvimTreeClose',
-    'NvimTreeFocus',
-    'NvimTreeResize',
-    'NvimTreeToggle',
-    'NvimTreeRefresh',
-    'NvimTreeFindFile',
-    'NvimTreeFindFileToggle',
-    'NvimTreeClipboard',
-  },
-  wanted_by = { }
+  wanted_by = {
+    'target.basic'
+  }
 }
 
 local A = vim.api

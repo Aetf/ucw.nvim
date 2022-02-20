@@ -240,7 +240,6 @@ function nvimctl:start(unit_name)
       table.insert(ready, n)
     end
   end
-  require('nvimd.utils.log').warn('To activate ', to_activate, vim.inspect(graph))
   while #ready > 0 do
     local name = table.remove(ready)
     local unit = self:activate(name)
