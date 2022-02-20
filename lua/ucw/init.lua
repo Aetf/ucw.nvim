@@ -17,16 +17,12 @@ if vim.g.neovide then
   require('ucw.neovide')
 end
 
-local nvimd = require('nvimd')
-_G.nvimctl = nvimd.setup {
-  units_modules ={
-    'ucw.units.thirdparty',
-    'ucw.units.user',
-  }
-}
-
-if utils.is_gui() then
-  nvimctl:start 'target.gui'
-else
-  nvimctl:start 'target.tui'
-end
+require('nvimd').boot(
+  {
+    units_modules ={
+      'ucw.units.thirdparty',
+      'ucw.units.user',
+    }
+  },
+  utils.is_gui() and 'target.gui' or 'target.tui'
+)

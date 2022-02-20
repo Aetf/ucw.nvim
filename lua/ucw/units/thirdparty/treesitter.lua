@@ -3,7 +3,9 @@ local M = {}
 M.url = 'nvim-treesitter/nvim-treesitter'
 M.description = 'Treesitter does syntax and folding'
 
-M.run = ':TSUpdate'
+M.run = function()
+  vim.cmd 'TSUpdate'
+end
 
 -- ways to activate this
 M.activation = {

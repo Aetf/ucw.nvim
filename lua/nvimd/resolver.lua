@@ -47,6 +47,7 @@ end
 ---@field started boolean
 ---@field name string
 ---@field url string
+---@field run? string|fun()
 ---@field description string
 ---@field requires string[] Similar to wants, but declares a stronger requirement dependency.
 ---@field wants string[] Configures (weak) requirement dependencies on other units.
@@ -59,6 +60,7 @@ end
 ---@field activation.requisite_of string[]
 ---@field pack_name? string The name used for packadd
 ---@field config? fun() Optional config function
+---@field config_source? string Where the config function was last defined
 ---@field sources string[] Where this unit is defined
 
 ---@type nvimd.Unit
@@ -72,6 +74,7 @@ local default_unit = {
 
   name = '',
   url = '',
+  run = nil,
   description = '',
 
   requires = {},
@@ -88,6 +91,7 @@ local default_unit = {
 
   pack_name = nil,
   config = nil,
+  config_source = nil,
 
   sources = {}
 }
@@ -121,6 +125,9 @@ function resolver:load_unit(name)
       unit = utils.merge(unit, loaded)
       unit.name = name
       unit.loaded = true
+      if loaded.config then
+        unit.config_source = unit_module
+      end
       table.insert(unit.sources, unit_module)
     else
       table.insert(errors, { unit_module, loaded })

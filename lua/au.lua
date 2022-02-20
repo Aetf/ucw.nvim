@@ -23,6 +23,8 @@
 -- au({ 'BufNewFile', 'BufRead'}, {
 --   {'.eslintrc', '*.json*'},
 --   function() end,
+--   once = false,
+--   nested = false,
 -- })
 -- ```
 --
@@ -38,14 +40,28 @@ local cmd = vim.api.nvim_command
 
 local function autocmd(this, event, spec)
     local is_table = type(spec) == 'table'
+    -- pattern can be a table or a string
     local pattern = is_table and spec[1] or '*'
     pattern = type(pattern) == 'table' and table.concat(pattern, ',') or pattern
+
+    -- action can be a function or string
     local action = is_table and spec[2] or spec
     if type(action) == 'function' then
         action = this.set(action)
     end
+
+    -- event can be a table or string
     local e = type(event) == 'table' and table.concat(event, ',') or event
-    cmd('autocmd ' .. e .. ' ' .. pattern .. ' ' .. action)
+
+    -- once if present, translates to ++once
+    local once = is_table and spec.once or false
+    once = once and '++once' or ''
+
+    -- nested if present, translates to ++nested
+    local nested = is_table and spec.nested or false
+    nested = nested and '++nested' or ''
+
+    cmd(table.concat({'autocmd', e, pattern, once, nested, action}, ' '))
 end
 
 local S = {
@@ -75,7 +91,8 @@ function S.group(grp, cmds)
         cmds(X)
     else
         for _, au in ipairs(cmds) do
-            autocmd(S, au[1], { au[2], au[3] })
+            local ptn = table.remove(au, 1)
+            autocmd(S, ptn, au)
         end
     end
     cmd('augroup END')
