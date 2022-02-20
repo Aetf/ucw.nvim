@@ -36,14 +36,14 @@ end
 
 ---@param unit_name string
 function nvimctl:enable(unit_name)
-  local unit = self.resolver.load_unit(unit_name)
+  local unit = self.resolver:load_unit(unit_name)
   assert(unit ~= nil, "Nonexisting unit " .. unit_name)
   unit.disabled = false
 end
 
 ---@param unit_name string
 function nvimctl:disable(unit_name)
-  local unit = self.resolver.load_unit(unit_name)
+  local unit = self.resolver:load_unit(unit_name)
   assert(unit ~= nil, "Nonexisting unit " .. unit_name)
   unit.disabled = true
 end
@@ -51,7 +51,7 @@ end
 ---@param unit_name string
 ---@return boolean
 function nvimctl:is_disabled(unit_name)
-  local unit = self.resolver.load_unit(unit_name)
+  local unit = self.resolver:load_unit(unit_name)
   assert(unit ~= nil, "Nonexisting unit " .. unit_name)
   return unit.disabled
 end
