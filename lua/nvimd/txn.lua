@@ -170,12 +170,14 @@ function M.do_transaction(unit_name, resolver, fn, filter)
   -- topological sort and start any units without pending
   local ready = {}
   local to_activate = 0
+  local has_error = false
   for n, v in pairs(graph) do
     to_activate = to_activate + 1
     if v.pending == 0 then
       table.insert(ready, n)
     end
   end
+  require('nvimd.utils.log').fmt_trace('Activating %s units', to_activate)
   while #ready > 0 do
     local name = table.remove(ready)
     local unit = fn(name)
@@ -185,16 +187,18 @@ function M.do_transaction(unit_name, resolver, fn, filter)
       for _, v in pairs(unit.before) do
         if graph[v] then
           graph[v].pending = graph[v].pending - 1
-          require('nvimd.utils.log').fmt_trace('order %30s ---> %-30s (pending: %d)', name, v, graph[v].pending)
+          require('nvimd.utils.log').fmt_trace('pending - 1 %30s ---> %-30s (pending: %d)', name, v, graph[v].pending)
           if graph[v].pending == 0 then
             table.insert(ready, v)
           end
         end
       end
+    else
+      has_error = true
     end
   end
 
-  if to_activate > 0 then
+  if not has_error and to_activate > 0 then
     local cycle = {}
     for n, v in pairs(graph) do
       if v.pending > 0 then

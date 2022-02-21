@@ -85,8 +85,8 @@ function nvimctl._activate(unit)
     return unit
   end
 
+  require('nvimd.utils.log').info('Activating', unit.name)
   if unit.pack_name then
-    require('nvimd.utils.log').info('Activating', unit.name, 'pack', unit.pack_name)
     local cmd = string.format('packadd %s', unit.pack_name)
     local ok, err_msg = pcall(vim.cmd, cmd)
     if not ok then
@@ -121,6 +121,7 @@ function nvimctl._activate(unit)
   end
   unit.started = true
   require('nvimd.utils.log').info('Activated', unit.name)
+  return unit
 end
 
 ---start a unit as well as any dependencies
@@ -201,6 +202,10 @@ function nvimctl:compile(target, path)
 
   -- save current state for started units
   local saved_state = self:state(started_units)
+  -- overide started in saved state in case the unit wasn't started now
+  for _, s in pairs(saved_state) do
+    s.started = true
+  end
 
   -- do a full reload after initialization
   table.insert(compiled, string.format([[
