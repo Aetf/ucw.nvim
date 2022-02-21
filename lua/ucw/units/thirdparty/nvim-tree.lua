@@ -17,7 +17,7 @@ M.activation = {
 local A = vim.api
 local cmd = vim.cmd
 local au = require('au')
-local is_dir = require('ucw.utils').is_dir
+local utils = require('ucw.utils')
 
 function M.config()
   vim.g.nvim_tree_indent_markers = 1
@@ -65,24 +65,26 @@ function M.config()
     }
   })
   -- nvim-tree only completes its setup after a while, so do the whole thing in schedule
-  vim.schedule(function()
-    local oldb = A.nvim_get_current_buf()
-    local win = A.nvim_get_current_win()
-    local path = A.nvim_buf_get_name(oldb)
-    if is_dir(path) then
-      -- when open a directory, show scratch in middle and file tree on side
-      cmd('lcd ' .. path)
-      ntree.open()
-      local buf = A.nvim_create_buf(true, false)
-      A.nvim_win_set_buf(win, buf)
-      A.nvim_set_current_win(win)
-      A.nvim_buf_delete(oldb, {})
-    else
-      -- in all other cases, simply show file tree
-      ntree.open()
-      A.nvim_set_current_win(win)
-    end
-  end)
+  if not utils.is_pager_mode() then
+    vim.schedule(function()
+      local oldb = A.nvim_get_current_buf()
+      local win = A.nvim_get_current_win()
+      local path = A.nvim_buf_get_name(oldb)
+      if utils.is_dir(path) then
+        -- when open a directory, show scratch in middle and file tree on side
+        cmd('lcd ' .. path)
+        ntree.open()
+        local buf = A.nvim_create_buf(true, false)
+        A.nvim_win_set_buf(win, buf)
+        A.nvim_set_current_win(win)
+        A.nvim_buf_delete(oldb, {})
+      else
+        -- in all other cases, simply show file tree
+        ntree.open()
+        A.nvim_set_current_win(win)
+      end
+    end)
+  end
 end
 
 return M
