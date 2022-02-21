@@ -1,7 +1,7 @@
 local F = vim.fn
-local au = require('au')
 
 local nvimctl = require('nvimd.nvimctl')
+local utils = require('nvimd.utils')
 
 local M = {}
 
@@ -20,23 +20,22 @@ end
 ---@param opts nvimd.SetupOptions
 ---@param target string
 function M.boot(opts, target)
-  local present, compiled = pcall(require, 'nvimd.compiled.' .. target)
+  local compiled_target = 'nvimd.compiled.' .. target
+  local present, compiled = pcall(require, compiled_target)
   if present then
     compiled()
   else
     local ctl = nvimctl.new(opts.units_modules)
-    local function start_and_compile()
-      ctl:start(target)
-      _G.nvimctl = ctl
-      ctl:compile(target, compiled_path(target))
-    end
 
-    au.User = {
-      'PaqDoneSync',
-      start_and_compile,
-      once = true
-    }
-    ctl:sync()
+    utils.log.warn('New install, bootstraping')
+
+    ctl:sync(function()
+      local p = compiled_path(target)
+      ctl:compile(target, p)
+      -- for some weird reason, require refuses to work a second time
+      -- so we directly load the file
+      loadfile(p)()() -- boot again
+    end)
   end
 end
 

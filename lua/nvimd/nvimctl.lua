@@ -4,19 +4,21 @@ local L = vim.loop
 local F = vim.fn
 ---@diagnostic disable-next-line: unused-local
 local A = vim.api
+local au = require('au')
 
 ---@diagnostic disable-next-line: unused-local
 local utils = require('nvimd.utils')
+---@diagnostic disable-next-line: unused-local
+local log = require('nvimd.utils.log')
 local resolver = require('nvimd.resolver')
 local trigger = require('nvimd.trigger')
 local txn = require('nvimd.txn')
-local log = require('nvimd.utils.log')
 
 
 ---@class nvimd.nvimctl
 ---@field resolver nvimd.resolver
----@field graph table<string, nvimd.UnitNode>
 ---@field triggers nvimd.Trigger[]
+---@field paq_dir string
 local nvimctl = {}
 
 ---Create a new nvimctl instance. If a name is found at multiple locations, all of them is required,
@@ -28,8 +30,9 @@ function nvimctl.new(units_modules)
 
   self.resolver = resolver.new(units_modules)
 
-  self.graph = {}
   self.triggers = {}
+
+  self.paq_dir = F.stdpath('data') .. '/site/pack/paqs/' -- the last slash is significant
 
   self:reload()
 
@@ -74,32 +77,13 @@ function nvimctl:status(unit_name)
   end
 end
 
----start a unit as well as any dependencies
----@param unit_name string
-function nvimctl:start(unit_name)
-  local unit = self.resolver:load_unit(unit_name)
-  assert(unit ~= nil, "Nonexisting unit " .. unit_name)
-  if unit.started then
-    return
-  end
-
-  return txn.do_transaction(unit_name, self.resolver, function(name)
-    return self:activate(name)
-  end, function(u) return not u.started end)
-end
-
 -- actually activate the package and run its config function
----@param unit_name string
+---@param unit nvimd.Unit
 ---@return nvimd.Unit
-function nvimctl:activate(unit_name)
-  local unit = self.resolver:load_unit(unit_name)
-  if not unit then
-    return
-  end
+function nvimctl._activate(unit)
   if unit.started then
     return unit
   end
-  unit.started = true
 
   if unit.pack_name then
     require('nvimd.utils.log').info('Activating', unit.name, 'pack', unit.pack_name)
@@ -110,6 +94,23 @@ function nvimctl:activate(unit_name)
       return
     end
   end
+
+  if unit.after_files then
+    for _, file in ipairs(unit.after_files) do
+      vim.cmd('silent source ' .. file)
+    end
+  end
+
+  if not unit.config and unit.config_source and unit.config_source ~= "" then
+    local ok, res = pcall(require, unit.config_source)
+    if ok then
+      unit.config = res.config
+    else
+      require('nvimd.utils.log').error('Failed to activate', unit.name, res)
+      return
+    end
+  end
+
   if unit.config then
     local ok, err_msg = pcall(unit.config)
     if not ok then
@@ -118,9 +119,50 @@ function nvimctl:activate(unit_name)
     end
     require('nvimd.utils.log').info('Configuring', unit.name)
   end
+  unit.started = true
   require('nvimd.utils.log').info('Activated', unit.name)
+end
 
-  return unit
+---start a unit as well as any dependencies
+---@param unit_name string
+function nvimctl:start(unit_name)
+  local unit = self.resolver:load_unit(unit_name)
+  assert(unit ~= nil, "Nonexisting unit " .. unit_name)
+  if unit.started then
+    return
+  end
+
+  return txn.do_transaction(unit_name, self.resolver, function(name)
+    return nvimctl._activate(self.resolver:load_unit(name))
+  end, function(u) return not u.started end)
+end
+
+---Return nvimctl state that can be applied later
+---@param units? string[] only return state of selected units
+---@return table
+function nvimctl:state(units)
+  local state = {}
+  if units == nil then
+    units = vim.tbl_keys(self.resolver.units)
+  end
+  for _, name in pairs(units) do
+    local unit = self.resolver.units[name]
+    if unit then
+      state[name] = {
+        started = unit.started,
+        after_files = unit.after_files,
+      }
+    end
+  end
+  return state
+end
+
+function nvimctl:apply_state(state)
+  for name, v in pairs(state) do
+    if self.resolver.units[name] then
+      self.resolver.units[name] = vim.tbl_deep_extend('force', self.resolver.units[name], v)
+    end
+  end
 end
 
 ---compile a startup file that does the package loading to reach the
@@ -135,21 +177,30 @@ function nvimctl:compile(target, path)
   local compiled = {}
 
   table.insert(compiled, [[return function()]])
+  table.insert(compiled, [[  local activate = require('nvimd.nvimctl')._activate]])
 
   txn.do_transaction(target, self.resolver, function(name)
     local unit = self.resolver:load_unit(name)
 
     table.insert(started_units, unit.name)
 
+    table.insert(compiled, [[  activate({]])
+    table.insert(compiled, string.format([[    name = %s,]], vim.inspect(unit.name)))
     if unit.pack_name then
-      table.insert(compiled, string.format([[  vim.cmd("packadd %s")]], unit.pack_name))
+      table.insert(compiled, string.format([[    pack_name = %s,]], vim.inspect(unit.pack_name)))
     end
-    if unit.config and unit.config_source then
-      table.insert(compiled, string.format([[  require("%s").config()]], unit.config_source))
+    if unit.config_source then
+      table.insert(compiled, string.format([[    config_source = %s,]], vim.inspect(unit.config_source)))
     end
-
+    if unit.after_files then
+      table.insert(compiled, string.format([[    after_files = %s,]], vim.inspect(unit.after_files)))
+    end
+    table.insert(compiled, [[  })]])
     return unit
   end)
+
+  -- save current state for started units
+  local saved_state = self:state(started_units)
 
   -- do a full reload after initialization
   table.insert(compiled, string.format([[
@@ -159,15 +210,13 @@ function nvimctl:compile(target, path)
     function()
       vim.schedule(function()
         _G.nvimctl = require('nvimd.nvimctl').new(%s)
-        for _, name in pairs(%s) do
-          _G.nvimctl.resolver.units[name].started = true
-        end
+        _G.nvimctl:apply_state(%s)
       end)
     end
   }
   ]],
     vim.inspect(self.resolver.units_modules),
-    vim.inspect(started_units)
+    vim.inspect(saved_state)
   ))
 
   table.insert(compiled, [[end]])
@@ -180,45 +229,65 @@ function nvimctl:compile(target, path)
 end
 
 ---generate paq.vim spec and call PackerSync to install and compile file
-function nvimctl:sync()
+---@param cb? fun() called when sync is done
+function nvimctl:sync(cb)
   self:reload()
   local paq = require('nvimd.boot').paq()
+  paq:setup({
+    path = self.paq_dir
+  })
   local pkgs = {
     {'savq/paq-nvim'},
   }
   for _, unit in pairs(self.resolver.units) do
-    if unit.url and unit.url ~= "" then
-      if string.find(unit.url, [[://]]) then
-        table.insert(pkgs, {
-          url = unit.url,
-          run = unit.run,
-          opt = true,
-        })
-      else
-        table.insert(pkgs, {
-          unit.url,
-          run = unit.run,
-          opt = true,
-        })
+    if not unit.disabled then
+      if unit.url and unit.url ~= "" then
+        if string.find(unit.url, [[://]]) then
+          table.insert(pkgs, {
+            as = unit.name,
+            url = unit.url,
+            run = unit.run,
+            opt = true,
+          })
+        else
+          table.insert(pkgs, {
+            unit.url,
+            as = unit.name,
+            run = unit.run,
+            opt = true,
+          })
+        end
       end
     end
   end
   paq(pkgs)
+
+  au.User = {
+    'PaqDoneSync',
+    function()
+      self:reload(true)
+      if type(cb) == 'function' then cb() end
+    end,
+    once = true
+  }
   paq:sync()
 end
 
 ---reload all units
-function nvimctl:reload()
-  self.graph = {}
-
+---@param after_sync? boolean
+function nvimctl:reload(after_sync)
+  after_sync = after_sync == nil and false or after_sync
+  -- first preserve started info
+  local state = self:state()
+  -- reset everything
   for _, t in pairs(self.triggers) do
     t:remove()
   end
   self.triggers = {}
-
   local r = self.resolver
   r:reset()
 
+  -- load from files
   local cands = r:discover_units()
   for _, unit_name in pairs(cands) do
     r:load_unit(unit_name)
@@ -244,10 +313,21 @@ function nvimctl:reload()
     end
   end
 
+  -- reapply states
+  self:apply_state(state)
+
   -- register activation triggers for units that have them
   for name, unit in pairs(self.resolver.units) do
-    if next(unit.activation.cmd) then
+    if not unit.started and next(unit.activation.cmd) then
       table.insert(self.triggers, trigger.add_cmds(unit.activation.cmd, name, self))
+    end
+  end
+
+  -- detect after files
+  if after_sync then
+    for name, unit in pairs(self.resolver.units) do
+      local unit_path = self.paq_dir .. 'opt/' .. name
+      unit.after_files = utils.detect_after_files(name, unit_path)
     end
   end
 

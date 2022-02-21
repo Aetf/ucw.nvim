@@ -2,6 +2,9 @@ local L = vim.loop
 
 local M = {}
 
+-- reexport submodule
+M.log = require('nvimd.utils.log')
+
 M.none = vim.NIL
 
 function M.deepcopy(orig)
@@ -56,6 +59,46 @@ function M.bidi_edge(unit, prop_from, prop_to, load)
       end
     else
       require('nvimd.utils.log').fmt_warn('%s references non-existing unit: %s', unit.name, want)
+    end
+  end
+end
+
+local after_files_pattern = [[after/plugin/**/*.\(vim\|lua\)]]
+---Glob after files for plugin
+---@param name string
+---@param unit_path string
+function M.detect_after_files(name, unit_path)
+  local path = unit_path .. '/' .. after_files_pattern
+  local glob_ok, files = pcall(vim.fn.glob, path, false, true)
+  if not glob_ok then
+    if string.find(files, 'E77') then
+      return { path }
+    else
+      error('Error compiling ' .. name .. ': ' .. vim.inspect(files))
+    end
+  elseif #files > 0 then
+    return files
+  end
+
+  return nil
+end
+
+---Reload module `prefix` and `prefix.`
+---@param prefix string
+function M.reload(prefix)
+  local function match(mod)
+    return mod == prefix or string.find(mod, '^' .. vim.pesc(prefix) .. '%.')
+  end
+  -- Clear lua module cache
+  -- also Handle impatient.nvim automatically.
+  ---@diagnostic disable-next-line: undefined-field
+  local luacache = (_G.__luacache or {}).cache
+  for module, _ in pairs(package.loaded) do
+    if match(module) then
+      package.loaded[module] = nil
+      if luacache then
+        luacache[module] = nil
+      end
     end
   end
 end

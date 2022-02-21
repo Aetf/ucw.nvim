@@ -7,6 +7,9 @@ M.requisite = {
   'nvim-cmp',
   'target.lsp',
 }
+M.after = {
+  'nvim-cmp',
+}
 
 M.activation = {
   wanted_by = {

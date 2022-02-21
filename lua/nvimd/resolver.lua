@@ -26,25 +26,14 @@ end
 function resolver:reset()
   self.units = {}
   -- Clear lua module cache
-  -- also Handle impatient.nvim automatically.
-  ---@diagnostic disable-next-line: undefined-field
-  local luacache = (_G.__luacache or {}).cache
-  for module, _ in pairs(package.loaded) do
-    for _, units_module in pairs(self.units_modules) do
-      if string.find(module, '^' .. vim.pesc(units_module) .. '%.') then
-        package.loaded[module] = nil
-        if luacache then
-          luacache[module] = nil
-        end
-      end
-    end
+  for _, units_module in pairs(self.units_modules) do
+    utils.reload(units_module)
   end
 end
 
 ---@class nvimd.Unit
 ---@field disabled? boolean
 ---@field loaded boolean
----@field started boolean
 ---@field name string
 ---@field url string
 ---@field run? string|fun()
@@ -62,6 +51,8 @@ end
 ---@field config? fun() Optional config function
 ---@field config_source? string Where the config function was last defined
 ---@field sources string[] Where this unit is defined
+---@field started boolean
+---@field after_files string[]
 
 ---@type nvimd.Unit
 local default_unit = {
@@ -189,9 +180,9 @@ function resolver:resolve_unit(unit)
     return
   end
   assert(unit.name and unit.name ~= "", "Invalid unit name")
-  -- set its pack name, usually this is the git clone folder name
+  -- set its pack name, we override this when installing so its always the same as name
   if unit.url and unit.url ~= "" then
-    unit.pack_name = F.fnamemodify(unit.url, ':t')
+    unit.pack_name = unit.name
   end
 
   -- normalize a few types
