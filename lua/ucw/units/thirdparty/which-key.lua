@@ -69,11 +69,6 @@ function M.config()
     ['<leader>g'] = { [[<cmd>Neogit<cr>]], "Neogit" },
   }
 
-  -- Open NvimTree
-  wk.register {
-    ['<leader>f'] = { [[<cmd>NvimTreeToggle<cr>]], "Toggle File Tree" }
-  }
-
   -- Window and Buffer
   wk.register({
     -- for mouse middle button

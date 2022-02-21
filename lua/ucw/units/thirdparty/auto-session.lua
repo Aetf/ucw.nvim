@@ -55,6 +55,22 @@ local function remove_nvimtree()
   end
 end
 
+-- close aux windows that may interfere with session saving
+local function close_aux_windows()
+  for _, win in pairs(A.nvim_list_wins()) do
+    if A.nvim_win_get_config(win).relative > "" then
+      -- close floating windows
+      A.nvim_win_close(win, true)
+    else
+      -- close drawer and tool windows
+      local ft = vim.bo[A.nvim_win_get_buf(win)].filetype
+      if ft == 'fern' or ft == 'Trouble' or string.find(ft, 'tree') then
+        A.nvim_win_close(win, true)
+      end
+    end
+  end
+end
+
 -- sometimes session messes with shortmess
 local function restore_shortmess()
   vim.cmd[[set shortmess&]]
@@ -63,16 +79,18 @@ end
 function M.config()
   require('auto-session').setup {
     log_level = 'warn',
-    auto_session_suppress_dirs = {'~/', '~/develop', '/dev/shm', '/tmp'},
+    auto_session_suppress_dirs = {'~/', '/dev/shm', '/tmp'},
     pre_save_cmds = {
-      'tabdo NvimTreeClose',
+      close_aux_windows,
       remove_nvimtree,
+      consolidate_unnamed,
     },
     post_restore_cmds = {
       remove_nvimtree,
       consolidate_unnamed,
       restore_shortmess,
-    }
+    },
+    bypass_session_save_file_types = {'neotree', 'help'},
   }
 end
 

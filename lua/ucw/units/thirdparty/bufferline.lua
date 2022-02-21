@@ -38,7 +38,7 @@ function M.config()
       -- do not draw over file tree
       offsets = {
 	{
-	  filetype = 'NvimTree',
+	  filetype = 'neo-tree',
 	  text = 'Files',
 	  -- highlight = 'Directory',
 	  text_align = "left",

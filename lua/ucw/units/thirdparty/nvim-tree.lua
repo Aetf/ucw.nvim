@@ -3,11 +3,17 @@ local M = {}
 M.url = 'kyazdani42/nvim-tree.lua'
 M.description = 'File tree'
 
+M.disabled = true
+
+M.requires = {
+  'which-key',
+}
 M.wants = {
   'nvim-web-devicons',
 }
 M.after = {
   'nvim-web-devicons',
+  'which-key',
 }
 
 -- ways to activate this
@@ -88,6 +94,12 @@ function M.config()
       end
     end)
   end
+
+  -- Open NvimTree
+  local wk = require('which-key')
+  wk.register {
+    ['<leader>f'] = { [[<cmd>NvimTreeToggle<cr>]], "Toggle File Tree" }
+  }
 end
 
 return M
