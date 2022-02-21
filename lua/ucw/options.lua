@@ -33,7 +33,7 @@ vim.opt.linebreak = true
 
 -- show tabs, trailing space and nbsp
 vim.opt.list = true
-vim.opt.listchars = 'tab:➪ ,trail:␣,nbsp:☠'
+vim.opt.listchars = 'tab:  ⇥,trail:␣,nbsp:☠'
 
 -- folding
 -- show a column of fold marker
