@@ -14,6 +14,17 @@ local resolver = require('nvimd.resolver')
 local trigger = require('nvimd.trigger')
 local txn = require('nvimd.txn')
 
+
+local function error_resolver_errors(unit_name, errors)
+  local formatted = {}
+  for _, info in pairs(errors) do
+    local unit_module, err = unpack(info)
+    err = string.gsub(err, '(\n\t*)', '%1\t')
+    table.insert(formatted, string.format('\nFailed to load from %s.%s:\n\t%s', unit_module, unit_name, err))
+  end
+  error(table.concat(formatted))
+end
+
 ---@class nvimd.nvimctl
 ---@field resolver nvimd.resolver
 ---@field triggers nvimd.Trigger[]
@@ -33,7 +44,7 @@ function nvimctl.new(units_modules)
 
   self.paq_dir = F.stdpath('data') .. '/site/pack/paqs/' -- the last slash is significant
 
-  self:reload(true)
+  self:reload()
 
   return self
 end
@@ -66,13 +77,7 @@ function nvimctl:status(unit_name)
   if unit then
     print(vim.inspect(unit))
   else
-    local formatted = {}
-    for _, info in pairs(errors) do
-      local unit_module, err = unpack(info)
-      err = string.gsub(err, '(\n\t*)', '%1\t')
-      table.insert(formatted, string.format('\nFailed to load from %s.%s:\n\t%s', unit_module, unit_name, err))
-    end
-    error(table.concat(formatted))
+    error_resolver_errors(unit_name, errors)
   end
 end
 
@@ -165,13 +170,24 @@ function nvimctl:apply_state(state)
   end
 end
 
+---Get compiled path for target
+local compiled_path_base = F.stdpath('data') .. '/site/lua/nvimd/compiled/'
+local function compiled_path(target)
+  target = string.gsub(target, '%.', '/')
+  return compiled_path_base .. target .. '.lua'
+end
+
 ---compile a startup file that does the package loading to reach the
 ---target without a -nvimctl instance. The actual instance creation is
 ---done later in async
 ---@param target string
----@param path string
+---@param path? string
+---@return string
 function nvimctl:compile(target, path)
   assert(self.resolver:load_unit(target) ~= nil, "Nonexisting unit " .. target)
+  if not path then
+    path = compiled_path(target)
+  end
 
   local started_units = {}
   local compiled = {}
@@ -230,6 +246,8 @@ function nvimctl:compile(target, path)
   local file = io.open(path, 'w')
   file:write(table.concat(compiled, '\n'))
   file:close()
+
+  return path
 end
 
 ---generate paq.vim spec and call PackerSync to install and compile file
@@ -280,7 +298,9 @@ end
 ---reload all units
 ---@param after_sync? boolean
 function nvimctl:reload(after_sync)
-  after_sync = after_sync == nil and false or after_sync
+  if after_sync == nil then
+    after_sync = false
+  end
   -- first preserve started info
   local state = self:state()
   -- reset everything
@@ -294,7 +314,10 @@ function nvimctl:reload(after_sync)
   -- load from files
   local cands = r:discover_units()
   for _, unit_name in pairs(cands) do
-    r:load_unit(unit_name)
+    local ok, errors = r:load_unit(unit_name)
+    if not ok then
+      error_resolver_errors(unit_name, errors)
+    end
   end
   -- resolve unit only after all are loaded
   for _, unit_name in pairs(cands) do
@@ -328,11 +351,15 @@ function nvimctl:reload(after_sync)
   end
 
   -- detect after files
+  for name, unit in pairs(self.resolver.units) do
+    local unit_path = self.paq_dir .. 'opt/' .. name
+    unit.after_files = utils.detect_after_files(name, unit_path)
+  end
+
+  -- delete old compiled files if we did a sync
   if after_sync then
-    for name, unit in pairs(self.resolver.units) do
-      local unit_path = self.paq_dir .. 'opt/' .. name
-      unit.after_files = utils.detect_after_files(name, unit_path)
-    end
+    log.warn('Removing old files')
+    F.delete(compiled_path_base, 'rf')
   end
 
   return self

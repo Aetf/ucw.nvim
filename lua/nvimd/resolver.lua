@@ -99,6 +99,7 @@ function resolver:load_unit(name)
   local unit = self.units[name] or utils.deepcopy(default_unit)
   local found = false
   local errors = {}
+  local notfound_errors = {}
   -- try load it, note that we do not break, but merge all units with the same name
   for _, parent in pairs(self.units_modules) do
     local unit_module = parent .. '.' .. name
@@ -120,15 +121,19 @@ function resolver:load_unit(name)
         unit.config_source = unit_module
       end
       table.insert(unit.sources, unit_module)
-    else
+    elseif string.find(loaded, 'E5108') then -- module not found
+      table.insert(notfound_errors, { unit_module, loaded })
+    else -- other errors
       table.insert(errors, { unit_module, loaded })
     end
   end
   if found then
     self.units[name] = unit
     return unit
-  else
+  elseif #errors > 0 then
     return nil, errors
+  else
+    return nil, notfound_errors
   end
 end
 
