@@ -26,7 +26,13 @@ M.config = function()
     disable_commit_confirmation = true,
     integrations = {
       diffview = true,
-    }
+    },
+    mappings = {
+      -- for the status buffer
+      status = {
+        ["<ESC>"] = "Close",
+      },
+    },
   }
 end
 
