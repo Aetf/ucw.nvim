@@ -115,6 +115,32 @@ M.bufwipeout = function(bufnr, force)
   return buf_kill('bw', bufnr, force)
 end
 
+---Get the property `prop` specified as dot separated path from `obj`, creating empty table for
+---all levels if not exists
+function M.prop_get_table(obj, prop)
+  for key in prop:gmatch "[^.]+" do
+    if obj[key] == nil then
+      obj[key] = {}
+    end
+    obj = obj[key]
+  end
+  return obj
+end
+
+---Get the property `prop` specified as dot separated path from `obj`,
+---creating empty table if not exists for all levels except the last
+---level, which is set to val
+function M.prop_set(obj, prop, val)
+  -- get the parent level as table
+  local parent, key = string.match(prop, "(.+)%.([^%.]+)")
+  if not parent or not key then
+    -- assume prop is the key directly
+    obj[prop] = val
+  else
+    M.prop_get_table(obj, parent)[key] = val
+  end
+end
+
 local setup_done = false
 local function setup()
   if setup_done then

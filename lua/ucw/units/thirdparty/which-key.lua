@@ -41,7 +41,7 @@ function M.config()
       D = { [[<cmd>Telescope lsp_implementations<cr>]], "Go to implementation"},
       d = { [[<cmd>Telescope lsp_definitions<cr>]], "Go to definition"},
       t = { [[<cmd>Telescope lsp_type_definitions<cr>]], "Go to type definition"},
-      r = { [[<cmd>Telescope lsp_reference<cr>]], "Find references"},
+      r = { [[<cmd>Telescope lsp_references<cr>]], "Find references"},
     },
     ['<M-S-r>'] = { [[<cmd>lua vim.lsp.buf.rename()<cr>]], "Rename the symbol under cursor" },
   }
@@ -56,7 +56,7 @@ function M.config()
       D = { [[<cmd>Telescope lsp_implementations<cr>]], "Go to implementation"},
       d = { [[<cmd>Telescope lsp_definitions<cr>]], "Go to definition"},
       t = { [[<cmd>Telescope lsp_type_definitions<cr>]], "Go to type definition"},
-      r = { [[<cmd>Telescope lsp_reference<cr>]], "Find references"},
+      r = { [[<cmd>Telescope lsp_references<cr>]], "Find references"},
       h = { [[<cmd>lua vim.lsp.buf.document_highlight()<cr>]], "Highlight symbol under cursor" },
       ['<C-L>'] = { [[<cmd>lua vim.lsp.buf.clear_references()<cr>]], "Clear document highlights from current buffer" },
       f = { [[<cmd>lua vim.lsp.buf.formatting()<cr>]], "Format the current buffer" },

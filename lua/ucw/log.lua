@@ -1,28 +1,12 @@
-
-local logger = nil
+local log = require('structlog')
 
 local M = {}
 
-function M.log()
-    if logger then
-        return logger
+local logger = nil
+function M.logger()
+    if not logger then
+        logger = log.get_logger('ucw')
     end
-    local log = require('structlog')
-    logger = log.Logger("name", {
-        log.sinks.Console(
-            log.level.DEBUG
-            {
-                processors = {
-                    log.processors.Namer(),
-                    log.processors.Timestamper("%H:%M:%S"),
-                },
-                formatter = log.formatters.Format( --
-                    "%s [%s] %s: %-30s",
-                    { "timestamp", "level", "logger_name", "msg" }
-                ),
-            }
-        ),
-    })
     return logger
 end
 

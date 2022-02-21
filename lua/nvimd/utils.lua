@@ -49,6 +49,15 @@ function M.prop_get_table(obj, prop)
   return obj
 end
 
+---Get the property `prop` specified as dot separated path from `obj`,
+---creating empty table if not exists for all levels except the last
+---level, which is set to val
+function M.prop_set(obj, prop, val)
+  -- get the parent level as table
+  local parent, key = string.match(prop, "(.+)%.([^%.]+)")
+  M.prop_get_table(obj, parent)[key] = val
+end
+
 ---for target unit in unit[prop_from], set corresponding target_unit[prop_to] = unit.name
 function M.bidi_edge(unit, prop_from, prop_to, load)
   for _, want in pairs(M.prop_get_table(unit, prop_from)) do

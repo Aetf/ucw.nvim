@@ -40,3 +40,8 @@ else
   nvimctl:start 'target.tui'
 end
 ```
+
+## Extra Features
+
+### Workspace specific LSP settings
+Load vscode-compatible settings file `.vscode/settings.json` for LSP.

@@ -12,7 +12,7 @@ M.activation = {
 function M.config()
   local log = require('structlog')
   log.configure({
-    name = {
+    ucw = {
       sinks = {
         log.sinks.Console(
           log.level.INFO,
