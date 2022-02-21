@@ -55,6 +55,11 @@ local function remove_nvimtree()
   end
 end
 
+-- sometimes session messes with shortmess
+local function restore_shortmess()
+  vim.cmd[[set shortmess&]]
+end
+
 function M.config()
   require('auto-session').setup {
     log_level = 'warn',
@@ -66,6 +71,7 @@ function M.config()
     post_restore_cmds = {
       remove_nvimtree,
       consolidate_unnamed,
+      restore_shortmess,
     }
   }
 end
