@@ -6,6 +6,9 @@ M.description = 'File tree'
 M.wants = {
   'nvim-web-devicons',
 }
+M.after = {
+  'nvim-web-devicons',
+}
 
 -- ways to activate this
 M.activation = {

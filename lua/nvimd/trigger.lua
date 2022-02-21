@@ -31,12 +31,15 @@ function Trigger.new(unit_name, nvimctl)
   return self
 end
 
----@param cause.cmd? string
----@param cause.l1? string
----@param cause.l2? string
----@param cause.mods? string
----@param cause.bang? string
----@param cause.args? string
+---@class nvimd.trigger.Cause
+---@field cmd? string
+---@field l1? string
+---@field l2? string
+---@field mods? string
+---@field bang? string
+---@field args? string
+
+---@param cause nvimd.trigger.Cause
 function Trigger:trigger(cause)
     self:remove()
 

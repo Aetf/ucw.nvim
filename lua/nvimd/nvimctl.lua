@@ -14,7 +14,6 @@ local resolver = require('nvimd.resolver')
 local trigger = require('nvimd.trigger')
 local txn = require('nvimd.txn')
 
-
 ---@class nvimd.nvimctl
 ---@field resolver nvimd.resolver
 ---@field triggers nvimd.Trigger[]
