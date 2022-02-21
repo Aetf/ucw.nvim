@@ -44,8 +44,6 @@ function nvimctl.new(units_modules)
 
   self.paq_dir = F.stdpath('data') .. '/site/pack/paqs/' -- the last slash is significant
 
-  self:reload()
-
   return self
 end
 
@@ -88,6 +86,11 @@ function nvimctl._activate(unit)
   if unit.started then
     return unit
   end
+
+  for _, t in pairs(unit.triggers or {}) do
+    t:remove()
+  end
+  unit.triggers = {}
 
   require('nvimd.utils.log').info('Activating', unit.name)
   if unit.pack_name then
@@ -162,10 +165,13 @@ function nvimctl:state(units)
   return state
 end
 
-function nvimctl:apply_state(state)
+function nvimctl:apply_state(state, force)
+  if force == nil then
+    force = false
+  end
   for name, v in pairs(state) do
-    if self.resolver.units[name] then
-      self.resolver.units[name] = vim.tbl_deep_extend('force', self.resolver.units[name], v)
+    if self.resolver.units[name] or force then
+      self.resolver.units[name] = vim.tbl_deep_extend('force', self.resolver.units[name] or {}, v)
     end
   end
 end
@@ -230,7 +236,8 @@ function nvimctl:compile(target, path)
     function()
       vim.schedule(function()
         _G.nvimctl = require('nvimd.nvimctl').new(%s)
-        _G.nvimctl:apply_state(%s)
+        _G.nvimctl:apply_state(%s, true)
+        _G.nvimctl:reload()
       end)
     end
   }
@@ -346,7 +353,9 @@ function nvimctl:reload(after_sync)
   -- register activation triggers for units that have them
   for name, unit in pairs(self.resolver.units) do
     if not unit.started and next(unit.activation.cmd) then
-      table.insert(self.triggers, trigger.add_cmds(unit.activation.cmd, name, self))
+      local t = trigger.add_cmds(unit.activation.cmd, name, self)
+      table.insert(self.triggers, t)
+      table.insert(unit.triggers, t)
     end
   end
 

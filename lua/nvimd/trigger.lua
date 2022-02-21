@@ -64,6 +64,7 @@ function Trigger:remove()
     for _, cmd in pairs(self.cmds) do
         vim.cmd([[delcommand! ]] .. cmd)
     end
+    self.cmds = {}
     if self.global then
         _G[self.global] = nil
     end

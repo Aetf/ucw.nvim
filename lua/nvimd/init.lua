@@ -24,10 +24,8 @@ function M.boot(opts, target)
     utils.log.warn('New install, bootstraping')
 
     ctl:sync(function()
-      local p = ctl:compile(target)
-      -- for some weird reason, require refuses to work a second time
-      -- so we directly load the file
-      loadfile(p)()() -- boot again
+      ctl:compile(target)
+      ctl:start(target)
     end)
   end
 end

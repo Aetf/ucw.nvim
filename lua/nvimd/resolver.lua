@@ -53,6 +53,7 @@ end
 ---@field sources string[] Where this unit is defined
 ---@field started boolean
 ---@field after_files string[]
+---@field triggers nvimd.Trigger[]
 
 ---@type nvimd.Unit
 local default_unit = {
@@ -68,6 +69,8 @@ local default_unit = {
   run = nil,
   description = '',
 
+  config = nil,
+
   requires = {},
   wants = {},
 
@@ -81,8 +84,8 @@ local default_unit = {
   },
 
   pack_name = nil,
-  config = nil,
   config_source = nil,
+  triggers = {},
 
   sources = {}
 }
@@ -112,6 +115,7 @@ function resolver:load_unit(name)
         loaded.sources = nil
         loaded.started = nil
       end
+      loaded.triggers = nil
 
       -- start from existing unit, merging in any existing
       unit = utils.merge(unit, loaded)
