@@ -34,7 +34,7 @@ function nvimctl.new(units_modules)
 
   self.paq_dir = F.stdpath('data') .. '/site/pack/paqs/' -- the last slash is significant
 
-  self:reload()
+  self:reload(true)
 
   return self
 end
@@ -209,7 +209,7 @@ function nvimctl:compile(target, path)
 
   -- do a full reload after initialization
   table.insert(compiled, string.format([[
-  require('au').CursorHold = {
+  require('au').VimEnter = {
     '*',
     once = true,
     function()
