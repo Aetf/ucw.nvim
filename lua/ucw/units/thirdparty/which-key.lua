@@ -86,8 +86,46 @@ function M.config()
 
   -- Git
   wk.register {
-    ['<leader>g'] = { [[<cmd>Neogit<cr>]], "Neogit" },
+    ['<leader>g'] = {
+      name = "+git",
+      g = { [[<cmd>Neogit<cr>]], "Neogit" },
+    },
+    -- hunk navigation
+    [']c'] = { [[&diff ? ']c' : '<cmd>Gitsigns next_hunk<CR>']], "Next hunk", expr = true },
+    ['[c'] = { [[&diff ? ']c' : '<cmd>Gitsigns prev_hunk<CR>']], "Prev hunk", expr = true },
   }
+  -- gitsigns
+  wk.register {
+    ['<leader>g'] = {
+      s = { '<cmd>Gitsigns stage_hunk<CR>', "Stage hunk", mode = 'n' },
+      r = { '<cmd>Gitsigns reset_hunk<CR>', "Reset hunk", mode = 'n' },
+      S = { '<cmd>Gitsigns stage_buffer<CR>', "Stage buffer", mode = 'n' },
+      u = { '<cmd>Gitsigns undo_stage_hunk<CR>', "Undo stage hunk", mode = 'n' },
+      R = { '<cmd>Gitsigns reset_buffer<CR>', "Reset buffer", mode = 'n' },
+      p = { '<cmd>Gitsigns preview_hunk<CR>', "Preview hunk", mode = 'n' },
+      b = { '<cmd>lua require"gitsigns".blame_line{full=true}<CR>', "Blame line" },
+      d = { '<cmd>Gitsigns diffthis<CR>', "Diff with index", mode = 'n' },
+      h = { '<cmd>DiffviewFileHistory<CR>', "History for current buffer", mode = 'n' },
+      t = {
+        name = "+toggles",
+        b = { '<cmd>Gitsigns toggle_current_line_blame<CR>', "Toggle current line blame" },
+        d = { '<cmd>Gitsigns toggle_deleted<CR>', "Toggle deleted" },
+      }
+    },
+  }
+  wk.register {
+    ['<leader>g'] = {
+      s = { ':Gitsigns stage_hunk<CR>', "Stage hunk", mode = 'v' },
+      r = { ':Gitsigns reset_hunk<CR>', "Reset hunk", mode = 'v' },
+    },
+  }
+  -- text object
+  wk.register({
+    ['ih'] = { [[:<C-U>Gitsigns select_hunk<CR>]], "Select hunk" },
+  }, { mode = 'x' })
+  wk.register({
+    ['ih'] = { [[:<C-U>Gitsigns select_hunk<CR>]], "Select hunk" },
+  }, { mode = 'o' })
 
   -- Window and Buffer
   wk.register({
