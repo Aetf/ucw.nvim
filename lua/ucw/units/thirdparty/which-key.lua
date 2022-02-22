@@ -89,7 +89,7 @@ function M.config()
       n = { [[<cmd>tabnext<cr>]], "Go to next tab" },
       p = { [[<cmd>tabprev<cr>]], "Go to previous tab" },
       x = { [[<cmd>tabclose<cr>]], "Close current tab" },
-      o = { [[<cmd>tabonly<cr>]], "Close current tab" },
+      o = { [[<cmd>tabonly<cr>]], "Close other tabs" },
     },
     ['<M-n>'] = { [[<cmd>lua require('Navigator').tabnext()<cr>]], "Go to next tab" },
     ['<M-p>'] = { [[<cmd>lua require('Navigator').tabprev()<cr>]], "Go to previous tab" },

@@ -29,8 +29,9 @@ M.activation = {
 function M.config()
   -- See ":help neo-tree-highlights" for a list of available highlight groups
   vim.cmd([[
-    hi link NeoTreeDirectoryName Directory
+    hi link NeoTreeDirectoryName Function
     hi link NeoTreeDirectoryIcon NeoTreeDirectoryName
+    hi link NeoTreeDimText Whitespace
   ]])
 
   require("neo-tree").setup({
@@ -79,6 +80,7 @@ function M.config()
       },
     },
   })
+
 
   local wk = require('which-key')
   wk.register {
