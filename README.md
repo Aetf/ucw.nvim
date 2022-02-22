@@ -17,7 +17,12 @@ See [systemd.unit](https://www.freedesktop.org/software/systemd/man/systemd.unit
 Additionally, `activation.wanted_by`/`activation.required_by` can be used, similar to `WantedBy`/`RequiredBy` in systemd
 unit's `[Install]` section.
 
-`activation.cmd` can be used to start a unit upon calling a command.
+* `activation.cmd` can be used to start a unit upon calling a command.
+
+* `no_default_dependencies`
+
+Unless `no_default_dependencies=true`, all targets gains a `after` dependency for all its `wants/requires/requisite`.
+And all units gains a `after` dependency on `target.base`.
 
 ## Example
 

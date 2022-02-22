@@ -335,13 +335,20 @@ function nvimctl:reload(after_sync)
   end
 
   -- handle default dependencies for targets, be careful to add both directions
-  -- target units automatically gain after for all of their wants/requires dependencies
   for name, unit in pairs(self.resolver.units) do
-    if string.match(name, '^target%.', 1) then
-      for _, tbl in pairs({unit.wants, unit.requires, unit.requisite}) do
-        for _, v in pairs(tbl) do
-          table.insert(unit.after, v)
+    if not unit.no_default_dependencies then
+      -- target units automatically gain after for all of their wants/requires dependencies
+      if string.match(name, '^target%.', 1) then
+        for _, tbl in pairs({unit.wants, unit.requires, unit.requisite}) do
+          for _, v in pairs(tbl) do
+            utils.tbl_insert_uniq(unit.after, v)
+          end
         end
+      end
+      -- everything gains an after=target.base, unless no_default_dependencies = true,
+      -- which should be set on units aiming for target.base
+      if name ~= 'target.base' then
+        utils.tbl_insert_uniq(unit.after, 'target.base')
       end
       utils.bidi_edge(unit, 'after', 'before', function(m) return r:load_unit(m) end)
     end

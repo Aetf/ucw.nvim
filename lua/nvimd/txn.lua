@@ -202,7 +202,7 @@ function M.do_transaction(unit_name, resolver, fn, filter)
     local cycle = {}
     for n, v in pairs(graph) do
       if v.pending > 0 then
-        table.insert(cycle, n)
+        table.insert(cycle, v)
       end
     end
     require('nvimd.utils.log').warn('Circular ordering dependency detected among: ', to_activate, vim.inspect(cycle))

@@ -2,7 +2,7 @@ local M = {}
 
 M.description = 'Neovim TUI'
 
-M.requires = {
+M.wants = {
   'target.basic',
 }
 

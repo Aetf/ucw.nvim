@@ -3,6 +3,8 @@ local M = {}
 M.url = 'Tastyep/structlog.nvim'
 M.description = 'Structured Logging for nvim, using Lua'
 
+M.no_default_dependencies = true
+
 M.activation = {
   wanted_by = {
     'target.base'

@@ -58,14 +58,19 @@ function M.prop_set(obj, prop, val)
   M.prop_get_table(obj, parent)[key] = val
 end
 
+---table.insert but skip if already contains the value
+function M.tbl_insert_uniq(tbl, val)
+  if not vim.tbl_contains(tbl, val) then
+    table.insert(tbl, val)
+  end
+end
+
 ---for target unit in unit[prop_from], set corresponding target_unit[prop_to] = unit.name
 function M.bidi_edge(unit, prop_from, prop_to, load)
   for _, want in pairs(M.prop_get_table(unit, prop_from)) do
     local target_unit = load(want)
     if target_unit then
-      if not vim.tbl_contains(M.prop_get_table(target_unit, prop_to), unit.name) then
-        table.insert(M.prop_get_table(target_unit, prop_to), unit.name)
-      end
+      M.tbl_insert_uniq(M.prop_get_table(target_unit, prop_to), unit.name)
     else
       require('nvimd.utils.log').fmt_warn('%s references non-existing unit: %s', unit.name, want)
     end
