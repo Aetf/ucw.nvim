@@ -20,6 +20,7 @@ function M.boot(opts, target)
     compiled()
   else
     local ctl = nvimctl.new(opts.units_modules)
+    _G.nvimctl = ctl
 
     utils.log.warn('New install, bootstraping')
 
