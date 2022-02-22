@@ -19,6 +19,7 @@
 -- * or nvim-lsp-installer will call lspconfig setup
 -- ]]
 local M = {}
+local au = require('au')
 
 local vscode = require('ucw.lsp.vscode')
 local opts = require('ucw.lsp.options')
@@ -36,14 +37,23 @@ local function on_new_config(new_config, root_dir)
   })
 end
 
+local function on_attach(_, _)
+  -- au.CursorHold = {
+  --   '<buffer>',
+  --   vim.diagnostic.open_float,
+  -- }
+end
+
 function M.setup()
   --require('ucw.lsp.lsp-notify').setup()
 
-  -- hook on_new_config to inject workspace specific settings
   local lspconfig = require('lspconfig')
   M.setup_common({
+    -- hook on_new_config to inject workspace specific settings
     -- always chain default config's on_new_config
-    on_new_config = lspconfig.util.add_hook_after(lspconfig.util.default_config.on_new_config, on_new_config)
+    on_new_config = lspconfig.util.add_hook_after(lspconfig.util.default_config.on_new_config, on_new_config),
+    -- some functionalities enabled only after attaching a lsp server
+    on_attach = lspconfig.util.add_hook_after(lspconfig.util.default_config.on_attach, on_attach)
   })
 
   -- hook on server ready to provide our settings
