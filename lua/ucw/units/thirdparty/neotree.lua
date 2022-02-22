@@ -26,6 +26,13 @@ M.activation = {
   }
 }
 
+-- The function is called `t` for `termcodes`.
+-- You don't have to call it that, but I find the terseness convenient
+local function t(str)
+    -- Adjust boolean arguments as needed
+    return vim.api.nvim_replace_termcodes(str, true, true, true)
+end
+
 function M.config()
   -- See ":help neo-tree-highlights" for a list of available highlight groups
   vim.cmd([[
@@ -68,6 +75,13 @@ function M.config()
 
         mappings = {
           ["o"] = "system_open",
+          ["h"] = "open_vsplit",
+          ["v"] = "open_split",
+          -- Enable lightspeed movement
+          -- 'm' flag tells vim to remap keys
+          -- 'x!' flag tells vim not to automatically append <esc> to end the mode so this actually works
+          ["S"] = function(state) vim.api.nvim_feedkeys(t([[<Plug>Lightspeed_S]]), 'mx!', true) end,
+          ["s"] = function(state) vim.api.nvim_feedkeys(t([[<Plug>Lightspeed_omni_s]]), 'mx!', true) end,
         },
       },
       commands = {
