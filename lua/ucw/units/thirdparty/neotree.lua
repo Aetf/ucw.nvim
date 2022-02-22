@@ -33,6 +33,39 @@ local function t(str)
     return vim.api.nvim_replace_termcodes(str, true, true, true)
 end
 
+-- temporary fix for diagnostic component to use neovim's new DiagnosticSign* series of signs
+local sev_mapping = {
+  Error = 'Error',
+  Warning = 'Warn',
+  Information = 'Info',
+  Hint = 'Hint',
+}
+
+local function comp_diag(config, node, state)
+  local diag = state.diagnostics_lookup or {}
+  local diag_state = diag[node:get_id()]
+  if not diag_state then
+    return {}
+  end
+  if config.errors_only and diag_state.severity_number > 1 then
+    return {}
+  end
+  local severity = sev_mapping[diag_state.severity_string] or diag_state.severity_string
+  local defined = vim.fn.sign_getdefined("DiagnosticSign" .. severity)
+  defined = defined and defined[1]
+  if defined and defined.text and defined.texthl then
+    return {
+      text = " " .. defined.text,
+      highlight = defined.texthl,
+    }
+  else
+    return {
+      text = " " .. severity:sub(1, 1),
+      highlight = "Diagnostic" .. severity,
+    }
+  end
+end
+
 function M.config()
   -- See ":help neo-tree-highlights" for a list of available highlight groups
   vim.cmd([[
@@ -59,6 +92,9 @@ function M.config()
       },
     },
     filesystem = {
+      components = {
+        diagnostics = comp_diag,
+      },
       -- This will find and focus the file in the active buffer every
       -- time the current file is changed while the tree is open.
       follow_current_file = true,

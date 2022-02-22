@@ -126,4 +126,24 @@ vim.opt.splitright = true
 vim.opt.signcolumn = 'yes'
 -- 300ms of no cursor movement to trigger CursorHold
 vim.opt.updatetime = 300
-
+-- signs
+vim.fn.sign_define("DiagnosticSignError", {text = "", texthl = "DiagnosticSignError"})
+vim.fn.sign_define("DiagnosticSignWarn", {text = "", texthl = "DiagnosticSignWarn"})
+vim.fn.sign_define("DiagnosticSignInfo", {text = "", texthl = "DiagnosticSignInfo"})
+vim.fn.sign_define("DiagnosticSignHint", {text = "", texthl = "DiagnosticSignHint"})
+vim.diagnostic.config {
+  underline = {
+    -- only show for above WARN
+    severity = { min = vim.diagnostic.severity.WARN, max = vim.diagnostic.severity.ERROR },
+  },
+  virtual_text = {
+    -- only show for above INFO
+    severity = { min = vim.diagnostic.severity.INFO, max = vim.diagnostic.severity.ERROR },
+    -- show source name if there are multiples
+    source = 'if_many',
+    prefix = '●',
+    --prefix = 'Hahaha:',
+  },
+  -- display higher severity signs over lower ones
+  severity_sort = true,
+}
