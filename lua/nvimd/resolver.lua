@@ -33,11 +33,13 @@ end
 
 ---@class nvimd.Unit
 ---@field disabled? boolean
----@field loaded boolean
+---@field _loaded boolean
 ---@field name string
 ---@field url string
 ---@field run? string|fun()
 ---@field description string
+---@field config? fun() Optional config function
+---@field no_default_dependencies boolean
 ---@field requires string[] Similar to wants, but declares a stronger requirement dependency.
 ---@field wants string[] Configures (weak) requirement dependencies on other units.
 ---@field requisite string[] Similar to requires. However, if the units listed here are not started already, they will not be started and the starting of this unit will fail immediately.
@@ -47,20 +49,19 @@ end
 ---@field activation.wanted_by string[]
 ---@field activation.required_by string[]
 ---@field activation.requisite_of string[]
----@field pack_name? string The name used for packadd
----@field config? fun() Optional config function
----@field config_source? string Where the config function was last defined
----@field sources string[] Where this unit is defined
+---@field _pack_name? string The name used for packadd
+---@field _config_source? string Where the config function was last defined
+---@field _sources string[] Where this unit is defined
 ---@field started boolean
----@field after_files string[]
----@field triggers nvimd.Trigger[]
+---@field _after_files string[]
+---@field _triggers nvimd.Trigger[]
 
 ---@type nvimd.Unit
 local default_unit = {
   -- disabled units will not be installed
   disabled = nil,
   -- used during unit reloading
-  loaded = false,
+  _loaded = false,
   -- set to true when the plugin is actually loaded
   started = false,
 
@@ -70,6 +71,8 @@ local default_unit = {
   description = '',
 
   config = nil,
+
+  no_default_dependencies = nil,
 
   requires = {},
   wants = {},
@@ -83,22 +86,24 @@ local default_unit = {
     required_by = {},
   },
 
-  pack_name = nil,
-  config_source = nil,
-  triggers = {},
+  _pack_name = nil,
+  _config_source = nil,
+  _triggers = {},
 
-  sources = {}
+  _sources = {},
+  _after_files = nil,
 }
 
 -- find and require a unit module
 ---@param name string
 ---@return nvimd.Unit?
 function resolver:load_unit(name)
-  if self.units[name] and self.units[name].loaded then
+  if self.units[name] and self.units[name]._loaded then
     return self.units[name]
   end
 
   -- do a merge here to always deep copy the default unit
+  ---@type nvimd.Unit
   local unit = self.units[name] or utils.deepcopy(default_unit)
   local found = false
   local errors = {}
@@ -112,19 +117,19 @@ function resolver:load_unit(name)
       -- sanitize on loaded unit
       -- only trust compiled unit
       if parent ~= 'nvimd.compiled' then
-        loaded.sources = nil
+        loaded._sources = nil
         loaded.started = nil
       end
-      loaded.triggers = nil
+      loaded._triggers = nil
 
       -- start from existing unit, merging in any existing
       unit = utils.merge(unit, loaded)
       unit.name = name
-      unit.loaded = true
+      unit._loaded = true
       if loaded.config then
-        unit.config_source = unit_module
+        unit._config_source = unit_module
       end
-      table.insert(unit.sources, unit_module)
+      table.insert(unit._sources, unit_module)
     elseif string.find(loaded, 'E5108') then -- module not found
       table.insert(notfound_errors, { unit_module, loaded })
     else -- other errors
@@ -185,18 +190,29 @@ end
 -- resolve the unit, install its' wanted_by activations to target's wants array
 ---@param unit nvimd.Unit
 function resolver:resolve_unit(unit)
-  if not unit.loaded then
+  if not unit._loaded then
     return
   end
   assert(unit.name and unit.name ~= "", "Invalid unit name")
   -- set its pack name, we override this when installing so its always the same as name
   if unit.url and unit.url ~= "" then
-    unit.pack_name = unit.name
+    unit._pack_name = unit.name
   end
 
   -- normalize a few types
-  if type(unit.activation.cmd) == 'string' then
-    unit.activation.cmd = {unit.activation.cmd}
+  for _, prop in pairs({
+    'wants',
+    'requires',
+    'requisite',
+    'activation.cmd',
+    'activation.wanted_by',
+    'activation.required_by',
+    'activation.requisite_of',
+  }) do
+    local v = utils.prop_get_table(unit, prop)
+    if type(v) ~= 'table' then
+      utils.prop_set(unit, prop, {v})
+    end
   end
 
   -- resolve all bidirectional edges

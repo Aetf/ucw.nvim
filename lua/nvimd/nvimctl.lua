@@ -87,14 +87,14 @@ function nvimctl._activate(unit)
     return unit
   end
 
-  for _, t in pairs(unit.triggers or {}) do
+  for _, t in pairs(unit._triggers or {}) do
     t:remove()
   end
-  unit.triggers = {}
+  unit._triggers = {}
 
   require('nvimd.utils.log').info('Activating', unit.name)
-  if unit.pack_name then
-    local cmd = string.format('packadd %s', unit.pack_name)
+  if unit._pack_name then
+    local cmd = string.format('packadd %s', unit._pack_name)
     local ok, err_msg = pcall(vim.cmd, cmd)
     if not ok then
       require('nvimd.utils.log').error('Failed to activate', unit.name, err_msg)
@@ -102,14 +102,14 @@ function nvimctl._activate(unit)
     end
   end
 
-  if unit.after_files then
-    for _, file in ipairs(unit.after_files) do
+  if unit._after_files then
+    for _, file in ipairs(unit._after_files) do
       vim.cmd('silent source ' .. file)
     end
   end
 
-  if not unit.config and unit.config_source and unit.config_source ~= "" then
-    local ok, res = pcall(require, unit.config_source)
+  if not unit.config and unit._config_source and unit._config_source ~= "" then
+    local ok, res = pcall(require, unit._config_source)
     if ok then
       unit.config = res.config
     else
@@ -158,7 +158,7 @@ function nvimctl:state(units)
     if unit then
       state[name] = {
         started = unit.started,
-        after_files = unit.after_files,
+        _after_files = unit._after_files,
       }
     end
   end
@@ -208,14 +208,14 @@ function nvimctl:compile(target, path)
 
     table.insert(compiled, [[  activate({]])
     table.insert(compiled, string.format([[    name = %s,]], vim.inspect(unit.name)))
-    if unit.pack_name then
-      table.insert(compiled, string.format([[    pack_name = %s,]], vim.inspect(unit.pack_name)))
+    if unit._pack_name then
+      table.insert(compiled, string.format([[    _pack_name = %s,]], vim.inspect(unit._pack_name)))
     end
-    if unit.config_source then
-      table.insert(compiled, string.format([[    config_source = %s,]], vim.inspect(unit.config_source)))
+    if unit._config_source then
+      table.insert(compiled, string.format([[    _config_source = %s,]], vim.inspect(unit._config_source)))
     end
-    if unit.after_files then
-      table.insert(compiled, string.format([[    after_files = %s,]], vim.inspect(unit.after_files)))
+    if unit._after_files then
+      table.insert(compiled, string.format([[    _after_files = %s,]], vim.inspect(unit._after_files)))
     end
     table.insert(compiled, [[  })]])
     return unit
@@ -362,14 +362,14 @@ function nvimctl:reload(after_sync)
     if not unit.started and next(unit.activation.cmd) then
       local t = trigger.add_cmds(unit.activation.cmd, name, self)
       table.insert(self.triggers, t)
-      table.insert(unit.triggers, t)
+      table.insert(unit._triggers, t)
     end
   end
 
   -- detect after files
   for name, unit in pairs(self.resolver.units) do
     local unit_path = self.paq_dir .. 'opt/' .. name
-    unit.after_files = utils.detect_after_files(name, unit_path)
+    unit._after_files = utils.detect_after_files(name, unit_path)
   end
 
   -- delete old compiled files if we did a sync
