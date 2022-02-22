@@ -7,6 +7,7 @@ M.wants = {
   'plenary',
   'nvim-web-devicons', -- icons
   'treesitter', -- finder/preview
+  'trouble', -- open with trouble
 }
 M.after = {
   'plenary',
@@ -46,10 +47,10 @@ function M.config()
         i = {
           -- close popup with esc, without going through normal mode
           ["<esc>"] = require('telescope.actions').close,
-          ["<c-t>"] = function(...) return require('trouble').open_with_trouble(...) end,
+          ["<c-x>"] = function(...) return require('trouble.providers.telescope').open_with_trouble(...) end,
         },
         n = {
-          ["<c-t>"] = function(...) return require('trouble').open_with_trouble(...) end,
+          ["<c-x>"] = function(...) return require('trouble.providers.telescope').open_with_trouble(...) end,
         }
       },
     },

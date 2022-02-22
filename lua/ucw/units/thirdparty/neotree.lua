@@ -98,8 +98,8 @@ function M.config()
 
   local wk = require('which-key')
   wk.register {
-    ['\\'] = { [[<cmd>NeoTreeRevealToggle<cr>]], "Toggle file tree" },
-    ['|'] = { [[<cmd>NeoTreeShowToggle<cr>]], "Toggle file tree" },
+    ['|'] = { [[<cmd>NeoTreeRevealToggle<cr>]], "Toggle file tree (focus)" },
+    ['\\'] = { [[<cmd>NeoTreeShowToggle<cr>]], "Toggle file tree" },
     ['<leader>f'] = {
       name = "+file tree",
       f = { [[<cmd>NeoTreeFocus<cr>]], "Focuse file tree" },

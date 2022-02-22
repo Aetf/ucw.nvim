@@ -24,13 +24,3 @@ map({'n', 'i', 'v'}, '<X1Mouse>', '<c-o>', opts)
 map('n', 'K', '<cmd>lua vim.lsp.buf.hover()<cr>', opts)
 map('n', '<c-k>', '<cmd>lua vim.lsp.buf.signature_help()<cr>', opts)
 
--- Goto prev/next diag warning/error
-map('n', 'g[', '<cmd>lua vim.diagnostic.goto_prev()<cr>', opts)
-map('n', 'g]', '<cmd>lua vim.diagnostic.goto_next()<cr>', opts)
-
--- Trouble
-map('n', '<leader>xx', '<cmd>TroubleToggle<cr>', opts)
-map('n', '<leader>xw', '<cmd>TroubleToggle workspace_diagnostics<cr>', opts)
-map('n', '<leader>xd', '<cmd>TroubleToggle document_diagnostics<cr>', opts)
-map('n', '<leader>xq', '<cmd>TroubleToggle quickfix<cr>', opts)
-map('n', '<leader>xl', '<cmd>TroubleToggle loclist<cr>', opts)

@@ -5,7 +5,7 @@ M.description = [[A helpful reminder about which key to press]]
 
 M.activation = {
   wanted_by = {
-    'target.basic',
+    'target.mapping',
   }
 }
 
@@ -64,6 +64,26 @@ function M.config()
     }
   }
 
+  -- Goto prev/next diag warning/error
+  wk.register {
+    g = {
+      ['['] = { [[<cmd>lua require('ucw.keys.actions').diag_prev()<cr>]], "Go to previous diagnostic" },
+      [']'] = { [[<cmd>lua require('ucw.keys.actions').diag_next()<cr>]], "Go to next diagnostic" },
+    },
+  }
+
+  -- Trouble
+  wk.register {
+    ['<leader>x'] = {
+      name = '+trouble',
+      x = { [[<cmd>TroubleToggle<cr>]], "Toggle trouble list" },
+      w = { [[<cmd>TroubleToggle<cr>]], "Toggle trouble list (workspace)" },
+      d = { [[<cmd>TroubleToggle<cr>]], "Toggle trouble list (document)" },
+      q = { [[<cmd>TroubleToggle<cr>]], "Toggle trouble list (quickfix)" },
+      l = { [[<cmd>TroubleToggle<cr>]], "Toggle trouble list (loclist)" },
+    },
+  }
+
   -- Git
   wk.register {
     ['<leader>g'] = { [[<cmd>Neogit<cr>]], "Neogit" },
@@ -98,7 +118,7 @@ function M.config()
     ['<leader>b'] = {
       name = '+buffer',
       d = { [[<cmd>BufferLinePickClose<cr>]], "Pick Buffer To Close" },
-      x = { [[<cmd>lua require('ucw.utils').bufdelete()<cr>]], "Delete current buffer" },
+      x = { [[<cmd>lua require('ucw.keys.actions').bufdelete()<cr>]], "Delete current buffer" },
       b = { [[<cmd>Telescope buffers<cr>]], "Go to buffer" },
     },
     ['<Tab>'] = { [[<cmd>BufferLineCycleNext<cr>]], "Go to next buffer" },

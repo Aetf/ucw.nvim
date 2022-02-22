@@ -5,12 +5,8 @@ M.description = 'Fancy problem list'
 
 -- ways to activate this
 M.activation = {
-  cmd = {
-    'Trouble',
-    'TroubleToggle',
-  },
   wanted_by = {
-    'target.lsp'
+    'target.basic'
   },
 }
 
@@ -18,7 +14,10 @@ function M.config()
   require('trouble').setup {
     auto_close = true,
     auto_fold = true,
+    use_diagnostic_signs = true,
   }
+
+  -- key setup
 end
 
 return M
