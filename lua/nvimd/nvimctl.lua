@@ -381,4 +381,44 @@ function nvimctl:reload(after_sync)
   return self
 end
 
+---Export the graph in dot format
+---@param path string output filename
+---@param opts nvimd.nvimctl.GraphOpts
+---@class nvimd.nvimctl.GraphOpts
+---@field kind "order"|"deps" what kind of graph to export
+function nvimctl:graph(path, opts)
+  local g = {}
+  table.insert(g, "strict digraph G {")
+
+  for name, unit in pairs(self.resolver.units) do
+    if opts.kind == 'order' then
+      for _, vname in pairs(unit.after) do
+        table.insert(g, string.format([["%s" -> "%s";]], vname, name))
+      end
+    end
+    if opts.kind == 'deps' then
+      for _, vname in pairs(unit.requires) do
+        table.insert(g, string.format([["%s" -> "%s" [style=bold];]], name, vname))
+      end
+      for _, vname in pairs(unit.requisite) do
+        table.insert(g, string.format([["%s" -> "%s" [style=solid];]], name, vname))
+      end
+      for _, vname in pairs(unit.wants) do
+        table.insert(g, string.format([["%s" -> "%s" [style=dashed];]], name, vname))
+      end
+    end
+    if string.find(name, '^target%.') then
+      table.insert(g, string.format([["%s" [color = red];]], name))
+    end
+  end
+
+  table.insert(g, "}")
+
+  local fp = assert(io.open(path, "w"))
+  fp:write(table.concat(g, "\n"))
+  fp:close()
+
+  print(string.format('You can view the graph at http://magjac.com/graphviz-visual-editor/'))
+end
+
 return nvimctl

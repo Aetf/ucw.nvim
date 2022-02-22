@@ -44,8 +44,8 @@ end
 ---order
 ---@param unit_name string
 ---@param resolver nvimd.resolver
----@param fn fun(string):nvimd.Unit
----@param filter? fun(nvimd.Unit):boolean
+---@param fn fun(name:string):nvimd.Unit
+---@param filter? fun(u:nvimd.Unit):boolean
 function M.do_transaction(unit_name, resolver, fn, filter)
   if filter == nil then
     filter = function() return true end
