@@ -40,34 +40,38 @@ function M.config()
       sorting_strategy = 'ascending',
       layout_strategy = 'flex',
       layout_config = {
-	prompt_position = 'top'
+        prompt_position = 'top'
       },
       mappings = {
-	i = {
-	  -- close popup with esc, without going through normal mode
-	  ["<esc>"] = require('telescope.actions').close
-	}
+        i = {
+          -- close popup with esc, without going through normal mode
+          ["<esc>"] = require('telescope.actions').close,
+          ["<c-t>"] = function(...) return require('trouble').open_with_trouble(...) end,
+        },
+        n = {
+          ["<c-t>"] = function(...) return require('trouble').open_with_trouble(...) end,
+        }
       },
     },
     extensions = {
       fzf = {
-	fuzzy = true,
-	override_generic_sorter = true,
-	override_file_sorter = true,
-	case_mode = 'smart_case',
+        fuzzy = true,
+        override_generic_sorter = true,
+        override_file_sorter = true,
+        case_mode = 'smart_case',
       },
     },
     pickers = {
       lsp_code_actions = { theme = 'cursor' },
       buffers = {
-	sort_lastused = true,
-	sort_mru = true,
-	previewer = false,
-	mappings = {
-	  i = {
-	    ["<c-d>"] = safe_delete_buffer,
-	  }
-	}
+        sort_lastused = true,
+        sort_mru = true,
+        previewer = false,
+        mappings = {
+          i = {
+            ["<c-d>"] = safe_delete_buffer,
+          }
+        }
       },
     },
   }

@@ -16,8 +16,15 @@ M.activation = {
 function M.config()
   require('lualine').setup {
     extensions = {
-      'nvim-tree',
       'quickfix',
+      {
+        filetypes = {"neo-tree"},
+        sections = {
+          lualine_a = {
+            function() return vim.fn.fnamemodify(vim.fn.getcwd(), ':~') end,
+          }
+        }
+      }
     },
   }
 end
