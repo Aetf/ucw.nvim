@@ -17,6 +17,13 @@ if vim.g.neovide then
   require('ucw.neovide')
 end
 
+local target = 'target.tui'
+if utils.is_gui() then
+  target = 'target.gui'
+elseif vim.g.started_by_firenvim then
+  target = 'target.firenvim'
+end
+
 require('nvimd').boot(
   {
     units_modules ={
@@ -24,5 +31,5 @@ require('nvimd').boot(
       'ucw.units.user',
     }
   },
-  utils.is_gui() and 'target.gui' or 'target.tui'
+  target
 )
