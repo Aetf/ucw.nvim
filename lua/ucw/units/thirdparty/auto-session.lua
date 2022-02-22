@@ -15,10 +15,6 @@ M.activation = {
   }
 }
 
-local function close_nvimtree()
-  vim.cmd [[tabdo NvimTreeClose]]
-end
-
 -- allow at most one unnamed, unmodified buffer, closing all others
 local function consolidate_unnamed()
   local consolidated = nil
@@ -64,7 +60,7 @@ local function close_aux_windows()
     else
       -- close drawer and tool windows
       local ft = vim.bo[A.nvim_win_get_buf(win)].filetype
-      if ft == 'fern' or ft == 'Trouble' or string.find(ft, 'tree') then
+      if ft == 'fern' or ft == 'Trouble' or string.find(ft, 'tree') or string.find(ft, 'Neogit') then
         A.nvim_win_close(win, true)
       end
     end
