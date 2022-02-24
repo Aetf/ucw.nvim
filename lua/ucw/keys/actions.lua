@@ -13,6 +13,20 @@ function M.bufwipeout(bufnr, force)
   return utils.bufwipeout( bufnr, force)
 end
 
+function M.bufnext()
+  local ok = pcall(vim.cmd, 'BufferLineCycleNext')
+  if not ok then
+    vim.cmd [[bnext]]
+  end
+end
+
+function M.bufprev()
+  local ok = pcall(vim.cmd, 'BufferLineCyclePrev')
+  if not ok then
+    vim.cmd [[bprev]]
+  end
+end
+
 function M.diag_next()
   local trouble = require('trouble')
   -- trouble doesn't have an API to check if it's open or not, so

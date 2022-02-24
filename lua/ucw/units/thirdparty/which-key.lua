@@ -159,8 +159,8 @@ function M.config()
       x = { [[<cmd>lua require('ucw.keys.actions').bufdelete()<cr>]], "Delete current buffer" },
       b = { [[<cmd>Telescope buffers<cr>]], "Go to buffer" },
     },
-    ['<Tab>'] = { [[<cmd>BufferLineCycleNext<cr>]], "Go to next buffer" },
-    ['<S-Tab>'] = { [[<cmd>BufferLineCyclePrev<cr>]], "Go to previous buffer" },
+    ['<Tab>'] = { [[<cmd>lua require('ucw.keys.actions').bufnext()<cr>]], "Go to next buffer" },
+    ['<S-Tab>'] = { [[<cmd>lua require('ucw.keys.actions').bufprev()<cr>]], "Go to previous buffer" },
 
     ['<leader>w'] = {
       name = '+window',

@@ -12,16 +12,13 @@ require('ucw.options')
 require('ucw.keys')
 require('ucw.extras')
 
--- Extra options for neovide
-if vim.g.neovide then
-  require('ucw.neovide')
-end
-
 local target = 'target.tui'
 if utils.is_gui() then
   target = 'target.gui'
 elseif vim.g.started_by_firenvim then
   target = 'target.firenvim'
+elseif vim.g.neovide then
+  target = 'target.neovide'
 end
 
 require('nvimd').boot(

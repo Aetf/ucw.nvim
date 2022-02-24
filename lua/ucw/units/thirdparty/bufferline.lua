@@ -9,7 +9,7 @@ M.wants = {
 
 M.activation = {
   wanted_by = {
-    'target.basic'
+    'target.tui'
   }
 }
 
