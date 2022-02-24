@@ -15,6 +15,8 @@ function M.config()
   -- one-light
   -- base16-atelier-forest-light
   vim.cmd [[colorscheme base16-one-light]]
+  -- no status bar
+  vim.opt.laststatus = 0
   au.UIEnter = function()
     vim.opt.guifont = 'Hack Nerd Font Mono:h18'
     vim.defer_fn(function()
