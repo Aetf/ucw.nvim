@@ -374,8 +374,8 @@ function nvimctl:reload(after_sync)
 
   -- delete old compiled files if we did a sync
   if after_sync then
-    log.warn('Removing old files')
-    F.delete(compiled_path_base, 'rf')
+    --log.warn('Removing old files')
+    --F.delete(compiled_path_base, 'rf')
   end
 
   return self

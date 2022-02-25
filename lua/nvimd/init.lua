@@ -15,10 +15,12 @@ local M = {}
 ---@param target string
 function M.boot(opts, target)
   local compiled_target = 'nvimd.compiled.' .. target
+  local success = false
   local present, compiled = pcall(require, compiled_target)
   if present then
-    compiled()
-  else
+    success, _ = pcall(compiled)
+  end
+  if not success then
     local ctl = nvimctl.new(opts.units_modules)
     _G.nvimctl = ctl
 
