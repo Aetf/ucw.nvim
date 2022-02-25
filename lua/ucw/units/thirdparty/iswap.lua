@@ -6,8 +6,8 @@ M.description = 'Swap function arguments'
 
 M.activation = {
   cmd = {
-    'ISwap',
     'ISwapWith',
+    'ISwap',
   }
 }
 

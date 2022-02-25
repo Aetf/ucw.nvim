@@ -38,10 +38,8 @@ function M.load(path)
   if not obj then
     return
   end
-  logger:info('Got opt', {obj = obj})
   -- normalize keys
   local settings = normalize_keys(obj)
-  logger:info('Got settings', {settings=settings})
   return settings
 end
 
