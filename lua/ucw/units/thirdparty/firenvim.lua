@@ -36,6 +36,10 @@ function M.config()
         takeover = 'never',
         priority = 1,
       },
+      ['overleaf\\.com'] = {
+        takeover = 'never',
+        priority = 1,
+      },
       ['.*'] = {
         cmdline = 'neovim',
         takeover = 'always',
