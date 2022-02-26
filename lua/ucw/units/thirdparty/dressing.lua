@@ -17,8 +17,16 @@ M.activation = {
   }
 }
 
+local au = require('au')
+
 function M.config()
-  require('dressing').setup()
+  vim.cmd [[hi link FloatBorder Normal]]
+  require('dressing').setup {
+    input = {
+      winblend = 0,
+      -- winhighlight = 'Normal',
+    }
+  }
 end
 
 return M
