@@ -45,6 +45,52 @@ function M.config()
     -- rainbow parenthesis
     rainbow = {
       enable = true,
+    },
+
+    -- text objects
+    textobjects = {
+      select = {
+        enable = true,
+        -- automatically jump forward to textobj, similar to targets.vim
+        lookahead = true,
+        keymaps = {
+          ['ab'] = '@block.outer',
+          ['ib'] = '@block.inner',
+          ['af'] = '@function.outer',
+          ['if'] = '@function.inner',
+          ['ac'] = '@class.outer',
+          ['ic'] = '@class.inner',
+        }
+      },
+      move = {
+        enable = true,
+        -- whether to set jumps in the jumplist
+        set_jumps = true,
+        goto_next_start = {
+          [']m'] = '@function.outer',
+          [']['] = '@class.outer',
+        },
+        goto_next_end = {
+          [']M'] = '@function.outer',
+          [']]'] = 'class.outer',
+        },
+        goto_previous_start = {
+          ['[m'] = '@function.outer',
+          ['[['] = '@class.outer',
+        },
+        goto_previous_end = {
+          ['[M'] = '@function.outer',
+          ['[]'] = '@class.outer',
+        }
+      },
+      lsp_interop = {
+        enable = true,
+        border = 'none',
+        peak_definition_code = {
+          ['<leader>lpf'] = '@funciton.outer',
+          ['<leader>lpc'] = '@class.outer',
+        }
+      }
     }
   }
 

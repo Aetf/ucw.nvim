@@ -5,6 +5,7 @@ M.description = 'Statusline'
 
 M.wants = {
   'nvim-web-devicons',
+  'nvim-gps',
 }
 
 M.activation = {
@@ -12,6 +13,18 @@ M.activation = {
     'target.basic'
   }
 }
+
+local function gps_location()
+  return require('nvim-gps').get_location()
+end
+
+local function gps_available()
+  local ok, gps = pcall(require, 'nvim-gps')
+  if not ok then
+    return false
+  end
+  return gps.is_available()
+end
 
 function M.config()
   require('lualine').setup {
@@ -26,6 +39,11 @@ function M.config()
         }
       }
     },
+    sections = {
+      lualine_c = {
+        { gps_location, cond = gps_available },
+      }
+    }
   }
 end
 

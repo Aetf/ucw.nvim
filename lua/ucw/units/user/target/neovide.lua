@@ -13,7 +13,6 @@ function M.config()
   vim.opt.mouse = 'nvi'
   vim.opt.mousemodel = 'popup'
 
-
   vim.g.neovide_remember_window_size = true
   -- this is in seconds, but this is slow, so disable it untile this it fixed
   vim.g.neovide_cursor_animation_length = 0
