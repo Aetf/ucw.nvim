@@ -40,29 +40,28 @@ local function consolidate_unnamed()
   end
 end
 
--- sometimes NvimTree leaves behind a buffer named `[NvimTree]` after restoring,
--- despite we close it before saving the session.
-local function remove_nvimtree()
-  for _, buf in pairs(A.nvim_list_bufs()) do
-    local name = A.nvim_buf_get_name(buf)
-    if name == 'NvimTree' or F.fnamemodify(name, ':t') == 'NvimTree' then
-      A.nvim_buf_delete(buf, {})
-    end
-  end
-end
-
 -- close aux windows that may interfere with session saving
 local function close_aux_windows()
   for _, win in pairs(A.nvim_list_wins()) do
+    local to_close = false
+    -- close floating windows
     if A.nvim_win_get_config(win).relative > "" then
-      -- close floating windows
+      to_close = true
+    end
+
+    local bufnr = A.nvim_win_get_buf(win)
+    -- close drawer and tool windows
+    local ft = vim.bo[bufnr].filetype
+    if ft == 'fern' or ft == 'Trouble' or string.find(ft, 'tree') or string.find(ft, 'Neogit') then
+      to_close = true
+    end
+    -- close helps
+    local bt = vim.bo[bufnr].buftype
+    if bt == 'help' then
+      to_close = true
+    end
+    if to_close then
       A.nvim_win_close(win, true)
-    else
-      -- close drawer and tool windows
-      local ft = vim.bo[A.nvim_win_get_buf(win)].filetype
-      if ft == 'fern' or ft == 'Trouble' or string.find(ft, 'tree') or string.find(ft, 'Neogit') then
-        A.nvim_win_close(win, true)
-      end
     end
   end
 end
@@ -78,11 +77,9 @@ function M.config()
     auto_session_suppress_dirs = {'~/', '/dev/shm', '/tmp'},
     pre_save_cmds = {
       close_aux_windows,
-      remove_nvimtree,
       consolidate_unnamed,
     },
     post_restore_cmds = {
-      remove_nvimtree,
       consolidate_unnamed,
       restore_shortmess,
     },
