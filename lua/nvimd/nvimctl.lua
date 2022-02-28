@@ -195,8 +195,12 @@ function nvimctl:compile(target, path)
     path = compiled_path(target)
   end
 
+  local should_profile = true
+
+  local compiler = require('nvimd.nvimctl.compile')
+
   local started_units = {}
-  local compiled = {}
+  local compiled = compiler.prepare(should_profile)
 
   table.insert(compiled, [[return function()]])
   table.insert(compiled, [[  local activate = require('nvimd.nvimctl')._activate]])
@@ -206,6 +210,9 @@ function nvimctl:compile(target, path)
 
     table.insert(started_units, unit.name)
 
+    if should_profile then
+      table.insert(compiled,string.format('time("Activate %s", true)', name))
+    end
     table.insert(compiled, [[  activate({]])
     table.insert(compiled, string.format([[    name = %s,]], vim.inspect(unit.name)))
     if unit._pack_name then
@@ -218,6 +225,9 @@ function nvimctl:compile(target, path)
       table.insert(compiled, string.format([[    _after_files = %s,]], vim.inspect(unit._after_files)))
     end
     table.insert(compiled, [[  })]])
+    if should_profile then
+      table.insert(compiled,string.format('time("Activate %s", false)', name))
+    end
     return unit
   end)
 
@@ -235,9 +245,12 @@ function nvimctl:compile(target, path)
     once = true,
     function()
       vim.schedule(function()
+        time("Reload nvimctl", true)
         _G.nvimctl = require('nvimd.nvimctl').new(%s)
         _G.nvimctl:apply_state(%s, true)
         _G.nvimctl:reload()
+        time("Reload nvimctl", false)
+        save_profiles()
       end)
     end
   }
@@ -260,7 +273,6 @@ end
 ---generate paq.vim spec and call PackerSync to install and compile file
 ---@param cb? fun() called when sync is done
 function nvimctl:sync(cb)
-  self:reload()
   local paq = require('nvimd.boot').paq()
   paq:setup({
     path = self.paq_dir
@@ -268,6 +280,7 @@ function nvimctl:sync(cb)
   local pkgs = {
     {'savq/paq-nvim'},
   }
+  self:reload()
   for _, unit in pairs(self.resolver.units) do
     if not unit.disabled then
       if unit.url and unit.url ~= "" then
@@ -290,6 +303,17 @@ function nvimctl:sync(cb)
     end
   end
   paq(pkgs)
+
+  if cb == nil then
+    cb = function()
+      -- default to compile for each target
+      for _, unit in pairs(self.resolver.units) do
+        if string.match(unit.name, '^target%.', 1) then
+          self:compile(unit.name)
+        end
+      end
+    end
+  end
 
   au.User = {
     'PaqDoneSync',
