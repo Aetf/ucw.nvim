@@ -32,8 +32,8 @@ function M.config()
   }
   -- LSP
   wk.register {
-    ['<M-Enter>'] = { [[<cmd>Telescope lsp_code_actions<cr>]], "Code actions" },
-    ['<M-S-Enter>'] = { [[<cmd>Telescope lsp_range_code_actions<cr>]], "Range code actions" },
+    ['<M-Enter>'] = { [[<cmd>lua vim.lsp.buf.code_action()<cr>]], "Code actions" },
+    ['<M-S-Enter>'] = { [[<cmd>lua vim.lsp.buf.range_code_action()<cr>]], "Range code actions" },
     g = {
       ['0'] = { [[<cmd>Telescope lsp_document_symbols<cr>]], "Symbols in the current buffer"},
       W = { [[<cmd>Telescope lsp_workspace_symbols<cr>]], "Symbols in the current workspace"},

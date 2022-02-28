@@ -25,6 +25,17 @@ function M.config()
     input = {
       winblend = 0,
       -- winhighlight = 'Normal',
+    },
+    select = {
+      get_config = function(opts)
+        if opts.kind == 'codeaction' then
+          return {
+            telescope = {
+              theme = 'cursor',
+            }
+          }
+        end
+      end
     }
   }
 end

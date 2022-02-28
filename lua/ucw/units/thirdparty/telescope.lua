@@ -63,7 +63,6 @@ function M.config()
       },
     },
     pickers = {
-      lsp_code_actions = { theme = 'cursor' },
       buffers = {
         sort_lastused = true,
         sort_mru = true,
