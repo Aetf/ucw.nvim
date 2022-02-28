@@ -28,27 +28,33 @@ function M.bufprev()
 end
 
 function M.diag_next()
-  local trouble = require('trouble')
-  -- trouble doesn't have an API to check if it's open or not, so
-  -- we just try
-  local opts = { skip_groups = true, jump = true }
+  local ok, trouble = pcall(require, 'trouble')
+  if ok then
+    -- trouble doesn't have an API to check if it's open or not, so
+    -- we just try
+    local opts = { skip_groups = true, jump = true }
 
-  local ok, _ = pcall(trouble.next, opts)
-  if not ok then
-    vim.diagnostic.goto_next()
+    ok, _ = pcall(trouble.next, opts)
+    if ok then
+      return
+    end
   end
+  vim.diagnostic.goto_next()
 end
 
 function M.diag_prev()
-  local trouble = require('trouble')
-  -- trouble doesn't have an API to check if it's open or not, so
-  -- we just try
-  local opts = { skip_groups = true, jump = true }
+  local ok, trouble = pcall(require, 'trouble')
+  if ok then
+    -- trouble doesn't have an API to check if it's open or not, so
+    -- we just try
+    local opts = { skip_groups = true, jump = true }
 
-  local ok, _ = pcall(trouble.previous, opts)
-  if not ok then
-    vim.diagnostic.goto_prev()
+    ok, _ = pcall(trouble.previous, opts)
+    if ok then
+      return
+    end
   end
+  vim.diagnostic.goto_prev()
 end
 
 return M

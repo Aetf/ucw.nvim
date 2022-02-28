@@ -59,8 +59,6 @@ function M.setup()
   -- hook on server ready to provide our settings
   local lsp_installer = require("nvim-lsp-installer")
   lsp_installer.on_server_ready(opts.on_server_ready)
-
-  vim.notify('ucw.lsp setup ready ')
 end
 
 return M

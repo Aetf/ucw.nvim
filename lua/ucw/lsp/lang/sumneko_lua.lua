@@ -2,7 +2,7 @@ local utils = require('ucw.utils')
 local lu = require('ucw.lsp.utils')
 
 return function(opts)
-  opts.root_dir = lu.lazy_root_pattern('.git', 'stylua.toml', '.stylua.toml'),
+  opts.root_dir = lu.lazy_root_pattern('.git', 'stylua.toml', '.stylua.toml')
   -- Tell the language server which version of Lua you're using (most likely LuaJIT in the case of Neovim)
   utils.prop_set(opts, 'settings.Lua.runtime.version', 'LuaJIT')
   -- vim will additionally load modules from its runtime path by appending `lua`
