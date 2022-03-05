@@ -35,7 +35,7 @@ _G.nvimctl = nvimd.setup {
   }
 }
 ```
-You can list the parent module containig unit definitions in `units_modules`.
+You can list the parent module containing unit definitions in `units_modules`.
 
 Then start a target as needed:
 ```lua

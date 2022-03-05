@@ -24,7 +24,7 @@ function M.config()
       -- nl.builtins.formatting.isort,
       -- nl.builtins.formatting.yapf,
       -- nl.builtins.formatting.autopep8,
-      nl.builtins.formatting.black,
+      -- nl.builtins.formatting.black, // provided by pylsp
 
       -- nl.builtins.diagnostics.flake8,
       -- nl.builtins.diagnostics.pylint,
