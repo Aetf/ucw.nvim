@@ -28,6 +28,10 @@ function M.config()
       }
     },
     localSettings = {
+      ['teams.microsoft.com'] = {
+        takeover = 'never',
+        priority = 1,
+      },
       ['mail\\.google\\.com'] = {
         selector = 'div[role="textbox"][aria-label="Message Body"]',
         priority = 1,
