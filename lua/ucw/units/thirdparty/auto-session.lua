@@ -42,6 +42,17 @@ end
 
 -- close aux windows that may interfere with session saving
 local function close_aux_windows()
+  local has_diffview, diffview_lib = pcall(require, 'diffview.lib')
+  if has_diffview then
+    for _, tab in pairs(A.nvim_list_tabpages()) do
+      local view = diffview_lib.tabpage_to_view(tab)
+      if view then
+        view:close()
+        diffview_lib.dispose_view(view)
+      end
+    end
+  end
+
   for _, win in pairs(A.nvim_list_wins()) do
     local to_close = false
     -- close floating windows
