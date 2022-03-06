@@ -157,6 +157,7 @@ function M.config()
       name = '+buffer',
       d = { [[<cmd>BufferLinePickClose<cr>]], "Pick Buffer To Close" },
       x = { [[<cmd>lua require('ucw.keys.actions').bufdelete()<cr>]], "Delete current buffer" },
+      X = { [[<cmd>lua require('ucw.keys.actions').bufdelete(0, true)<cr>]], "Delete current buffer" },
       b = { [[<cmd>Telescope buffers<cr>]], "Go to buffer" },
     },
     ['<Tab>'] = { [[<cmd>lua require('ucw.keys.actions').bufnext()<cr>]], "Go to next buffer" },
@@ -174,6 +175,13 @@ function M.config()
     ['<M-l>'] = { [[<cmd>lua require('Navigator').right()<cr>]], "Go to right window" },
     ['<M-Bslash>'] = { [[<cmd>lua require('Navigator').previous()<cr>]], "Go to last window" },
   })
+  wk.register({
+    ['<M-h>'] = { [[<cmd>lua require('Navigator').left()<cr>]], "Go to left window" },
+    ['<M-j>'] = { [[<cmd>lua require('Navigator').down()<cr>]], "Go to down window" },
+    ['<M-k>'] = { [[<cmd>lua require('Navigator').up()<cr>]], "Go to up window" },
+    ['<M-l>'] = { [[<cmd>lua require('Navigator').right()<cr>]], "Go to right window" },
+    ['<M-Bslash>'] = { [[<cmd>lua require('Navigator').previous()<cr>]], "Go to last window" },
+  }, { mode = 't' })
 end
 
 return M

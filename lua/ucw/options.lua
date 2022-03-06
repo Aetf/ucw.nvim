@@ -1,4 +1,5 @@
 local au = require('au')
+local utils = require('ucw.utils')
 
 -- UI elements
 vim.opt.number = true
@@ -104,6 +105,7 @@ vim.opt.autoread = true
 vim.opt.scrolloff = 3
 -- turn on the WiLd menu
 vim.opt.wildmenu = true
+vim.opt.wildmode = 'longest'
 -- ignore compiled files
 vim.opt.wildignore = '*.o,*~,*.pyc,*/.git/*,*/.hg/*,*/.svn/*,*/.DS_Store'
 -- case insensitive when searching, but be case sensitive when there's upper case characters
@@ -146,4 +148,23 @@ vim.diagnostic.config {
   },
   -- display higher severity signs over lower ones
   severity_sort = true,
+}
+
+-- Terminal related settings
+-- disable various gutters for term
+au.TermOpen = function()
+  vim.opt.signcolumn = 'no'
+  vim.opt.number = false
+  vim.opt.relativenumber = false
+  vim.opt.foldcolumn = '0'
+  -- BufEnter not emitted when initially open term, for some reason
+  vim.cmd [[startinsert]]
+end
+
+-- start in term mode automatically
+au.BufEnter = {
+  'term://*',
+  function()
+    vim.cmd [[startinsert]]
+  end
 }
