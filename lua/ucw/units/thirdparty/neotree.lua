@@ -66,6 +66,8 @@ local function comp_diag(config, node, state)
   end
 end
 
+local au = require('au')
+
 function M.config()
   -- See ":help neo-tree-highlights" for a list of available highlight groups
   vim.cmd([[
@@ -129,6 +131,21 @@ function M.config()
         end,
       },
     },
+    -- tweak buffer local settings
+    event_handlers = {
+      {
+        event = 'vim_buffer_enter',
+        handler = function(arg)
+          if vim.bo.filetype == 'neo-tree' then
+            print('setting neotree local via event handler')
+            vim.opt_local.signcolumn = 'no'
+            vim.opt_local.number = true
+            vim.opt_local.relativenumber = true
+            vim.opt_local.foldcolumn = '0'
+          end
+        end
+      }
+    }
   })
 
 
