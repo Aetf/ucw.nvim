@@ -153,10 +153,10 @@ vim.diagnostic.config {
 -- Terminal related settings
 -- disable various gutters for term
 au.TermOpen = function()
-  vim.opt.signcolumn = 'no'
-  vim.opt.number = false
-  vim.opt.relativenumber = false
-  vim.opt.foldcolumn = '0'
+  vim.opt_local.signcolumn = 'no'
+  vim.opt_local.number = false
+  vim.opt_local.relativenumber = false
+  vim.opt_local.foldcolumn = '0'
   -- BufEnter not emitted when initially open term, for some reason
   vim.cmd [[startinsert]]
 end
