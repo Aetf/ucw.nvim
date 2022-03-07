@@ -102,7 +102,7 @@ function nvimctl._activate(unit)
     end
   end
 
-  if unit._after_files then
+  if vim.v.vim_did_enter == 1 and unit._after_files then
     for _, file in ipairs(unit._after_files) do
       vim.cmd('silent source ' .. file)
     end
