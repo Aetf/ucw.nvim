@@ -45,7 +45,7 @@ function M.config()
         priority = 1,
       },
       ['.*'] = {
-        cmdline = 'neovim',
+        cmdline = 'firenvim',
         takeover = 'always',
         priority = 0,
       },
@@ -54,24 +54,13 @@ function M.config()
   -- set filetype for specific textareas
   au.BufEnter = {
     'github.com_*.txt',
-    function() vim.opt.filetype = 'markdown' end
+    function() vim.opt_local.filetype = 'markdown' end
   }
-
-  -- sync text with debounce
-  local timer = L.new_timer()
-  local function write_debounce()
-    timer:stop()
-    timer:start(1000, 0, vim.schedule_wrap(function() vim.cmd('write') end))
-  end
-  au.group('FirenvimSync', {
-    { 'TextChanged', '*', write_debounce, nested = true },
-    { 'TextChangedI', '*', write_debounce, nested = true },
-  })
 
   -- extra keybindings
   map('n', '<esc><esc>', [[<cmd>call firenvim#focus_page()<cr>]])
   map('n', '<c-z>', [[<cmd>call firenvim#hide_frame()<cr>]])
-  map('n', '<cr><cr>', [[<cmd>lua vim.opt.lines = math.max(vim.opt.lines.get(), 25)<cr>]])
+  map('n', '<cr><cr>', [[<cmd>lua vim.opt.lines = math.max(vim.opt.lines:get(), 25) vim.opt.laststatus=2<cr>]])
 end
 
 return M

@@ -17,14 +17,15 @@ function M.config()
   vim.cmd [[colorscheme base16-one-light]]
   -- no status bar
   vim.opt.laststatus = 0
+  -- vim.opt.guifont = 'Hack Nerd Font Mono:h18'
   au.UIEnter = function()
-    vim.opt.guifont = 'Hack Nerd Font Mono:h18'
     vim.defer_fn(function()
+      vim.opt.guifont = 'Hack Nerd Font Mono:h18'
       -- enforce a minimum line height
       -- this has to be done a while after the set guifont, to avoid race conditions
       -- see https://github.com/glacambre/firenvim/issues/800
       -- vim.opt.lines = math.max(vim.opt.lines:get(), 20)
-    end, 1000)
+    end, 200)
   end
 end
 
