@@ -39,7 +39,7 @@ function M.config()
       -- nl.builtins.formatting.shfmt,
       -- nl.builtins.diagnostics.shellcheck,
 
-      nl.builtins.diagnostics.chktex,
+      -- nl.builtins.diagnostics.chktex,
 
       -- nl.builtins.diagnostics.cppcheck,
 

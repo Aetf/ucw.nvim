@@ -8,9 +8,14 @@ return function(opts)
   utils.prop_set(opts, 'settings.texlab.build.forwardSearchAfter', true)
   -- build on save
   utils.prop_set(opts, 'settings.texlab.build.onSave', true)
+  -- make sure preview mode is disabled
   utils.prop_set(opts, 'settings.texlab.build.args', {'-pv-', '-pvc-', '-pdf', '-interaction=nonstopmode', '-synctex=1', '%f'})
   -- use build subdir
   utils.prop_set(opts, 'settings.texlab.auxDirectory', 'build')
+
+  -- chktex
+  utils.prop_set(opts, 'settings.texlab.chktex.onOpenAndSave', true)
+  utils.prop_set(opts, 'settings.texlab.chktex.onEdit', true)
 
   -- synctex with zathura
   utils.prop_set(opts, 'settings.texlab.forwardSearch.executable', 'zathura')
