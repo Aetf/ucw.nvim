@@ -4,9 +4,9 @@ vim.g.mapleader = " "
 
 local opts = { noremap = true, silent = true }
 
--- swap 0 to ^, and also account for visual lines
-map('n', '0', 'g^', opts) -- go to the first non-blank character of a line
-map('n', '^', 'g0', opts) -- just in case you need to go to the very beginning of a line
+-- swap 0 to ^
+map('n', '0', '^', opts) -- go to the first non-blank character of a line
+map('n', '^', '0', opts) -- just in case you need to go to the very beginning of a line
 
 -- swap <C-r> and <C-r><C-o>, to paste literally without autoindent
 map('i', '<c-r>', '<c-r><c-o>', opts)
