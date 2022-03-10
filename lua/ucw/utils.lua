@@ -141,6 +141,13 @@ function M.prop_set(obj, prop, val)
   end
 end
 
+---table.insert but skip if already contains the value
+function M.tbl_insert_uniq(tbl, val)
+  if not vim.tbl_contains(tbl, val) then
+    table.insert(tbl, val)
+  end
+end
+
 local setup_done = false
 local function setup()
   if setup_done then

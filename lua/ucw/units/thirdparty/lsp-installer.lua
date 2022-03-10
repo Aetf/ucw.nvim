@@ -10,15 +10,4 @@ M.after = {
   'lspconfig',
 }
 
--- ways to activate this
-M.activation = {
-  wanted_by = {
-    'target.lsp'
-  }
-}
-
-function M.config()
-  require('ucw.lsp').setup()
-end
-
 return M
