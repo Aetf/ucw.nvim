@@ -11,7 +11,7 @@ Mostly importantly, the following properties are implemented and can be used to 
 * `before`
 * `after`
 
-They share the same samentics as systemd units.
+They share the same semantics as systemd units.
 See [systemd.unit](https://www.freedesktop.org/software/systemd/man/systemd.unit.html) for details.
 
 Additionally, `activation.wanted_by`/`activation.required_by` can be used, similar to `WantedBy`/`RequiredBy` in systemd
@@ -26,27 +26,32 @@ And all units gains a `after` dependency on `target.base`.
 
 ## Example
 
-First, get a `nvimctl` instance:
-```lua
-_G.nvimctl = nvimd.setup {
-  units_modules = {
-    'ucw.units.thirdparty',
-    'ucw.units.user',
-  }
-}
-```
+Require `nvimd` and just boot from `init.lua`.
+
 You can list the parent module containing unit definitions in `units_modules`.
 
-Then start a target as needed:
 ```lua
+local target = 'target.tui'
 if utils.is_gui() then
-  nvimctl:start 'target.gui'
-else
-  nvimctl:start 'target.tui'
+  target = 'target.gui'
+elseif vim.g.started_by_firenvim then
+  target = 'target.firenvim'
 end
+
+require('nvimd').boot(
+  {
+    units_modules ={
+      'ucw.units.thirdparty',
+      'ucw.units.user',
+    }
+  },
+  target
+)
 ```
 
 ## Extra Features
 
 ### Workspace specific LSP settings
-Load vscode-compatible settings file `.vscode/settings.json` for LSP.
+
+* Load vscode compatible settings file `.vscode/settings.json` for LSP.
+* Load vscode compatible ltex dictionaries from `.vscode`.

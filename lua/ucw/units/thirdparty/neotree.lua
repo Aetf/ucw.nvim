@@ -137,7 +137,6 @@ function M.config()
         event = 'vim_buffer_enter',
         handler = function(arg)
           if vim.bo.filetype == 'neo-tree' then
-            print('setting neotree local via event handler')
             vim.opt_local.signcolumn = 'no'
             vim.opt_local.number = true
             vim.opt_local.relativenumber = true
