@@ -27,34 +27,30 @@ function M.bufprev()
   end
 end
 
-function M.diag_next()
+local function diag_jump(direction)
+  local trouble_method, vim_method = unpack(({
+    next = {'next', 'goto_next'},
+    prev = {'previous', 'goto_prev'}
+  })[direction])
+
   local ok, trouble = pcall(require, 'trouble')
   if ok then
-    -- trouble doesn't have an API to check if it's open or not, so
-    -- we just try
-    local opts = { skip_groups = true, jump = true }
-
-    ok, _ = pcall(trouble.next, opts)
-    if ok then
-      return
+    -- if trouble returns nothing from items, then either trouble view isn't visible, or it's empty
+    local items = trouble.get_items()
+    vim.notify('Got trouble items ' .. vim.inspect(items))
+    if not vim.tbl_isempty(items) then
+      return trouble[trouble_method]({ skip_groups = true, jump = true })
     end
   end
-  vim.diagnostic.goto_next()
+  return vim.diagnostic[vim_method]()
+end
+
+function M.diag_next()
+  return diag_jump('next')
 end
 
 function M.diag_prev()
-  local ok, trouble = pcall(require, 'trouble')
-  if ok then
-    -- trouble doesn't have an API to check if it's open or not, so
-    -- we just try
-    local opts = { skip_groups = true, jump = true }
-
-    ok, _ = pcall(trouble.previous, opts)
-    if ok then
-      return
-    end
-  end
-  vim.diagnostic.goto_prev()
+  return diag_jump('prev')
 end
 
 return M
