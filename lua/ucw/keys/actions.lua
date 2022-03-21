@@ -37,7 +37,6 @@ local function diag_jump(direction)
   if ok then
     -- if trouble returns nothing from items, then either trouble view isn't visible, or it's empty
     local items = trouble.get_items()
-    vim.notify('Got trouble items ' .. vim.inspect(items))
     if not vim.tbl_isempty(items) then
       return trouble[trouble_method]({ skip_groups = true, jump = true })
     end

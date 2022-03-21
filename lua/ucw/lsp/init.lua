@@ -37,11 +37,19 @@ local function on_new_config(new_config, root_dir)
   })
 end
 
-local function on_attach(_, _)
+local function on_attach(client, bufnr)
   -- au.CursorHold = {
   --   '<buffer>',
   --   vim.diagnostic.open_float,
   -- }
+  --
+  if client.resolved_capabilities.goto_definition == true then
+    api.nvim_buf_set_option(bufnr, "tagfunc", "v:lua.vim.lsp.tagfunc")
+  end
+
+  if client.resolved_capabilities.document_formatting == true then
+    api.nvim_buf_set_option(bufnr, "formatexpr", "v:lua.vim.lsp.formatexpr()")
+  end
 end
 
 function M.setup()
@@ -49,8 +57,7 @@ function M.setup()
 
   local lspconfig = require('lspconfig')
   M.setup_common({
-    -- hook on_new_config to inject workspace specific settings
-    -- always chain default config's on_new_config
+    -- hook on_new_config to inject workspace specific settings always chain default config's on_new_config
     on_new_config = lspconfig.util.add_hook_after(lspconfig.util.default_config.on_new_config, on_new_config),
     -- some functionalities enabled only after attaching a lsp server
     on_attach = lspconfig.util.add_hook_after(lspconfig.util.default_config.on_attach, on_attach)
