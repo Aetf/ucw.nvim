@@ -40,6 +40,14 @@ function M.config()
         takeover = 'never',
         priority = 1,
       },
+      ['slides\\.google\\.com'] = {
+        takeover = 'never',
+        priority = 1,
+      },
+      ['sheets\\.google\\.com'] = {
+        takeover = 'never',
+        priority = 1,
+      },
       ['overleaf\\.com'] = {
         takeover = 'never',
         priority = 1,
