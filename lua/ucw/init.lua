@@ -9,6 +9,7 @@ vim.g.loaded_node_provider = 0
 
 -- The normal options and tweaks that doesn't rely on plugins
 require('ucw.options')
+require('ucw.builtin-plugins')
 require('ucw.keys')
 require('ucw.extras')
 
