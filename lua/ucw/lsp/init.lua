@@ -44,11 +44,11 @@ local function on_attach(client, bufnr)
   -- }
   --
   if client.resolved_capabilities.goto_definition == true then
-    api.nvim_buf_set_option(bufnr, "tagfunc", "v:lua.vim.lsp.tagfunc")
+    vim.api.nvim_buf_set_option(bufnr, "tagfunc", "v:lua.vim.lsp.tagfunc")
   end
 
   if client.resolved_capabilities.document_formatting == true then
-    api.nvim_buf_set_option(bufnr, "formatexpr", "v:lua.vim.lsp.formatexpr()")
+    vim.api.nvim_buf_set_option(bufnr, "formatexpr", "v:lua.vim.lsp.formatexpr()")
   end
 end
 
