@@ -122,10 +122,10 @@ function M.config()
   }
   -- text object
   wk.register({
-    ['ih'] = { [[:<C-U>Gitsigns select_hunk<CR>]], "Select hunk" },
+    ['ic'] = { [[:<C-U>Gitsigns select_hunk<CR>]], "Select hunk (change) " },
   }, { mode = 'x' })
   wk.register({
-    ['ih'] = { [[:<C-U>Gitsigns select_hunk<CR>]], "Select hunk" },
+    ['ic'] = { [[:<C-U>Gitsigns select_hunk<CR>]], "Select hunk (change) " },
   }, { mode = 'o' })
 
   -- Window and Buffer

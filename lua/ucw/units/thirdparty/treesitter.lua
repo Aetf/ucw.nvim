@@ -58,8 +58,6 @@ function M.config()
           ['ib'] = '@block.inner',
           ['af'] = '@function.outer',
           ['if'] = '@function.inner',
-          ['ac'] = '@class.outer',
-          ['ic'] = '@class.inner',
         }
       },
       move = {

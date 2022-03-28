@@ -2,6 +2,7 @@
 --Custom actions in one place
 --]]
 local utils = require('ucw.utils')
+local t = utils.t
 
 local M = {}
 
@@ -50,6 +51,15 @@ end
 
 function M.diag_prev()
   return diag_jump('prev')
+end
+
+-- Send ipython cell under the current cursor to iron REPL.
+-- If opts.next == true, move cursor to next cell.
+function M.iron_send_block(opts)
+  vim.api.nvim_feedkeys(t([[<Plug>(iron-send-motion)ih]]), 'mx!', true)
+  if opts.next then
+    vim.cmd [[normal ]h]]
+  end
 end
 
 return M

@@ -148,6 +148,13 @@ function M.tbl_insert_uniq(tbl, val)
   end
 end
 
+-- The function is called `t` for `termcodes`.
+-- You don't have to call it that, but I find the terseness convenient
+function M.t(str)
+    -- Adjust boolean arguments as needed
+    return vim.api.nvim_replace_termcodes(str, true, true, true)
+end
+
 local setup_done = false
 local function setup()
   if setup_done then

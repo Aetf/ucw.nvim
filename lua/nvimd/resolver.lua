@@ -113,6 +113,7 @@ function resolver:load_unit(name)
     local unit_module = parent .. '.' .. name
     local present, loaded = pcall(require, unit_module)
     if present then
+      -- TODO error when module is not a table
       found = true
       -- sanitize on loaded unit
       -- only trust compiled unit
