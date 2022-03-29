@@ -16,6 +16,10 @@ map('i', '<c-r><c-o>', '<c-r>', opts)
 map('n', 'j', 'gj', opts)
 map('n', 'k', 'gk', opts)
 
+-- jump to start/end of a text object
+map('n', 'gS', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_go_start<cr>g@]], opts)
+map('n', 'gE', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_go_end<cr>g@]], opts)
+
 -- For mouse
 map({'n', 'i', 'v'}, '<X2Mouse>', '<c-i>', opts)
 map({'n', 'i', 'v'}, '<X1Mouse>', '<c-o>', opts)

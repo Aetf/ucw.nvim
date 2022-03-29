@@ -62,4 +62,14 @@ function M.iron_send_block(opts)
   end
 end
 
+-- Go to start obj mark, can be used as opfunc for textobj
+function M.opfunc_textobj_go_start()
+  vim.cmd 'normal! `['
+end
+
+-- Go to end obj mark, can be used as opfunc for textobj
+function M.opfunc_textobj_go_end()
+  vim.cmd 'normal! `]'
+end
+
 return M
