@@ -2,7 +2,7 @@ local utils = require('ucw.utils')
 
 return function(opts)
   local maxLineLength = 120
-  local indentSize = 120
+  local indentSize = 4
   utils.prop_set(opts, 'settings.pylsp.configurationSources', {'pycodestyle'})
 
   utils.prop_set(opts, 'settings.pylsp.plugins.pyflakes.enabled', true)
