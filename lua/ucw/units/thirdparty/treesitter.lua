@@ -17,7 +17,7 @@ M.activation = {
 function M.config()
   require('nvim-treesitter.configs').setup {
     -- set of languages to install
-    ensure_installed = 'maintained',
+    ensure_installed = 'all',
     -- async language installation
     sync_install = false,
     -- list of parsers to ignore installing
