@@ -17,11 +17,57 @@ M.activation = {
 function M.config()
   require('nvim-treesitter.configs').setup {
     -- set of languages to install
-    ensure_installed = 'all',
+    ensure_installed = {
+      'bash',
+      'beancount',
+      'bibtex',
+      'c', 'c_sharp', 'cmake',
+      'comment', -- for todo, fixme, etc
+      'cpp',
+      'css',
+      'cuda',
+      'dart',
+      'dockerfile',
+      'dot',
+      'fennel',
+      'fish',
+      'glsl',
+      'go',
+      'help', -- vim help files
+      'hjson',
+      'html',
+      'java',
+      'javascript',
+      'jsdoc',
+      'json',
+      'json5',
+      'jsonc',
+      'latex',
+      'llvm',
+      'lua',
+      'make',
+      'markdown',
+      'ninja',
+      'nix',
+      'norg',
+      'perl',
+      'php',
+      'pug',
+      'python',
+      'regex',
+      'rst',
+      'ruby',
+      'rust',
+      'scss',
+      'toml',
+      'tsx',
+      'typescript',
+      'vim',
+      'vue',
+      'yaml',
+    },
     -- async language installation
     sync_install = false,
-    -- list of parsers to ignore installing
-    ignore_install = {},
 
     -- modules
 
