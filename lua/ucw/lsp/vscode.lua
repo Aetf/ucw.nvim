@@ -44,12 +44,17 @@ function M.load(path)
 end
 
 ---Used to inject config from root_dir
-function M.on_new_config_workdir(new_config, root_dir)
+local function on_new_config_workdir(new_config, root_dir)
   local obj = M.load(root_dir)
   if obj then
     -- apply to settings
     new_config.settings = vim.tbl_deep_extend('force', new_config.settings, obj)
   end
+end
+
+function M.setup()
+  local ucwlsp = require('ucw.lsp')
+  ucwlsp.register_on_new_config('.*', on_new_config_workdir)
 end
 
 return M

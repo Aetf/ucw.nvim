@@ -11,10 +11,10 @@ M.activation = {
 }
 
 function M.config()
-  require('ucw.lsp').custom_server_setup('clangd', function(server, opts)
+  require('ucw.lsp').register_server_setup('clangd', function(server, opts)
     -- Initialize the LSP via clangd_extensions
     require('clangd_extensions').setup {
-      server = vim.tbl_deep_extend('force', server:get_default_options(), opts),
+      server = opts,
     }
     server:attach_buffers()
   end)

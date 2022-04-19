@@ -1,8 +1,12 @@
 local utils = require('ucw.utils')
 local lu = require('ucw.lsp.utils')
 
-return function(opts)
+local M = {}
+
+function M.on_server_ready(server, opts)
   opts.root_dir = lu.lazy_root_pattern('Makefile', '.latexmkrc', 'pages', 'figures')
+
+  -- vim.notify(vim.inspect(opts))
 
   -- execute a forward search after a build
   utils.prop_set(opts, 'settings.texlab.build.forwardSearchAfter', true)
@@ -27,3 +31,14 @@ return function(opts)
     '--synctex-forward', '%l:1:%f', '%p'
   })
 end
+
+function M.on_new_config(new_config, root_dir)
+  -- texlab uses a temp dir to run chktex, only only copies 'chktexrc' to it
+  -- but chktex on linux uses '.chktexrc'.
+  -- Before that is fixed, use env var to force a chtexrc location
+  -- see https://github.com/latex-lsp/texlab/issues/309#issuecomment-955767508
+  local cmd_env = utils.prop_get_table(new_config, 'cmd_env')
+  cmd_env['CHKTEXRC'] = root_dir
+end
+
+return M

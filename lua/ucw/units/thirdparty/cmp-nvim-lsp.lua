@@ -19,10 +19,10 @@ M.activation = {
 }
 
 function M.config()
-  local caps = require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities())
-  require('ucw.lsp').setup_common({
-    capabilities = caps
-  })
+  require('ucw.lsp').register_on_server_ready('.*', function(server, opts)
+    local caps = opts.capabilities or vim.lsp.protocol.make_client_capabilities()
+    opts.capabilities = require('cmp_nvim_lsp').update_capabilities(caps)
+  end)
 end
 
 return M

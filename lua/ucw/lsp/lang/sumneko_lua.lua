@@ -1,7 +1,9 @@
 local utils = require('ucw.utils')
 local lu = require('ucw.lsp.utils')
 
-return function(opts)
+local M = {}
+
+function M.on_server_ready(server, opts)
   opts.root_dir = lu.lazy_root_pattern('.git', 'stylua.toml', '.stylua.toml')
   -- Tell the language server which version of Lua you're using (most likely LuaJIT in the case of Neovim)
   utils.prop_set(opts, 'settings.Lua.runtime.version', 'LuaJIT')
@@ -16,3 +18,5 @@ return function(opts)
   -- Do not send telemetry data containing a randomized but unique identifier
   utils.prop_set(opts, 'settings.Lua.telemetry.enable', false)
 end
+
+return M

@@ -1,6 +1,8 @@
 local utils = require('ucw.utils')
 
-return function(opts)
+local M = {}
+
+function M.on_server_ready(server, opts)
   local maxLineLength = 120
   local indentSize = 4
   utils.prop_set(opts, 'settings.pylsp.configurationSources', {'pycodestyle'})
@@ -22,3 +24,5 @@ return function(opts)
   utils.prop_set(opts, 'settings.pylsp.plugins.yapf.enabled', false)
   utils.prop_set(opts, 'settings.pylsp.plugins.autopep8_format.enabled', false)
 end
+
+return M

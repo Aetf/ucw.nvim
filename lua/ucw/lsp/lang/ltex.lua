@@ -122,19 +122,22 @@ local function make_cmd(prop, arg_prop)
   end
 end
 
-return function(opts)
-  local lspconfig = require('lspconfig')
+local M = {}
 
+function M.on_server_ready(server, opts)
   opts.root_dir = lu.lazy_root_pattern('.git', '.vscode')
 
-  opts.on_new_config = lspconfig.util.add_hook_after(opts.on_new_config, function(new_config, root_dir)
-    load_dicts(new_config.settings, get_settings_dir())
-    load_dicts(new_config.settings, get_settings_dir(root_dir))
-  end)
-
+  local lspconfig = require('lspconfig')
   opts.on_init = lspconfig.util.add_hook_after(opts.on_init, function(client)
     client.commands['_ltex.addToDictionary'] = make_cmd('dictionary', 'words')
     client.commands['_ltex.hideFalsePositives'] = make_cmd('hiddenFalsePositives', 'falsePositives')
     client.commands['_ltex.disableRules'] = make_cmd('disabledRules', 'ruleIds')
   end)
 end
+
+function M.on_new_config(new_config, root_dir)
+  load_dicts(new_config.settings, get_settings_dir())
+  load_dicts(new_config.settings, get_settings_dir(root_dir))
+end
+
+return M
