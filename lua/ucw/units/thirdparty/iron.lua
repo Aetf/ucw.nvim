@@ -19,6 +19,7 @@ function M.config()
   local iron = require('iron')
 
   iron.core.set_config {
+    highlight_last = false,
     preferred = {
       python = 'ipython'
     }
@@ -37,7 +38,7 @@ function M.config()
       ['F'] = { [[<Plug>(iron-send-line)]], "Send line to REPL" },
       ['<CR>'] = { [[<Plug>(iron-cr)]], "Send a newline to REPL" },
 
-      r = { [[<Plug>(iron-repeat-cmd)]], "Repeat the last command" },
+      ['.'] = { [[<Plug>(iron-repeat-cmd)]], "Repeat the last command" },
       q = { [[<Plug>(iron-exit)]], "Exit REPL" },
       c = { [[<Plug>(iron-interrupt)]], "Send an interrupt to REPL" },
       l = { [[<Plug>(iron-clear)]], "Clear the REPL" },
