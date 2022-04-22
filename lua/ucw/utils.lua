@@ -48,6 +48,35 @@ local function is_normal_buffer(buf)
   return vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buflisted and vim.bo[buf].buftype == ""
 end
 
+-- given a list of buffers, and current buffer's index in the list,
+-- find the next normal buffer that is suitable to switch to
+local function next_normal_buffer(buffers, current_buf)
+  -- find current_buf's idx
+  local current_idx = nil
+  for i, v in ipairs(buffers) do
+    if v == current_buf then
+      current_idx = i
+      break
+    end
+  end
+  if current_idx == nil then
+    vim.notify('[ucw.utils] next_normal_buffer: current_buf not in buffers')
+    return
+  end
+
+  local cand_idx = wrap(current_idx + 1, #buffers)
+  while cand_idx ~= current_idx do
+    if is_normal_buffer(buffers[cand_idx]) then
+      return buffers[cand_idx]
+    end
+    cand_idx = wrap(cand_idx + 1, #buffers)
+  end
+
+  -- if we end up here, it means no available normal buffer is available, we create a new one
+  table.insert(buffers, vim.api.nvim_create_buf(true, false))
+  return buffers[#buffers]
+end
+
 local function buf_kill(kill_cmd, bufnr, force)
   if not bufnr or bufnr == 0 then
     bufnr = vim.api.nvim_get_current_buf()
@@ -71,25 +100,13 @@ local function buf_kill(kill_cmd, bufnr, force)
   )
 
   if #windows > 0 then
-    -- get list of active buffers, ignoring plugin buffers
-    local buffers = vim.tbl_filter(
-      is_normal_buffer,
-      vim.api.nvim_list_bufs()
-    )
+    -- get list of active buffers
+    local buffers = vim.api.nvim_list_bufs()
 
-    -- if there's only one buffer (which has to be the current one),
-    -- we need to create a new one
-    if #buffers == 1 then
-      buffers[#buffers+1] = vim.api.nvim_create_buf(true, false)
-    end
-    -- find the next buffer
-    local next_buffer = nil
-    for i, v in ipairs(buffers) do
-      if v == bufnr then
-        next_buffer = buffers[wrap(i + 1, #buffers)]
-        break
-      end
-    end
+    -- find the next buffer, ignore plugin created buffers
+    local next_buffer = next_normal_buffer(buffers, bufnr)
+
+    -- set every win containing bufnr to next_buffer
     for _, win in ipairs(windows) do
       -- try to use the window's alternate buffer first
       local alt_buf = vim.api.nvim_win_call(win, function() vim.fn.bufnr('#') end)
