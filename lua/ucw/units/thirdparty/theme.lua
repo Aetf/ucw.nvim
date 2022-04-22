@@ -94,6 +94,12 @@ function M.config()
     hi.CmpItemKindTypeParameter = 'TSType'
   end
 
+  -- plugin: neo-tree
+  -- See ":help neo-tree-highlights" for a list of available highlight groups
+  hi.NeoTreeDirectoryName = 'Function'
+  hi.NeoTreeDirectoryIcon = 'NeoTreeDirectoryName'
+  hi.NeoTreeDimText = 'Whitespace'
+
   vim.cmd [[colorscheme base16-eighties]]
 end
 

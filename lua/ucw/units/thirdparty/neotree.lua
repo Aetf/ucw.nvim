@@ -63,13 +63,6 @@ local au = require('au')
 local t = require('ucw.utils').t
 
 function M.config()
-  -- See ":help neo-tree-highlights" for a list of available highlight groups
-  vim.cmd([[
-    hi link NeoTreeDirectoryName Function
-    hi link NeoTreeDirectoryIcon NeoTreeDirectoryName
-    hi link NeoTreeDimText Whitespace
-  ]])
-
   require("neo-tree").setup({
     close_if_last_window = true,
     -- use vim.ui.input for inputs, which will be dressed up by dressing.vim
