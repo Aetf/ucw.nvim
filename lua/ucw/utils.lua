@@ -155,6 +155,33 @@ function M.t(str)
     return vim.api.nvim_replace_termcodes(str, true, true, true)
 end
 
+-- This is a bit of syntactic sugar for creating highlight groups over vim.api.nvim_set_hl.
+-- Note that this currently always overrides the group rather than update the existing one.
+--
+-- local hi = require('ucw.utils').highlight
+-- hi.Comment = { fg='#ffffff', bg='#000000', italic=true }
+-- hi.LspDiagnosticsDefaultError = 'DiagnosticError' -- Link to another group
+--
+-- This is equivalent to the following vimscript
+--
+-- hi Comment guifg=#ffffff guibg=#000000 gui=italic
+-- hi! link LspDiagnosticsDefaultError DiagnosticError
+--
+-- Or the following lua
+--
+-- vim.api.nvim_set_hl(0, 'Comment', { fg='#ffffff', bg='#000000', italic=true })
+-- vim.api.nvim_set_hl(0, 'LspDiagnosticsDefaultError', { link='DiagnosticError'})
+M.highlight = setmetatable({}, {
+  __newindex = function(_, hlgroup, args)
+    if ('string' == type(args)) then
+      vim.api.nvim_set_hl(0, hlgroup, { link = args })
+      return
+    else
+      vim.api.nvim_set_hl(0, hlgroup, args)
+    end
+  end
+})
+
 local setup_done = false
 local function setup()
   if setup_done then
