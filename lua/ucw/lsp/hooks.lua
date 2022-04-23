@@ -121,20 +121,43 @@ end
 -- * either the default server setup which calls server:setup directly
 --   or plugin can supply custom server setup function
 function M.do_on_server_ready(server)
-  -- lsp-installer default options as base
-  local opts = server:get_default_options()
+  local lspconfig = require('lspconfig')
+
+  -- lspconfig lang default config as base
+  -- no way to directly get lspconfig defaults, so we kind of copy their logic here
+  local ok, opts = pcall(require, 'lspconfig.server_configurations.' .. server.name)
+  if not ok then
+    opts = {}
+  else
+    opts = opts.default_config or {}
+  end
+  opts = vim.tbl_deep_extend('keep', opts, lspconfig.util.default_config)
+
+  -- mix in lsp-installer default options
+  opts = vim.tbl_deep_extend('force', opts, server:get_default_options())
+
+  -- use a proxy to disable assignments to opts.on_new_config and opts.on_attach
+  local opts_proxy = setmetatable({}, {
+    __index = function(t, k)
+      if k == 'on_new_config' or k == 'on_attach' then
+        vim.notify(string.format('Do not access %s on opts, use the hook instead', k), vim.log.levels.ERROR, { title = '[ucw.lsp] Invalid access to opts' })
+        return
+      else
+        return opts[k]
+      end
+    end,
+    __newindex = function(t, k, v)
+      if k == 'on_new_config' or k == 'on_attach' then
+        vim.notify(string.format('Do not access %s on opts, use the hook instead', k), vim.log.levels.ERROR, { title = '[ucw.lsp] Invalid access to opts' })
+        return
+      else
+        opts[k] = v
+      end
+    end,
+  })
 
   -- call hooks
-  call_hook('on_server_ready', server.name, server, opts)
-
-  local lspconfig = require('lspconfig')
-  -- make sure lspconfig hooks are always called
-  if opts.on_new_config ~= nil then
-    opts.on_new_config = lspconfig.util.add_hook_after(lspconfig.util.default_config.on_new_config, opts.on_new_config)
-  end
-  if opts.on_attach ~= nil then
-    opts.on_attach = lspconfig.util.add_hook_after(lspconfig.util.default_config.on_attach, opts.on_attach)
-  end
+  call_hook('on_server_ready', server.name, server, opts_proxy)
 
   -- mix in our hooks
   opts.on_new_config = lspconfig.util.add_hook_after(opts.on_new_config, M.do_on_new_config)
