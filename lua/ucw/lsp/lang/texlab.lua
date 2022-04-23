@@ -4,7 +4,7 @@ local lu = require('ucw.lsp.utils')
 local M = {}
 
 function M.on_server_ready(server, opts)
-  opts.root_dir = lu.lazy_root_pattern('Makefile', '.latexmkrc', 'pages', 'figures')
+  opts.root_dir = lu.lazy_root_pattern('.latexmkrc', 'Makefile')
 
   -- vim.notify(vim.inspect(opts))
 
