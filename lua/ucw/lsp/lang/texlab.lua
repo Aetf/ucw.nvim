@@ -33,12 +33,17 @@ function M.on_server_ready(server, opts)
 end
 
 function M.on_new_config(new_config, root_dir)
-  -- texlab uses a temp dir to run chktex, only only copies 'chktexrc' to it
+  -- texlab uses a temp dir to run chktex, only only copies 'chktexrc' to it,
   -- but chktex on linux uses '.chktexrc'.
-  -- Before that is fixed, use env var to force a chtexrc location
+  -- before that is fixed, use env var to force a chtexrc location
   -- see https://github.com/latex-lsp/texlab/issues/309#issuecomment-955767508
   local cmd_env = utils.prop_get_table(new_config, 'cmd_env')
   cmd_env['CHKTEXRC'] = root_dir
+
+  -- texlab needs texlab.rootDirectory to be set to correctly detect multi-folder structures.
+  -- note that this is different from lsp.client's root_dir and workspace_folders.
+  -- see https://github.com/latex-lsp/texlab/issues/571
+  utils.prop_set(new_config, 'settings.texlab.rootDirectory', root_dir)
 end
 
 return M
