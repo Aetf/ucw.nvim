@@ -8,11 +8,13 @@ M.activation = {
     'target.basic'
   }
 }
-
+---------------------------------------------------------------------------------------------------
 function M.config ()
   local notify = require('notify')
   notify.setup {
     --background_colour = '#B0BeC500',
+    timeout = 3000,
+    max_width = 55,
   }
   vim.notify = notify
 end
