@@ -30,7 +30,7 @@ function M.config()
       ghost_text = true,
     },
     preselect = cmp.PreselectMode.Item,
-    mapping = {
+    mapping = cmp.mapping.preset.insert({
       ['<C-b>'] = cmp.mapping(cmp.mapping.scroll_docs(-4), { 'i', 'c' }),
       ['<C-f>'] = cmp.mapping(cmp.mapping.scroll_docs(4), { 'i', 'c' }),
       ['<M-.>'] = cmp.mapping(cmp.mapping.complete(), { 'i', 'c' }),
@@ -62,7 +62,7 @@ function M.config()
           fallback()
         end
       end, { "i", "s" }),
-    },
+    }),
     sources = cmp.config.sources({
       sources.lsp_signature,
       sources.lsp,
@@ -76,6 +76,9 @@ function M.config()
 
   -- Use cmdline & path source for ':' (if you enabled `native_menu`, this won't work anymore).
   cmp.setup.cmdline(':', {
+    mapping = cmp.mapping.preset.cmdline({
+
+    }),
     sources = cmp.config.sources({
       sources.path,
     }, {
