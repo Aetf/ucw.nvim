@@ -79,6 +79,10 @@ local function dir_changed(client, settings_file)
 end
 
 local function watch_settings_change(client, _)
+  -- skip for singlefile mode
+  if not client.config.workspace_folders then
+    return
+  end
   -- for all workspace folders
   for _, folder in pairs(client.config.workspace_folders) do
     local root_dir = vim.uri_to_fname(folder.uri)
