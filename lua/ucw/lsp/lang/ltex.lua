@@ -127,6 +127,8 @@ local M = {}
 function M.on_server_ready(server, opts)
   opts.root_dir = lu.lazy_root_pattern('.git', '.vscode')
 
+  utils.prop_set(opts, 'settings.ltex.ltex-ls.logLevel', 'info')
+
   local lspconfig = require('lspconfig')
   opts.on_init = lspconfig.util.add_hook_after(opts.on_init, function(client)
     client.commands['_ltex.addToDictionary'] = make_cmd('dictionary', 'words')
