@@ -9,8 +9,13 @@ vim.opt.cursorline = true
 -- Color and themes
 -- always use 24bits true color
 vim.opt.termguicolors = true
--- do not show --INSERT-- because we have statusline
+-- less chatty
+-- do not show --INSERT--
 vim.opt.showmode = false
+-- do not show search reached bottom/top
+vim.opt.shortmess:append('s')
+-- do not show ruler message, which spams the message log
+vim.opt.ruler = false
 -- show (partial) cmd in status line
 vim.opt.showcmd = true
 

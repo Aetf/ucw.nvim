@@ -12,6 +12,11 @@ map('n', '^', '0', opts) -- just in case you need to go to the very beginning of
 map('i', '<c-r>', '<c-r><c-o>', opts)
 map('i', '<c-r><c-o>', '<c-r>', opts)
 
+-- <c-s> as an extra way to exit insert mode and save
+map('n', '<c-s>', '<cmd>w<cr>')
+map('i', '<c-s>', '<esc><cmd>w<cr>')
+map('v', '<c-s>', '<esc><cmd>w<cr>')
+
 -- jk move over visual lines
 map('n', 'j', 'gj', opts)
 map('n', 'k', 'gk', opts)
