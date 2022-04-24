@@ -15,6 +15,9 @@ vim.opt.showmode = false
 vim.opt.showcmd = true
 
 -- Editing
+-- mouse
+vim.opt.mouse = 'nvi'
+vim.opt.mousemodel = 'popup'
 -- h,l and left/right keys should be able to move across lines
 vim.opt.whichwrap:append('h,l,<,>')
 -- use spaces instead of tabs
