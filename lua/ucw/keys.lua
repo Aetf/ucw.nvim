@@ -24,9 +24,5 @@ map('n', 'gE', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_
 map({'n', 'i', 'v'}, '<X2Mouse>', '<c-i>', opts)
 map({'n', 'i', 'v'}, '<X1Mouse>', '<c-o>', opts)
 
--- Code navigation shortcuts
-map('n', 'K', '<cmd>lua vim.lsp.buf.hover()<cr>', opts)
-map('n', '<c-k>', '<cmd>lua vim.lsp.buf.signature_help()<cr>', opts)
-
 -- term navigation
 map('t', '<esc><esc>', [[<c-\><c-n>]], opts)

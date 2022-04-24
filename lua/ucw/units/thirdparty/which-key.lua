@@ -32,22 +32,9 @@ function M.config()
   }
   -- LSP
   wk.register {
-    ['<M-Enter>'] = { [[<cmd>lua vim.lsp.buf.code_action()<cr>]], "Code actions" },
-    ['<M-S-Enter>'] = { [[<cmd>lua vim.lsp.buf.range_code_action()<cr>]], "Range code actions" },
-    g = {
-      ['0'] = { [[<cmd>Telescope lsp_document_symbols<cr>]], "Symbols in the current buffer"},
-      W = { [[<cmd>Telescope lsp_workspace_symbols<cr>]], "Symbols in the current workspace"},
-      e = { [[<cmd>Telescope diagnostics<cr>]], "Diagnostics for current buffer"},
-      D = { [[<cmd>Telescope lsp_implementations<cr>]], "Go to implementation"},
-      d = { [[<cmd>Telescope lsp_definitions<cr>]], "Go to definition"},
-      t = { [[<cmd>Telescope lsp_type_definitions<cr>]], "Go to type definition"},
-      r = { [[<cmd>Telescope lsp_references<cr>]], "Find references"},
-    },
-    ['<M-S-r>'] = { [[<cmd>lua vim.lsp.buf.rename()<cr>]], "Rename the symbol under cursor" },
-  }
-  wk.register {
     ['<leader>l'] = {
       name = '+LSP',
+      l = { [[<cmd>lua nvimctl:start 'target.lsp'<cr>]], "Enable LSP" },
       a = { [[<cmd>lua vim.lsp.buf.code_action()<cr>]], "Code actions" },
       A = { [[<cmd>lua vim.lsp.buf.range_code_action()<cr>]], "Range code actions" },
       ['0'] = { [[<cmd>Telescope lsp_document_symbols<cr>]], "Symbols in the current buffer"},
@@ -56,10 +43,12 @@ function M.config()
       D = { [[<cmd>Telescope lsp_implementations<cr>]], "Go to implementation"},
       d = { [[<cmd>Telescope lsp_definitions<cr>]], "Go to definition"},
       t = { [[<cmd>Telescope lsp_type_definitions<cr>]], "Go to type definition"},
+      H = { [[<cmd>lua vim.lsp.declaration()<cr>]], "Go to declaration"},
       r = { [[<cmd>Telescope lsp_references<cr>]], "Find references"},
       h = { [[<cmd>lua vim.lsp.buf.document_highlight()<cr>]], "Highlight symbol under cursor" },
       ['<C-L>'] = { [[<cmd>lua vim.lsp.buf.clear_references()<cr>]], "Clear document highlights from current buffer" },
       f = { [[<cmd>lua vim.lsp.buf.formatting()<cr>]], "Format the current buffer" },
+      F = { [[<cmd>lua vim.lsp.buf.range_formatting()<cr>]], "Format the visual selection" },
       R = { [[<cmd>lua vim.lsp.buf.rename()<cr>]], "Rename the symbol under cursor" },
     }
   }

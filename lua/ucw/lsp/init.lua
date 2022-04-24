@@ -23,11 +23,7 @@ local function on_new_config(new_config, root_dir)
 end
 
 local function on_attach(client, bufnr)
-  -- au.CursorHold = {
-  --   '<buffer>',
-  --   vim.diagnostic.open_float,
-  -- }
-  --
+  -- integrate with native vim
   if client.resolved_capabilities.goto_definition == true then
     vim.api.nvim_buf_set_option(bufnr, "tagfunc", "v:lua.vim.lsp.tagfunc")
   end
@@ -35,6 +31,27 @@ local function on_attach(client, bufnr)
   if client.resolved_capabilities.document_formatting == true then
     vim.api.nvim_buf_set_option(bufnr, "formatexpr", "v:lua.vim.lsp.formatexpr()")
   end
+
+  -- register a few buffer local shortcuts
+  local wk = require('which-key')
+  wk.register({
+    ['<M-Enter>'] = { [[<cmd>lua vim.lsp.buf.code_action()<cr>]], "Code actions" },
+    ['<M-S-Enter>'] = { [[<cmd>lua vim.lsp.buf.range_code_action()<cr>]], "Range code actions" },
+    g = {
+      ['0'] = { [[<cmd>Telescope lsp_document_symbols<cr>]], "Symbols in the current buffer"},
+      W = { [[<cmd>Telescope lsp_workspace_symbols<cr>]], "Symbols in the current workspace"},
+      e = { [[<cmd>Telescope diagnostics<cr>]], "Diagnostics for current buffer"},
+      D = { [[<cmd>Telescope lsp_implementations<cr>]], "Go to implementation"},
+      d = { [[<cmd>Telescope lsp_definitions<cr>]], "Go to definition"},
+      t = { [[<cmd>Telescope lsp_type_definitions<cr>]], "Go to type definition"},
+      H = { [[<cmd>lua vim.lsp.declaration()<cr>]], "Go to declaration"},
+      r = { [[<cmd>Telescope lsp_references<cr>]], "Find references"},
+    },
+    K = { '<cmd>lua vim.lsp.buf.hover()<cr>', "Hover over symbol" },
+    ['<c-k>'] = { '<cmd>lua vim.diagnostic.open_float()<cr>', "Show diagnostics on the current line" },
+    ['<M-S-r>'] = { [[<cmd>lua vim.lsp.buf.rename()<cr>]], "Rename the symbol under cursor" },
+  }, { buffer = bufnr })
+
 end
 
 function M.setup()
