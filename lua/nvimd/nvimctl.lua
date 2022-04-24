@@ -324,7 +324,7 @@ function nvimctl:sync(cb)
       for _, unit in pairs(self.resolver.units) do
         if string.match(unit.name, '^target%.', 1) then
           self:compile(unit.name)
-          vim.notify(unit.name, vim.log.levels.INFO, { title = '[nvimd] Finished compilation' })
+          vim.notify('Finished compilation', vim.log.levels.INFO, { title = '[nvimd] ' .. unit.name })
         end
       end
     end

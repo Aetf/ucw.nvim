@@ -140,7 +140,7 @@ function resolver:load_unit(name)
         unit._config_source = unit_module
       end
       table.insert(unit._sources, unit_module)
-    elseif string.find(loaded, 'E5108') then -- module not found
+    elseif string.find(loaded, 'not found:') then -- module not found
       table.insert(notfound_errors, { unit_module, loaded })
     else -- other errors
       table.insert(errors, { unit_module, loaded })

@@ -16,10 +16,9 @@ M.register_on_attach = hooks.register_on_attach
 
 local function on_new_config(new_config, root_dir)
   local root_dir_name = vim.fn.fnamemodify(root_dir, ':p:~')
-  vim.notify(string.format('Enabled on: %s', root_dir_name), vim.log.levels.INFO, {
+  vim.notify(string.format('Enabled on:\n%s', root_dir_name), vim.log.levels.INFO, {
     title = string.format('LSP [%s]', new_config.name)
   })
-  -- vim.notify(string.format('LSP [%s] config: %s', new_config.name, vim.inspect(new_config)))
 end
 
 local function on_attach(client, bufnr)

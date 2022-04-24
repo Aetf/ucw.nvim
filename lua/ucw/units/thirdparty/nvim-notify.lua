@@ -15,6 +15,7 @@ function M.config ()
     --background_colour = '#B0BeC500',
     timeout = 3000,
     max_width = 55,
+    min_width = 30,
   }
   vim.notify = notify
 end

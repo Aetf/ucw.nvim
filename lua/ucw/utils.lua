@@ -60,7 +60,7 @@ local function next_normal_buffer(buffers, current_buf)
     end
   end
   if current_idx == nil then
-    vim.notify('[ucw.utils] next_normal_buffer: current_buf not in buffers')
+    vim.notify('current_buf not in buffers', vim.log.levels.ERROR, { title = '[ucw.utils] next_normal_buffer' })
     return
   end
 
