@@ -85,6 +85,7 @@ end
 function M.config()
   require('auto-session').setup {
     log_level = 'warn',
+    auto_restore_enabled = false,
     auto_session_suppress_dirs = {'~/', '/dev/shm', '/tmp'},
     pre_save_cmds = {
       close_aux_windows,
