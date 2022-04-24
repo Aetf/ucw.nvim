@@ -51,7 +51,16 @@ local function call_hook(hook_name, server_name, ...)
     local ok, err = pcall(m[hook_name], ...)
     if not ok then
       vim.notify(
-        string.format("Failed to call `ucw.lsp.lang.%s.%s': %s", server_name, hook_name, err),
+        string.format("Failed to call `ucw.lsp.lang.%s.%s':\n%s", server_name, hook_name, err),
+        vim.log.levels.ERROR,
+        { title = "[ucw.lsp] on_server_ready error" }
+      )
+    end
+  elseif not present then
+    -- module not found
+    if not string.find(m, 'not found:') then
+      vim.notify(
+        string.format("Failed to load `ucw.lsp.lang.%s':\n%s", server_name, vim.inspect(m)),
         vim.log.levels.ERROR,
         { title = "[ucw.lsp] on_server_ready error" }
       )
@@ -74,7 +83,7 @@ function M.register_server_setup(name, custom_setup)
   if custom_server_setups[name] then
     vim.notify(
       string.format(
-        "Multiple calls to register_server_setup on %s, previous config is %s",
+        "Multiple calls to register_server_setup on %s,\nprevious config is %s",
         name,
         vim.inspect(custom_server_setups[name])
       ),
@@ -140,7 +149,7 @@ function M.do_on_server_ready(server)
   local opts_proxy = setmetatable({}, {
     __index = function(t, k)
       if k == 'on_new_config' or k == 'on_attach' then
-        vim.notify(string.format('Do not access %s on opts, use the hook instead', k), vim.log.levels.ERROR, { title = '[ucw.lsp] Invalid access to opts' })
+        vim.notify(string.format('Do not access %s on opts,\nuse the hook instead', k), vim.log.levels.ERROR, { title = '[ucw.lsp] Invalid access to opts' })
         return
       else
         return opts[k]
@@ -148,7 +157,7 @@ function M.do_on_server_ready(server)
     end,
     __newindex = function(t, k, v)
       if k == 'on_new_config' or k == 'on_attach' then
-        vim.notify(string.format('Do not access %s on opts, use the hook instead', k), vim.log.levels.ERROR, { title = '[ucw.lsp] Invalid access to opts' })
+        vim.notify(string.format('Do not access %s on opts,\nuse the hook instead', k), vim.log.levels.ERROR, { title = '[ucw.lsp] Invalid access to opts' })
         return
       else
         opts[k] = v

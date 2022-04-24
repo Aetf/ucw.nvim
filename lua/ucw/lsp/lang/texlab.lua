@@ -3,6 +3,32 @@ local lu = require('ucw.lsp.utils')
 
 local M = {}
 
+-- a global function accepting backward search request
+---@param opts.line line info
+---@param opts.col? column info
+function texlab_backward_search(filename, line, col)
+  -- open file
+  vim.cmd([[drop ]] .. filename)
+
+  -- move to requested line
+  local l, c = unpack(vim.api.nvim_win_get_cursor(0))
+  if not line or line < 1 then
+    line = l
+  end
+  if not col or col < 0 then
+    col = c
+  end
+  vim.api.nvim_win_set_cursor(0, {line, col})
+
+  -- unfold cursor line
+  vim.cmd [[normal! zv]]
+  -- move to center
+  vim.cmd [[normal! zz]]
+
+  -- return empty string to silent when called by --remote-expr
+  return ""
+end
+
 function M.on_server_ready(server, opts)
   opts.root_dir = lu.lazy_root_pattern('.latexmkrc', 'Makefile')
 
@@ -25,9 +51,7 @@ function M.on_server_ready(server, opts)
   utils.prop_set(opts, 'settings.texlab.forwardSearch.executable', 'zathura')
   utils.prop_set(opts, 'settings.texlab.forwardSearch.args', {
     '--synctex-editor-command',
-    string.format('nvr --servername %s --remote-silent %%{input} +%%{line} -c "normal! zv"', vim.v.servername),
-    -- synctex misses column info in output, because tex fundamentally doesn't store column info
-    -- string.format('nvr --servername %s --remote-silent %%{input} +%%{line} -c "lua print([[%%{input} %%{line} %%{column}]])"', vim.v.servername),
+    string.format([[nvim --server %s --remote-expr 'v:lua.texlab_backward_search("%%{input}", %%{line}, %%{column})']], vim.v.servername),
     '--synctex-forward', '%l:1:%f', '%p'
   })
 end
