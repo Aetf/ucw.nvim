@@ -31,6 +31,14 @@ function resolver:reset()
   end
 end
 
+-- TODO: clean up Unit state machine
+-- or split unit into spec and state tracking internally used in nvimctl
+-- unit could be in
+-- * dehydrated compiled unit (has _config_source but no others)
+-- * _loaded = false unit
+-- * _loaded = true unit (fully loaded unit)
+-- * started = true/false
+
 ---@class nvimd.Unit
 ---@field disabled? boolean
 ---@field _loaded boolean
@@ -39,6 +47,7 @@ end
 ---@field run? string|fun()
 ---@field description string
 ---@field config? fun() Optional config function
+---@field setup? fun() Optional setup function, that is run before packadd
 ---@field no_default_dependencies boolean
 ---@field requires string[] Similar to wants, but declares a stronger requirement dependency.
 ---@field wants string[] Configures (weak) requirement dependencies on other units.
@@ -127,7 +136,7 @@ function resolver:load_unit(name)
       unit = utils.merge(unit, loaded)
       unit.name = name
       unit._loaded = true
-      if loaded.config then
+      if loaded.config or loaded.setup then
         unit._config_source = unit_module
       end
       table.insert(unit._sources, unit_module)

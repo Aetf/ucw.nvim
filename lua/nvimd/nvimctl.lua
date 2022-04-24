@@ -87,12 +87,34 @@ function nvimctl._activate(unit)
     return unit
   end
 
+  -- clear triggers since we are starting the unit
   for _, t in pairs(unit._triggers or {}) do
     t:remove()
   end
   unit._triggers = {}
 
   require('nvimd.utils.log').info('Activating', unit.name)
+
+  -- unit.setup and unit.config may not be loaded yet when activating from compiled target
+  if not unit.config and not unit.setup and unit._config_source and unit._config_source ~= "" then
+    local ok, res = pcall(require, unit._config_source)
+    if ok then
+      unit.config = res.config
+      unit.setup = res.setup
+    else
+      require('nvimd.utils.log').error('Failed to activate', unit.name, res)
+      return
+    end
+  end
+
+  if unit.setup then
+    local ok, err_msg = pcall(unit.setup)
+    if not ok then
+      require('nvimd.utils.log').error('Failed to activate', unit.name, err_msg)
+      return
+    end
+  end
+
   if unit._pack_name then
     local cmd = string.format('packadd %s', unit._pack_name)
     local ok, err_msg = pcall(vim.cmd, cmd)
@@ -102,19 +124,11 @@ function nvimctl._activate(unit)
     end
   end
 
+  -- after files are not sourced after vim enter, e.g. when manually call nvimctl:start
+  -- so in that case we source them directly
   if vim.v.vim_did_enter == 1 and unit._after_files then
     for _, file in ipairs(unit._after_files) do
       vim.cmd('silent source ' .. file)
-    end
-  end
-
-  if not unit.config and unit._config_source and unit._config_source ~= "" then
-    local ok, res = pcall(require, unit._config_source)
-    if ok then
-      unit.config = res.config
-    else
-      require('nvimd.utils.log').error('Failed to activate', unit.name, res)
-      return
     end
   end
 
@@ -310,6 +324,7 @@ function nvimctl:sync(cb)
       for _, unit in pairs(self.resolver.units) do
         if string.match(unit.name, '^target%.', 1) then
           self:compile(unit.name)
+          vim.notify(unit.name, vim.log.levels.INFO, { title = '[nvimd] Finished compilation' })
         end
       end
     end

@@ -24,6 +24,12 @@ unit's `[Install]` section.
 Unless `no_default_dependencies=true`, all targets gains a `after` dependency for all its `wants/requires/requisite`.
 And all units gains a `after` dependency on `target.base`.
 
+During activation,
+
+* calls `unit.setup`
+* calls `packadd`
+* calls `unit.config`
+
 ## Example
 
 Require `nvimd` and just boot from `init.lua`.

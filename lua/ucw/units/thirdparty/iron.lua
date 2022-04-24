@@ -15,6 +15,12 @@ M.activation = {
   }
 }
 
+function M.setup()
+  -- we define our own mapping
+  vim.g.iron_map_defaults = 0
+  vim.g.iron_map_extended = 0
+end
+
 function M.config()
   local iron = require('iron')
 
@@ -24,11 +30,6 @@ function M.config()
       python = 'ipython'
     }
   }
-
-  -- we define our own mapping
-  -- TODO: this doesn't work as in config the plugin is already loaded
-  vim.g.iron_map_defaults = 0
-  vim.g.iron_map_extended = 0
 
   local wk = require('which-key')
   wk.register({
@@ -51,11 +52,9 @@ function M.config()
     }
   }, { prefix = '<leader>', mode = 'v'})
   for _, m in pairs({'n', 'v', 'i'}) do
-    -- vim.notify('Register for ' .. m)
     wk.register({
       ['<S-Enter>'] = { [[<cmd>lua require('ucw.keys.actions').iron_send_block({next=true})<cr>')]], "Send block to REPL and move to next" },
-      -- ['<C-Enter>'] = { [[<cmd>lua require('ucw.keys.actions').iron-send_block()<cr>')]], "Send block to REPL" },
-      -- ['<S-Enter>'] = { [[<Plug>(iron-send-motion)ih<cmd>normal ]h<cr>]], "Send block to REPL and move to next" },
+      -- ['<C-Enter>'] = { [[<cmd>lua require('ucw.keys.actions').iron_send_block()<cr>')]], "Send block to REPL" },
       ['<C-Enter>'] = { [[<Plug>(iron-send-motion)ih]], "Send block to REPL" },
     }, { mode = m })
   end
