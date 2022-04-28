@@ -48,6 +48,32 @@ local function is_normal_buffer(buf)
   return vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buflisted and vim.bo[buf].buftype == ""
 end
 
+-- find backward in jumplist until the buf is different
+local function win_backward_buf(win, current_buf)
+  if current_buf == nil then
+    current_buf = vim.api.nvim_win_get_buf(win)
+  end
+
+  local getjumplist = vim.fn.getjumplist(win)[1]
+  local jumplist = getjumplist[1]
+  if #jumplist == 0 then
+    return
+  end
+
+  -- plus one because of one index
+  local i = getjumplist[2] + 1
+  local j = i
+  local target_buf = current_buf
+
+  while j > 1 and (current_buf == target_buf or not is_normal_buffer(target_buf)) do
+      j = j - 1
+      target_buf = jumplist[j].bufnr
+  end
+  if target_buf ~= current_buf and is_normal_buffer(target_buf) then
+    return target_buf
+  end
+end
+
 -- given a list of buffers, and current buffer's index in the list,
 -- find the next normal buffer that is suitable to switch to
 local function next_normal_buffer(buffers, current_buf)
@@ -103,16 +129,28 @@ local function buf_kill(kill_cmd, bufnr, force)
     -- get list of active buffers
     local buffers = vim.api.nvim_list_bufs()
 
-    -- find the next buffer, ignore plugin created buffers
-    local next_buffer = next_normal_buffer(buffers, bufnr)
-
     -- set every win containing bufnr to next_buffer
     for _, win in ipairs(windows) do
-      -- try to use the window's alternate buffer first
-      local alt_buf = vim.api.nvim_win_call(win, function() vim.fn.bufnr('#') end)
-      if alt_buf and is_normal_buffer(alt_buf) then
-        next_buffer = alt_buf
+      local next_buffer = nil
+
+      -- try previous in jumplist
+      if next_buffer == nil then
+        next_buffer = win_backward_buf(win, bufnr)
       end
+
+      -- try to use the window's alternate buffer first
+      if next_buffer == nil then
+        local alt_buf = vim.api.nvim_win_call(win, function() vim.fn.bufnr('#') end)
+        if alt_buf and is_normal_buffer(alt_buf) then
+          next_buffer = alt_buf
+        end
+      end
+
+      -- find the next buffer, ignore plugin created buffers
+      if next_buffer == nil then
+        next_buffer = next_normal_buffer(buffers, bufnr)
+      end
+
       vim.api.nvim_win_set_buf(win, next_buffer)
     end
   end
