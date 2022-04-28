@@ -12,8 +12,9 @@ M.activation = {
 
 function M.config()
   require('toggleterm').setup{
-    open_mapping = [[<c-`>]], -- <c-`> not working, reported as <c-space>
-    open_mapping = [[<c-space>]],
+    -- <c-`> requires special config in konsole keytab file:
+    -- key `-Shift+Ctrl : "\E[96;5u"
+    open_mapping = [[<c-`>]],
     insert_mappings = true,
     terminal_mappings = true,
     hide_numbers = true,
