@@ -199,6 +199,85 @@ M.highlight = setmetatable({}, {
   end
 })
 
+M.FileWatcher = {}
+
+function M.FileWatcher.new(debounce_time)
+  -- setup a luv fs event watcher on it, and a debounce time
+  local this = setmetatable({
+    timer = L.new_timer(),
+    watcher = L.new_fs_event(),
+    debouncing = false,
+    path = nil,
+    callback = nil,
+    wrapped_cb = nil,
+  }, { __index = M.FileWatcher })
+
+  local weak_this = setmetatable({this = this}, { __mode = 'v' })
+
+  this.wrapped_cb = function(err, filename, events)
+    -- take the weak ref and save to local so we don't lose it
+    local that = weak_this.this
+    if that == nil then
+      return
+    end
+
+    if err ~= nil then
+      vim.schedule(function()
+        vim.notify(
+          string.format("Watching:\n%s\nError:\n%s", that.path, err),
+          vim.log.lvels.ERROR,
+          { title = '[ucw.utils] Error in libuv watcher' }
+        )
+      end)
+      return
+    end
+    if not events.change and not events.rename then
+      return
+    end
+    if that.debouncing or that.timer:is_active() then
+      return
+    end
+    that.debouncing = true
+    that.timer:start(debounce_time, 0,
+      vim.schedule_wrap(function()
+        if that.callback ~= nil then
+          that.callback(err, filename, events)
+        end
+        that.debouncing = false
+      end)
+    )
+
+    -- refresh watcher so in case the file is renamed we still watch it
+    that.watcher:stop()
+    if that.path and that.callback then
+      that.watcher:start(that.path, {}, that.wrapped_cb)
+    end
+  end
+
+  return this
+end
+
+function M.FileWatcher:start(path, callback)
+  self.path = path
+  self.callback = callback
+  if self.path and self.callback then
+    self.watcher:start(self.path, {}, self.wrapped_cb)
+  end
+end
+
+function M.FileWatcher:stop()
+  self.path = nil
+  self.callback = nil
+  self.watcher:stop()
+  self.timer:stop()
+end
+
+function M.FileWatcher:close()
+  self:stop()
+  self.watcher:close()
+  self.timer:stop()
+end
+
 local setup_done = false
 local function setup()
   if setup_done then

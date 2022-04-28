@@ -54,7 +54,7 @@ local function on_attach(client, bufnr)
 end
 
 function M.setup()
-  --require('ucw.lsp.lsp-notify').setup()
+  -- require('ucw.lsp.lsp-notify').setup()
   require('ucw.lsp.vscode').setup()
 
   hooks.register_on_new_config('.*', on_new_config)

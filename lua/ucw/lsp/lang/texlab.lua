@@ -32,8 +32,6 @@ end
 function M.on_server_ready(server, opts)
   opts.root_dir = lu.lazy_root_pattern('.latexmkrc', 'Makefile')
 
-  -- vim.notify(vim.inspect(opts))
-
   -- execute a forward search after a build
   utils.prop_set(opts, 'settings.texlab.build.forwardSearchAfter', true)
   -- build on save

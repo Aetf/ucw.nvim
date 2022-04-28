@@ -90,47 +90,16 @@ local function watch_settings_change(client, _)
     local settings_file = locate_settings_file(root_dir)
 
     -- setup a luv fs event watcher on it, and a debounce time
-    local state = {
-      timer = L.new_timer(),
-      watcher = L.new_fs_event(),
-      debouncing = false,
-      cb = setmetatable({ weak = nil }, { __mode = 'v' }),
-    }
-    state.cb.weak = function(err, _, events)
-      if err ~= nil then
-        vim.schedule(function()
-          vim.notify(err, vim.log.lvels.ERROR, { title = '[ucw.lsp.vscode] Error in libuv watcher' })
-        end)
+    local watcher = utils.FileWatcher.new(2000)
+    watcher:start(settings_file, function(_, _, _)
+      if client:is_stopped() then
+        -- we save a ref in callback so watcher won't be deleted even
+        -- when the local watcher goes out of scope
+        watcher:close()
         return
       end
-      if not events.change and not events.rename then
-        return
-      end
-      if state.debouncing or state.timer:is_active() then
-        return
-      end
-      state.debouncing = true
-      state.timer:start(2000, 0, function()
-        if client:is_stopped() then
-          state.watcher:stop()
-          state.watcher:close()
-          state.timer:stop()
-          state.timer:close()
-          return
-        end
-        vim.schedule(function()
-          dir_changed(client, settings_file)
-          state.debouncing = false
-        end)
-      end)
-
-      -- refresh watcher so in case the file is renamed we still watch it
-      -- we save a strong reference to cb first, then stop the watcher, which should remove the only other strong reference to cb
-      local cb = state.cb.weak
-      state.watcher:stop()
-      state.watcher:start(settings_file, {}, cb)
-    end
-    state.watcher:start(settings_file, {}, state.cb.weak)
+      dir_changed(client, settings_file)
+    end)
   end
 end
 
