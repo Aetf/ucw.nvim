@@ -447,7 +447,7 @@ function nvimctl:graph(path, opts)
 
   table.insert(g, "}")
 
-  local fp = assert(io.open(A.fnnamemodify(path, ':p'), "w"))
+  local fp = assert(io.open(F.fnamemodify(path, ':p'), "w"))
   fp:write(table.concat(g, "\n"))
   fp:close()
 
