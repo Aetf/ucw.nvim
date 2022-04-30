@@ -17,9 +17,13 @@ map('n', '<c-s>', '<cmd>w<cr>')
 map('i', '<c-s>', '<esc><cmd>w<cr>')
 map('v', '<c-s>', '<esc><cmd>w<cr>')
 
--- jk move over visual lines
-map('n', 'j', 'gj', opts)
-map('n', 'k', 'gk', opts)
+-- jk move over visual lines, but over physical lines when used with a count
+vim.keymap.set('n', 'j', function()
+  return vim.v.count and 'j' or 'gj'
+end, { expr = true })
+vim.keymap.set('n', 'k', function()
+  return vim.v.count and 'k' or 'gk'
+end, { expr = true })
 
 -- jump to start/end of a text object
 map('n', 'gS', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_go_start<cr>g@]], opts)
