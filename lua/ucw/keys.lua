@@ -19,10 +19,10 @@ map('v', '<c-s>', '<esc><cmd>w<cr>')
 
 -- jk move over visual lines, but over physical lines when used with a count
 vim.keymap.set('n', 'j', function()
-  return vim.v.count and 'j' or 'gj'
+  return vim.v.count > 0 and 'j' or 'gj'
 end, { expr = true })
 vim.keymap.set('n', 'k', function()
-  return vim.v.count and 'k' or 'gk'
+  return vim.v.count > 0 and 'k' or 'gk'
 end, { expr = true })
 
 -- jump to start/end of a text object
