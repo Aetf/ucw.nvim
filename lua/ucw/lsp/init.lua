@@ -27,8 +27,10 @@ local function on_attach(client, bufnr)
     vim.api.nvim_buf_set_option(bufnr, "tagfunc", "v:lua.vim.lsp.tagfunc")
   end
 
-  if client.resolved_capabilities.document_formatting == true then
-    vim.api.nvim_buf_set_option(bufnr, "formatexpr", "v:lua.vim.lsp.formatexpr()")
+  if vim.api.nvim_buf_get_option(bufnr, "formatexpr") == "" then
+    if client.resolved_capabilities.document_formatting == true then
+      vim.api.nvim_buf_set_option(bufnr, "formatexpr", "v:lua.vim.lsp.formatexpr()")
+    end
   end
 
   -- register a few buffer local shortcuts
