@@ -56,7 +56,9 @@ end
 -- Send ipython cell under the current cursor to iron REPL.
 -- If opts.next == true, move cursor to next cell.
 function M.iron_send_block(opts)
-  vim.api.nvim_feedkeys(t([[<Plug>(iron-send-motion)ih]]), 'mx!', true)
+  opts = opts or { next = false }
+  -- TODO: figure out a way to directly call iron api
+  vim.api.nvim_feedkeys(t'<leader>efih', 'mx', false)
   if opts.next then
     vim.cmd [[normal ]h]]
   end
