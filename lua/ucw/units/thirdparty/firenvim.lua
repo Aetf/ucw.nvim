@@ -52,6 +52,10 @@ function M.config()
         takeover = 'never',
         priority = 1,
       },
+      ['airbnb\\.com'] = {
+        takeover = 'never',
+        priority = 1,
+      },
       -- TODO: skip inline for jupyterlab
       -- :not([data-type=="inline"])
       ['.*'] = {
