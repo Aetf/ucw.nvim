@@ -25,31 +25,31 @@ function M.config()
       show_tab_indicators = true,
       -- tabpage indicator color is too washed out
       highlights = {
-	tab_selected = {
-	  guifg = { highlight = 'Normal', attribute = 'fg' },
-	  guibg = { highlight = 'Normal', attribute = 'bg' },
-	  gui = "bold,italic",
-	}
+        tab_selected = {
+          guifg = { highlight = 'Normal', attribute = 'fg' },
+          guibg = { highlight = 'Normal', attribute = 'bg' },
+          gui = "bold,italic",
+        }
       },
       -- numbers = function(opts)
-	-- return string.format('%s%s', opts.id, opts.lower(opts.ordinal))
+      -- return string.format('%s%s', opts.id, opts.lower(opts.ordinal))
       -- end,
       sort_by = 'directory',
       -- do not draw over file tree
       offsets = {
-	{
-	  filetype = 'neo-tree',
-	  text = 'Files',
-	  -- highlight = 'Directory',
-	  text_align = "left",
-	},
+        {
+          filetype = 'neo-tree',
+          text = 'Files',
+          -- highlight = 'Directory',
+          text_align = "left",
+        },
       },
       -- handle buf delete while preserving window layout
       close_command = function(buf_id)
-	return require('ucw.utils').bufdelete(buf_id)
+        return require('ucw.utils').bufdelete(buf_id)
       end,
       middle_mouse_command = function(buf_id)
-	return require('ucw.utils').bufdelete(buf_id)
+        return require('ucw.utils').bufdelete(buf_id)
       end,
       right_mouse_command = nil,
     },
