@@ -122,24 +122,28 @@ function resolver:load_unit(name)
     local unit_module = parent .. '.' .. name
     local present, loaded = pcall(require, unit_module)
     if present then
-      -- TODO error when module is not a table
-      found = true
-      -- sanitize on loaded unit
-      -- only trust compiled unit
-      if parent ~= 'nvimd.compiled' then
-        loaded._sources = nil
-        loaded.started = nil
-      end
-      loaded._triggers = nil
+      if type(loaded) ~= 'table' then
+        -- error when module is not a table
+        table.insert(errors, { unit_module, ('Incorrect module type: %s'):format(type(loaded)) })
+      else
+        found = true
+        -- sanitize on loaded unit
+        -- only trust compiled unit
+        if parent ~= 'nvimd.compiled' then
+          loaded._sources = nil
+          loaded.started = nil
+        end
+        loaded._triggers = nil
 
-      -- start from existing unit, merging in any existing
-      unit = utils.merge(unit, loaded)
-      unit.name = name
-      unit._loaded = true
-      if loaded.config or loaded.setup then
-        unit._config_source = unit_module
+        -- start from existing unit, merging in any existing
+        unit = utils.merge(unit, loaded)
+        unit.name = name
+        unit._loaded = true
+        if loaded.config or loaded.setup then
+          unit._config_source = unit_module
+        end
+        table.insert(unit._sources, unit_module)
       end
-      table.insert(unit._sources, unit_module)
     elseif string.find(loaded, 'not found:') then -- module not found
       table.insert(notfound_errors, { unit_module, loaded })
     else -- other errors
