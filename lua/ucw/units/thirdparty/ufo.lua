@@ -53,6 +53,23 @@ local function ufo_color()
 end
 
 function M.config()
+  -- UFO uses manual folding that unforunately doesn't play well with small foldlevel
+  -- TL'DR is vim will immediately close all folds to foldlevel whenever manual folding
+  -- is updated, which UFO does a lot, notably at InsertLeave.
+  -- See https://github.com/kevinhwang91/nvim-ufo/issues/7
+  vim.opt.foldlevel = 99
+  vim.opt.foldlevelstart = 99  -- useful when switching from a window with small foldlevel
+
+  -- Using ufo provider needs remap 'zR' and 'zM' to not let them change foldlevel
+  vim.keymap.set('n', 'zR', require('ufo').openAllFolds)
+  vim.keymap.set('n', 'zM', require('ufo').closeAllFolds)
+
+  -- Use a command to emulate foldlevel on bufenter
+  -- FUTURE: not possible yet, maybe after neovim#19155
+  -- au.group('ufo-foldlevel-emu', {
+  --   { 'BufEnter', '*', function() end},
+  -- })
+
   -- tell any server that we support foldingRange
   require('ucw.lsp').register_on_server_ready('.*', function(server, opts)
     opts.capabilities = opts.capabilities or vim.lsp.protocol.make_client_capabilities()
@@ -66,7 +83,7 @@ function M.config()
     -- timeout in ms to highlight the range when opening the folded line, 0 to disable
     -- keep this the same as highlight on yank
     open_fold_hl_timeout = 200,
-    fold_virt_text_handler = fold_virt_text_handler
+    fold_virt_text_handler = fold_virt_text_handler,
   }
 
   ufo_color()

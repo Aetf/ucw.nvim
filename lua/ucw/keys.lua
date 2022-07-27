@@ -1,4 +1,5 @@
 local map = require('ucw.utils').map
+local actions = require('ucw.keys.actions')
 
 vim.g.mapleader = " "
 
@@ -28,6 +29,9 @@ end, { expr = true })
 -- jump to start/end of a text object
 map('n', 'gS', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_go_start<cr>g@]], opts)
 map('n', 'gE', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_go_end<cr>g@]], opts)
+
+-- folding vs lsp
+vim.keymap.set('n', 'K', actions.hoverK, { desc = "Hover over symbol" })
 
 -- For mouse
 map({'n', 'i', 'v'}, '<X2Mouse>', '<c-i>', opts)

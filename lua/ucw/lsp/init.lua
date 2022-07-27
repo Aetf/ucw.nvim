@@ -48,7 +48,6 @@ local function on_attach(client, bufnr)
       H = { [[<cmd>lua vim.lsp.declaration()<cr>]], "Go to declaration"},
       r = { [[<cmd>Telescope lsp_references<cr>]], "Find references"},
     },
-    K = { '<cmd>lua vim.lsp.buf.hover()<cr>', "Hover over symbol" },
     ['<c-k>'] = { '<cmd>lua vim.diagnostic.open_float()<cr>', "Show diagnostics on the current line" },
     ['<M-S-r>'] = { [[<cmd>lua vim.lsp.buf.rename()<cr>]], "Rename the symbol under cursor" },
   }, { buffer = bufnr })

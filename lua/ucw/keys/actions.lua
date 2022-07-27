@@ -74,4 +74,16 @@ function M.opfunc_textobj_go_end()
   vim.cmd 'normal! `]'
 end
 
+-- Invoke fold preview or lsp preview
+function M.hoverK()
+  local winid = nil
+  local ok, ufo = pcall(require, 'ufo')
+  if ok then
+    winid = ufo.peekFoldedLinesUnderCursor()
+  end
+  if not winid then
+    vim.lsp.buf.hover()
+  end
+end
+
 return M
