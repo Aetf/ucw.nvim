@@ -15,7 +15,8 @@ au.group('RestoreLastCursor', {
     function()
       local pos = vim.api.nvim_buf_get_mark(0, '"')
       if pos[1] > 0 then
-        vim.api.nvim_win_set_cursor(0, pos)
+        -- this may fail if the buffer is shorter than pos, just ignore that
+        pcall(vim.api.nvim_win_set_cursor, 0, pos)
       end
     end,
   }
