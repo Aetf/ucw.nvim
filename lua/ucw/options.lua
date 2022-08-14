@@ -35,7 +35,7 @@ vim.opt.tabstop=4
 vim.opt.smartindent = true
 
 -- hard wrap
-vim.opt.textwidth = 120
+vim.opt.textwidth = 80
 -- soft wrap at word boundary
 vim.opt.wrap = false
 vim.opt.linebreak = true
