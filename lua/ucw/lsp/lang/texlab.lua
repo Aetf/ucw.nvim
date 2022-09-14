@@ -4,8 +4,8 @@ local lu = require('ucw.lsp.utils')
 local M = {}
 
 -- a global function accepting backward search request
----@param opts.line line info
----@param opts.col? column info
+---@param line number line info
+---@param col number column info
 function texlab_backward_search(filename, line, col)
   -- open file
   vim.cmd([[drop ]] .. filename)
