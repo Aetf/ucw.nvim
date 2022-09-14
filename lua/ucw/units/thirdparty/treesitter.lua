@@ -93,6 +93,11 @@ function M.config()
       enable = true,
     },
 
+    -- markid
+    markid = {
+      enable = true,
+    },
+
     -- text objects
     textobjects = {
       select = {
