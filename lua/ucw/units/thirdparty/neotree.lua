@@ -102,6 +102,21 @@ function M.config()
           ["o"] = "system_open",
           ["h"] = "open_vsplit",
           ["v"] = "open_split",
+          -- Move to first/last sibling
+          ["J"] = function(state)
+            local tree = state.tree
+            local node = tree:get_node()
+            local siblings = tree:get_nodes(node:get_parent_id())
+            local renderer = require('neo-tree.ui.renderer')
+            renderer.focus_node(state, siblings[#siblings]:get_id())
+          end,
+          ["K"] = function(state)
+            local tree = state.tree
+            local node = tree:get_node()
+            local siblings = tree:get_nodes(node:get_parent_id())
+            local renderer = require('neo-tree.ui.renderer')
+            renderer.focus_node(state, siblings[1]:get_id())
+          end,
           -- Enable lightspeed movement
           -- 'm' flag tells vim to remap keys
           -- 'x!' flag tells vim not to automatically append <esc> to end the mode so this actually works
