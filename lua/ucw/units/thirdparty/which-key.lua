@@ -61,19 +61,6 @@ function M.config()
     },
   }
 
-  -- Trouble
-  wk.register {
-    ['<leader>x'] = {
-      name = '+trouble',
-      x = { [[<cmd>TroubleToggle<cr>]], "Toggle trouble list" },
-      w = { [[<cmd>TroubleToggle workspace_diagnostics<cr>]], "Toggle trouble list (workspace)" },
-      d = { [[<cmd>TroubleToggle document_diagnostics<cr>]], "Toggle trouble list (document)" },
-      q = { [[<cmd>TroubleToggle quickfix<cr>]], "Toggle trouble list (quickfix)" },
-      l = { [[<cmd>TroubleToggle loclist<cr>]], "Toggle trouble list (loclist)" },
-      c = { [[<cmd>TroubleClose<cr>]], "Close trouble list" },
-    },
-  }
-
   -- Git
   wk.register {
     ['<leader>g'] = {
