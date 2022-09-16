@@ -2,7 +2,7 @@ local utils = require('ucw.utils')
 
 local M = {}
 
-function M.on_server_ready(server, opts)
+function M.on_server_setup(opts)
   local maxLineLength = 120
   local indentSize = 4
   utils.prop_set(opts, 'settings.pylsp.configurationSources', {'pycodestyle'})

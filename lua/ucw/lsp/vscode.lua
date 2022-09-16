@@ -103,7 +103,7 @@ local function watch_settings_change(client, _)
   end
 end
 
-function M.setup()
+function M.install()
   local ucwlsp = require('ucw.lsp')
   ucwlsp.register_on_new_config('.*', on_new_config_workdir)
   ucwlsp.register_on_attach('.*', watch_settings_change)

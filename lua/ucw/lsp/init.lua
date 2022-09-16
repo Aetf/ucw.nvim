@@ -9,8 +9,7 @@ local au = require('au')
 local hooks = require('ucw.lsp.hooks')
 
 -- reexport a few
-M.register_server_setup = hooks.register_server_setup
-M.register_on_server_ready = hooks.register_on_server_ready
+M.register_on_server_setup = hooks.register_on_server_setup
 M.register_on_new_config = hooks.register_on_new_config
 M.register_on_attach = hooks.register_on_attach
 
@@ -54,16 +53,13 @@ local function on_attach(client, bufnr)
 
 end
 
-function M.setup()
-  -- require('ucw.lsp.lsp-notify').setup()
-  require('ucw.lsp.vscode').setup()
+function M.config()
+  hooks.install()
+
+  require('ucw.lsp.vscode').install()
 
   hooks.register_on_new_config('.*', on_new_config)
   hooks.register_on_attach('.*', on_attach)
-
-  -- hook on server ready to provide our settings
-  local lsp_installer = require("nvim-lsp-installer")
-  lsp_installer.on_server_ready(hooks.do_on_server_ready)
 end
 
 return M

@@ -124,7 +124,7 @@ end
 
 local M = {}
 
-function M.on_server_ready(server, opts)
+function M.on_server_setup(opts)
   opts.root_dir = lu.lazy_root_pattern('.git', '.vscode')
 
   utils.prop_set(opts, 'settings.ltex.ltex-ls.logLevel', 'info')

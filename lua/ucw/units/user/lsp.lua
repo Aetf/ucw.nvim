@@ -3,11 +3,13 @@ local M = {}
 
 M.requires = {
     'plenary',
-    'lsp-installer',
+    'lspconfig',
+    'mason-lspconfig',
 }
 M.after = {
     'plenary',
-    'lsp-installer',
+    'lspconfig',
+    'mason-lspconfig',
 }
 
 -- ways to activate this
@@ -18,7 +20,7 @@ M.activation = {
 }
 
 function M.config()
-  require('ucw.lsp').setup()
+  require('ucw.lsp').config()
 end
 
 return M

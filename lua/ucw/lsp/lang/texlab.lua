@@ -29,7 +29,7 @@ function texlab_backward_search(filename, line, col)
   return ""
 end
 
-function M.on_server_ready(server, opts)
+function M.on_server_setup(opts)
   opts.root_dir = lu.lazy_root_pattern('.latexmkrc', 'Makefile')
 
   -- execute a forward search after a build

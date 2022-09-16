@@ -3,6 +3,10 @@ local M = {}
 M.url = 'p00f/clangd_extensions.nvim'
 M.description = 'Extra functionality for clangd'
 
+M.after = {
+  'mason-lspconfig',
+}
+
 -- ways to activate this
 M.activation = {
   wanted_by = {
@@ -11,13 +15,12 @@ M.activation = {
 }
 
 function M.config()
-  require('ucw.lsp').register_server_setup('clangd', function(server, opts)
-    -- Initialize the LSP via clangd_extensions
-    require('clangd_extensions').setup {
-      server = opts,
-    }
-    server:attach_buffers()
-  end)
+  -- Initialize the LSP via clangd_extensions
+  require('mason-lspconfig').setup_handlers({
+    ['clangd'] = function()
+      require('clangd_extensions').setup{}
+    end
+  })
 end
 
 return M

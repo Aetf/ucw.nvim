@@ -1,26 +1,32 @@
 --[[
--- This module implements centralized hook handling for lsp:
--- * on_server_ready
+-- This module implements centralized hook handling for lsp with the ability to
+-- filter based on server name:
+-- * on_server_setup
 -- * on_new_config
 -- * on_attach
 --
--- Each hook can come from different sources:
+-- Hooks can come from different sources:
 -- * ucw.lsp.lang.*.<hook_name>
 -- * plugin registered
 --
 -- The general process of hooks are:
--- * nvim-lsp-installer takes care of installing the server
+-- * mason takes care of installing the server
+-- * mason-lspconfig will hook into lspconfig's on_setup to update binary path
+-- * ucw.lsp.hooks will hook into lspconfig's on_setup to provide customization points
 -- * various plugins register integration functions using one of
---   `ucw.lsp.hooks.register_on_server_ready`
---   `ucw.lsp.hooks.register_on_new_config`
---   `ucw.lsp.hooks.register_on_attach`
---
--- During on_server_ready,
--- * lsp-installer server:default_options is used as base
--- * hooks from ucw.lsp.lang.* are called
--- * hooks plugins are called
--- * either the default server setup which calls server:setup directly
---   or plugin can supply custom server setup function
+--   + `ucw.lsp.hooks.register_on_server_setup`
+--   + `ucw.lsp.hooks.register_on_new_config`
+--   + `ucw.lsp.hooks.register_on_attach`
+-- * ucw.lsp.hooks register with mason-lspconfig default setup handler
+-- * plugins register with mason-lspconfig special setup handlers
+-- * mason-lspconfig will trigger setup handlers after lsp server
+--   packages being installed/available
+-- * lspconfig[server_name].setup is called
+-- * lspconfig's on_setup hooks are called
+--   + mason-lspconfig's on_setup
+--   + ucw.lsp.hooks's on_setup
+--     - call on_server_setup
+--     - hook on_new_config and on-attach
 --
 -- During on_new_config
 -- * additional options from workspace (`.vscode/settings.json`) are used as base
@@ -39,7 +45,7 @@ local M = {}
 
 ---@type table<string, ucw.lsp.hooks.Hook[]>
 local hooks = {
-  on_server_ready = {},
+  on_server_setup = {},
   on_new_config = {},
   on_attach = {},
 }
@@ -53,7 +59,7 @@ local function call_hook(hook_name, server_name, ...)
       vim.notify(
         string.format("Failed to call `ucw.lsp.lang.%s.%s':\n%s", server_name, hook_name, err),
         vim.log.levels.ERROR,
-        { title = "[ucw.lsp] on_server_ready error" }
+        { title = "[ucw.lsp] on_server_setup error" }
       )
     end
   elseif not present then
@@ -62,7 +68,7 @@ local function call_hook(hook_name, server_name, ...)
       vim.notify(
         string.format("Failed to load `ucw.lsp.lang.%s':\n%s", server_name, vim.inspect(m)),
         vim.log.levels.ERROR,
-        { title = "[ucw.lsp] on_server_ready error" }
+        { title = "[ucw.lsp] on_server_setup error" }
       )
     end
   end
@@ -75,113 +81,54 @@ local function call_hook(hook_name, server_name, ...)
   end
 end
 
-local custom_server_setups = {}
----register a custom setup function for name. This can only be called once for each name
----@param name string exactly the server name
----@param custom_setup fun(server, opts)
-function M.register_server_setup(name, custom_setup)
-  if custom_server_setups[name] then
-    vim.notify(
-      string.format(
-        "Multiple calls to register_server_setup on %s,\nprevious config is %s",
-        name,
-        vim.inspect(custom_server_setups[name])
-      ),
-      vim.log.levels.WARN,
-      { title = "[ucw.lsp] register_server_setup" }
-    )
-  end
-  custom_server_setups[name] = custom_setup
-end
-
----register the on_server_ready hook
+---register the on_server_setup hook.
+---This can be used to update server opts that are not dependent on root_dir.
 ---@param ptn string
----@param cb fun(server, opts)
-function M.register_on_server_ready(ptn, cb)
-  table.insert(hooks.on_server_ready, { ptn=ptn, cb=cb })
+---@param cb fun(opts)
+function M.register_on_server_setup(ptn, cb)
+  table.insert(hooks.on_server_setup, { ptn=ptn, cb=cb })
 end
 
 ---register the on_new_config hook
----@param ptn string
----@param cb fun(server, opts)
+---This can be used to update server opts that are dependent on root_dir.
+---@param ptn string a pattern matching the lsp server name
+---@param cb fun(new_config, root_dir)
 function M.register_on_new_config(ptn, cb)
   table.insert(hooks.on_new_config, { ptn=ptn, cb=cb })
 end
 
 ---register the on_attach hook
 ---@param ptn string
----@param cb fun(server, opts)
+---@param cb fun(client, bufnr)
 function M.register_on_attach(ptn, cb)
   table.insert(hooks.on_attach, { ptn=ptn, cb=cb })
 end
 
-local function server_setup(server, opts)
-  if custom_server_setups[server.name] ~= nil then
-    custom_server_setups[server.name](server, opts)
-  else
-    server:setup(opts)
-  end
-end
-
--- During on_server_ready,
--- * lsp-installer server:default_options is used as base
--- * hooks from ucw.lsp.lang.* are called
--- * hooks plugins are called
--- * either the default server setup which calls server:setup directly
---   or plugin can supply custom server setup function
-function M.do_on_server_ready(server)
+---install all hooks to lspconfig
+function M.install()
   local lspconfig = require('lspconfig')
+  lspconfig.util.on_setup = lspconfig.util.add_hook_after(
+    lspconfig.util.on_setup,
+    function(config, user_config)
+      call_hook('on_server_setup', config.name, config)
 
-  -- lspconfig lang default config as base
-  -- no way to directly get lspconfig defaults, so we kind of copy their logic here
-  local ok, opts = pcall(require, 'lspconfig.server_configurations.' .. server.name)
-  if not ok then
-    opts = {}
-  else
-    opts = opts.default_config or {}
-  end
-  opts = vim.tbl_deep_extend('keep', opts, lspconfig.util.default_config)
+      -- mix in our hooks
+      config.on_new_config = util.add_hook_after(config.on_new_config, function(new_config, root_dir)
+        call_hook('on_new_config', new_config.name, new_config, root_dir)
+      end)
+      config.on_attach = util.add_hook_after(config.on_attach, function(client, bufnr)
+        call_hook('on_attach', client.name, client, bufnr)
+      end)
+    end
+  )
 
-  -- mix in lsp-installer default options
-  opts = vim.tbl_deep_extend('force', opts, server:get_default_options())
-
-  -- use a proxy to disable assignments to opts.on_new_config and opts.on_attach
-  local opts_proxy = setmetatable({}, {
-    __index = function(t, k)
-      if k == 'on_new_config' or k == 'on_attach' then
-        vim.notify(string.format('Do not access %s on opts,\nuse the hook instead', k), vim.log.levels.ERROR, { title = '[ucw.lsp] Invalid access to opts' })
-        return
-      else
-        return opts[k]
-      end
-    end,
-    __newindex = function(t, k, v)
-      if k == 'on_new_config' or k == 'on_attach' then
-        vim.notify(string.format('Do not access %s on opts,\nuse the hook instead', k), vim.log.levels.ERROR, { title = '[ucw.lsp] Invalid access to opts' })
-        return
-      else
-        opts[k] = v
-      end
-    end,
+  -- register a default server setup handler
+  require("mason-lspconfig").setup_handlers({
+    function(server_name)
+      local lspconfig = require('lspconfig')
+      lspconfig[server_name].setup{}
+    end
   })
-
-  -- call hooks
-  call_hook('on_server_ready', server.name, server, opts_proxy)
-
-  -- mix in our hooks
-  opts.on_new_config = lspconfig.util.add_hook_after(opts.on_new_config, M.do_on_new_config)
-  opts.on_attach = lspconfig.util.add_hook_after(opts.on_attach, M.do_on_attach)
-
-  -- actual lsp-installer setup
-  server_setup(server, opts)
-end
-
-function M.do_on_new_config(new_config, root_dir)
-  call_hook('on_new_config', new_config.name, new_config, root_dir)
-end
-
-function M.do_on_attach(client, bufnr)
-  call_hook('on_attach', client.name, client, bufnr)
 end
 
 return M

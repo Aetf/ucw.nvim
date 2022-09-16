@@ -3,7 +3,7 @@ local lu = require('ucw.lsp.utils')
 
 local M = {}
 
-function M.on_server_ready(server, opts)
+function M.on_server_setup(opts)
   opts.root_dir = lu.lazy_root_pattern('.git', 'stylua.toml', '.stylua.toml')
   -- Tell the language server which version of Lua you're using (most likely LuaJIT in the case of Neovim)
   utils.prop_set(opts, 'settings.Lua.runtime.version', 'LuaJIT')

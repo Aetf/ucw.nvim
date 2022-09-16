@@ -3,6 +3,10 @@ local M = {}
 M.url = 'simrat39/rust-tools.nvim'
 M.description = 'Extra functionality for rust-analyzer'
 
+M.after = {
+  'mason-lspconfig',
+}
+
 -- ways to activate this
 M.activation = {
   wanted_by = {
@@ -11,13 +15,12 @@ M.activation = {
 }
 
 function M.config()
-  require('ucw.lsp').register_server_setup('rust_analyzer', function(server, opts)
-    -- Initialize the LSP via rust-tools instead
-    require("rust-tools").setup {
-      server = opts,
-    }
-    server:attach_buffers()
-  end)
+  -- Initialize the LSP via rust-tools instead
+  require('mason-lspconfig').setup_handlers({
+    ['rust_analyzer'] = function()
+      require('rust-tools').setup{}
+    end
+  })
 end
 
 return M
