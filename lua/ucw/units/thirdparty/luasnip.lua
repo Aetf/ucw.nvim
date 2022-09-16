@@ -17,7 +17,7 @@ M.activation = {
 local au = require('au')
 
 function M.config()
-  require("luasnip.loaders.from_vscode").load()
+  require("luasnip.loaders.from_vscode").lazy_load()
   local luaship = require("luasnip")
   -- disable diagnostic when in snippet
   au.group('luaship-expand', {
