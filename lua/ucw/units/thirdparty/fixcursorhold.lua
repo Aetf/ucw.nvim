@@ -1,3 +1,7 @@
+-- FUTURE: remove this once nvim 0.8 is released.
+-- The issue [1] was fixed but not released yet.
+-- [1]: https://github.com/neovim/neovim/issues/12587
+
 ---@type nvimd.Unit
 local M = {}
 
