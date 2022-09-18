@@ -297,22 +297,18 @@ function nvimctl:sync(cb)
   self:reload()
   for _, unit in pairs(self.resolver.units) do
     if not unit.disabled then
+      -- only units with url are considered for installation
       if unit.url and unit.url ~= "" then
+        local pkg = vim.deepcopy(unit.install_opts) or {}
+        pkg.as = unit.name
+        pkg.run = unit.run
+        pkg.opt = true
         if string.find(unit.url, [[://]]) then
-          table.insert(pkgs, {
-            as = unit.name,
-            url = unit.url,
-            run = unit.run,
-            opt = true,
-          })
+          pkg.url = unit.url
         else
-          table.insert(pkgs, {
-            unit.url,
-            as = unit.name,
-            run = unit.run,
-            opt = true,
-          })
+          pkg[1] = unit.url
         end
+        table.insert(pkgs, pkg)
       end
     end
   end

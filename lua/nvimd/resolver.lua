@@ -44,6 +44,7 @@ end
 ---@field _loaded boolean
 ---@field name string
 ---@field url string
+---@field install_opts? any options passed to paqs
 ---@field run? string|fun()
 ---@field description string
 ---@field config? fun() Optional config function
