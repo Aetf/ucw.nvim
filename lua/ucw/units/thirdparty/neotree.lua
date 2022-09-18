@@ -2,6 +2,9 @@ local M = {}
 
 M.url = 'nvim-neo-tree/neo-tree.nvim'
 M.description = 'Neovim plugin to manage the file system and other tree like structures.'
+M.install_opts = {
+  branch = 'v2.x'
+}
 
 M.requires = {
   "plenary",
@@ -63,18 +66,35 @@ local au = require('au')
 local t = require('ucw.utils').t
 
 function M.config()
+  vim.g.neo_tree_remove_legacy_commands = 1
   require("neo-tree").setup({
     close_if_last_window = true,
+    hide_root_node = true,
     -- use vim.ui.input for inputs, which will be dressed up by dressing.vim
     use_popups_for_input = false,
+    event_handlers = {
+      {
+        event = "file_opened",
+        handler = function(file_path)
+          --clear search after opening a file
+          require("neo-tree.sources.filesystem").reset_search()
+        end
+      },
+      {
+        event = 'neo_tree_buffer_enter',
+        handler = function()
+          -- tweak buffer local settings
+          vim.opt_local.signcolumn = 'no'
+          vim.opt_local.number = true
+          vim.opt_local.relativenumber = true
+          vim.opt_local.foldcolumn = '0'
+        end
+      }
+    },
     default_component_configs = {
       indent = {
-        indent_size = 2,
-        padding = 0, -- extra padding on left hand side
-        with_markers = true,
-        indent_marker = "│",
-        last_indent_marker = "└",
-        highlight = "NeoTreeDimText",
+        -- extra padding on left hand side
+        padding = 0,
       },
       name = {
         trailing_slash = true,
@@ -99,7 +119,12 @@ function M.config()
         end,
 
         mappings = {
-          ["o"] = "system_open",
+          ["o"] = function(state)
+            local node = state.tree:get_node()
+            local path = node:get_id()
+            -- open file in default application in the background
+            vim.api.nvim_command("silent !xdg-open " .. path)
+          end,
           ["h"] = "open_vsplit",
           ["v"] = "open_split",
           -- Move to first/last sibling
@@ -125,28 +150,8 @@ function M.config()
         },
       },
       commands = {
-        system_open = function(state)
-          local node = state.tree:get_node()
-          local path = node:get_id()
-          -- open file in default application in the background
-          vim.api.nvim_command("silent !xdg-open " .. path)
-        end,
       },
     },
-    -- tweak buffer local settings
-    event_handlers = {
-      {
-        event = 'vim_buffer_enter',
-        handler = function(arg)
-          if vim.bo.filetype == 'neo-tree' then
-            vim.opt_local.signcolumn = 'no'
-            vim.opt_local.number = true
-            vim.opt_local.relativenumber = true
-            vim.opt_local.foldcolumn = '0'
-          end
-        end
-      }
-    }
   })
 
 
