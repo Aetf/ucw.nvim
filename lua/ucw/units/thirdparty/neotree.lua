@@ -9,8 +9,6 @@ M.install_opts = {
 M.requires = {
   "plenary",
   "nui",
-  -- FUTURE: remove direct dependency on which-key, call vim keymap define directly
-  'which-key',
 }
 M.wants = {
   "nvim-web-devicons",
@@ -20,7 +18,6 @@ M.after = {
   "plenary",
   "nvim-web-devicons",
   "nui",
-  'which-key',
 }
 
 -- ways to activate this

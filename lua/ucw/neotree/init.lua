@@ -82,11 +82,12 @@ function M.config()
     },
   })
 
-  local wk = require('which-key')
-  wk.register {
-    ['|'] = { [[<cmd>Neotree action=focus toggle=true reveal=true<cr>]], "Toggle file tree (focus)" },
-    ['\\'] = { [[<cmd>Neotree action=show toggle=true reveal=true<cr>]], "Toggle file tree" },
-  }
+  vim.keymap.set('n', '|', [[<cmd>Neotree action=focus toggle=true reveal=true<cr>]], {
+    desc = 'Toggle file tree (focus)',
+  })
+  vim.keymap.set('n', '\\', [[<cmd>Neotree action=show toggle=true reveal=true<cr>]], {
+    desc = 'Toggle file tree',
+  })
 end
 
 return M
