@@ -26,6 +26,9 @@ vim.keymap.set('n', 'k', function()
   return vim.v.count > 0 and 'k' or 'gk'
 end, { expr = true })
 
+-- clear things
+vim.keymap.set('n', '<esc>', actions.clear, { silent = true })
+
 -- jump to start/end of a text object
 map('n', 'gS', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_go_start<cr>g@]], opts)
 map('n', 'gE', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_go_end<cr>g@]], opts)

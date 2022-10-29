@@ -86,4 +86,17 @@ function M.hoverK()
   end
 end
 
+-- Like the default Ctrl-L, but also clears nvim-notify
+function M.clear()
+  vim.cmd [[nohlsearch]]
+  vim.cmd [[diffupdate]]
+  -- Clear and redraw the screen
+  -- See :h mode
+  vim.cmd [[mode]]
+  -- call notify in pcall to safely ignore any error
+  pcall(function()
+    require('notify').dismiss()
+  end)
+end
+
 return M
