@@ -13,6 +13,16 @@ map('n', '^', '0', opts) -- just in case you need to go to the very beginning of
 map('i', '<c-r>', '<c-r><c-o>', opts)
 map('i', '<c-r><c-o>', '<c-r>', opts)
 
+-- When paste, cursor stays (by jump back to mark p). See :h [`
+-- Note that there are p, P, gp, gP
+-- Example line `a|b|c`, register content `123`, (| | marks cursor position)
+-- p   a|b|123c
+-- gP   a123|b|c
+-- P   a12|3|bc
+-- gp   ab123|c|
+-- So p and gP is symmetrical
+map('n', 'p', 'mpp[`', opts)
+
 -- <c-s> as an extra way to exit insert mode and save
 map('n', '<c-s>', '<cmd>w<cr>')
 map('i', '<c-s>', '<esc><cmd>w<cr>')
