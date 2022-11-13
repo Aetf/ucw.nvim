@@ -54,7 +54,7 @@ local function concat_cases(...)
     return t
 end
 
-T['edge_cases'] = new_set({
+T['n_times = 1'] = new_set({
     parametrize = concat_cases(
         gen_cases({
             ' ',
@@ -63,10 +63,10 @@ T['edge_cases'] = new_set({
             ' ',
             'ccc'
         }, {
-            {'a', 'h', region(1, 1), region(1, 1, 5, 3) },
-            {'a', 'H', region(1, 1), region(1, 1, 5, 3) },
-            {'i', 'h', region(1, 1), region(2, 1, 5, 3) },
-            {'i', 'H', region(1, 1), region(1, 1, 5, 3) },
+            {'a', 'h', region(1, 1), { region(1, 1, 5, 3) } },
+            {'a', 'H', region(1, 1), { region(1, 1, 5, 3) } },
+            {'i', 'h', region(1, 1), { region(2, 1, 5, 3) } },
+            {'i', 'H', region(1, 1), { region(1, 1, 5, 3) } },
         }),
         gen_cases({
             '# %%',
@@ -78,38 +78,38 @@ T['edge_cases'] = new_set({
             ' ',
             '# %%',
         }, {
-            {'a', 'h', region(1, 1), region(1, 1, 6, 3) },
-            {'a', 'H', region(1, 1), region(1, 1, 7, 1) },
-            {'i', 'h', region(1, 1), region(3, 1, 6, 3) },
-            {'i', 'H', region(1, 1), region(2, 1, 7, 1) },
+            {'a', 'h', region(1, 1), { region(1, 1, 6, 3) } },
+            {'a', 'H', region(1, 1), { region(1, 1, 7, 1) } },
+            {'i', 'h', region(1, 1), { region(3, 1, 6, 3) } },
+            {'i', 'H', region(1, 1), { region(2, 1, 7, 1) } },
             -- the last cell has no content
-            {'a', 'h', region(8, 2), region(8, 1, 8, 4) },
-            {'a', 'H', region(8, 2), region(8, 1, 8, 4) },
-            {'i', 'h', region(8, 2), vim.NIL },
-            {'i', 'H', region(8, 2), vim.NIL },
+            {'a', 'h', region(8, 2), { region(1, 1, 6, 3), region(8, 1, 8, 4) } },
+            {'a', 'H', region(8, 2), { region(1, 1, 7, 1), region(8, 1, 8, 4) } },
+            {'i', 'h', region(8, 2), { region(3, 1, 6, 3) } },
+            {'i', 'H', region(8, 2), { region(2, 1, 7, 1) } },
         }),
         gen_cases({
             '# %%',
             'abc',
         }, {
-            {'a', 'h', region(1, 1), region(1, 1, 2, 3)},
-            {'a', 'H', region(1, 1), region(1, 1, 2, 3)},
-            {'i', 'h', region(2, 1), region(2, 1, 2, 3)},
-            {'i', 'H', region(2, 1), region(2, 1, 2, 3)},
+            {'a', 'h', region(1, 1), { region(1, 1, 2, 3) } },
+            {'a', 'H', region(1, 1), { region(1, 1, 2, 3) } },
+            {'i', 'h', region(2, 1), { region(2, 1, 2, 3) } },
+            {'i', 'H', region(2, 1), { region(2, 1, 2, 3) } },
         }),
         gen_cases({
             '# %%',
             '   ',
         }, {
-            {'a', 'h', region(1, 1), region(1, 1, 1, 4)},
-            {'a', 'H', region(1, 1), region(1, 1, 2, 3)},
-            {'i', 'h', region(2, 1), vim.NIL},
-            {'i', 'H', region(2, 1), region(2, 1, 2, 3)},
+            {'a', 'h', region(1, 1), { region(1, 1, 1, 4) } },
+            {'a', 'H', region(1, 1), { region(1, 1, 2, 3) } },
+            {'i', 'h', region(2, 1), {} },
+            {'i', 'H', region(2, 1), { region(2, 1, 2, 3) } },
         })
     )
 })
 
-T['edge_cases']['works'] = function(lines, aitype, id, ref, expected)
+T['n_times = 1']['works'] = function(lines, aitype, id, ref, expected)
     load_module('ucw.textobjects.ipython')
     set_lines(lines)
 

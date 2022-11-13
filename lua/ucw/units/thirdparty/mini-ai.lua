@@ -50,6 +50,12 @@ function M.setup()
       goto_right = 'g]',
     },
 
+    custom_textobjects = {
+      -- ipython cells, they are separated by `# %%` lines
+      h = require('ucw.textobjects.ipython').cell,
+      H = require('ucw.textobjects.ipython').cell,
+    },
+
     -- Number of lines within which textobject is searched
     n_lines = 50,
 
