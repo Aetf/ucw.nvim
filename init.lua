@@ -1,1 +1,1 @@
-require('ucw')
+require('ucw').boot()

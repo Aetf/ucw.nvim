@@ -146,6 +146,16 @@ function M.config()
   -- code folding
   vim.opt.foldmethod = 'expr'
   vim.opt.foldexpr = 'nvim_treesitter#foldexpr()'
+
+  -- Additional parser
+  require("nvim-treesitter.parsers").get_parser_configs().just = {
+    install_info = {
+      url = "https://github.com/IndianBoy42/tree-sitter-just",
+      files = { "src/parser.c", "src/scanner.cc" },
+      branch = "main",
+    },
+    maintainers = { "@IndianBoy42" },
+  }
 end
 
 return M
