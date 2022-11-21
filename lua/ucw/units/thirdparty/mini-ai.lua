@@ -8,6 +8,9 @@ M.requires = {
 M.after = {
   'mini',
 }
+M.wants = {
+  'ts-textobjects',
+}
 
 M.activation = {
   wanted_by = {
@@ -15,24 +18,23 @@ M.activation = {
   }
 }
 
--- Customizable creation of a/i textobjects using Lua patterns and functions. Supports:
--- * Dot-repeat.
--- * v:count.
--- * Different search methods (see help for MiniAi.config).
--- * Consecutive application (update selection without leaving Visual mode).
--- * Aliases for multiple textobjects.
--- Comprehensive builtin textobjects (see more in help for MiniAi-textobject-builtin):
--- * Balanced brackets (with and without whitespace) plus alias.
--- * Balanced quotes plus alias.
--- * Function call.
--- * Argument.
--- * Tag.
--- * Derived from user prompt.
+-- Enabled text objects:
+-- * Balanced brackets (with and without whitespace) plus alias ('b' for any brackets).
+-- * Balanced quotes plus alias ('q' for any quote).
+-- * Function call ('f').
+-- * Argument ('a').
+-- * Tag ('t').
+-- * Derived from user prompt ('?').
 -- * Default for punctuation, digit, or whitespace single character.
--- Motions for jumping to left/right edge of textobject.
--- Set of specification generators to tweak some builtin textobjects (see help for MiniAi.gen_spec).
--- Treesitter textobjects (through MiniAi.gen_spec.treesitter() helper).
+-- * TS textobjects
+--   + Function ('F')
+--   + Block ('B')
+--   + Class ('C')
+-- * IPython cell ('h', 'H')
+--
+-- Motions for jumping to left/right edge of textobject ('g]' and 'g[')
 function M.setup()
+  local ts_spec = require('mini.ai').gen_spec.treesitter
   require('mini.ai').setup{
     mappings = {
       -- Main textobject prefixes
@@ -45,15 +47,19 @@ function M.setup()
       around_last = 'al',
       inside_last = 'il',
 
-      -- Move cursor to corresponding edge of `a` textobject
-      goto_left = 'g[',
-      goto_right = 'g]',
+      -- will define our own
+      goto_left = '',
+      goto_right = '',
     },
 
     custom_textobjects = {
       -- ipython cells, they are separated by `# %%` lines
       h = require('ucw.textobjects.ipython').cell,
       H = require('ucw.textobjects.ipython').cell,
+      -- treesitter textobjects
+      F = ts_spec({ a = '@function.outer', i = '@function.inner' }),
+      B = ts_spec({ a = '@block.outer', i = '@block.inner' }),
+      C = ts_spec({ a = '@class.outer', i = '@class.inner' }),
     },
 
     -- Number of lines within which textobject is searched
@@ -64,6 +70,31 @@ function M.setup()
     -- 'cover_or_nearest', 'next', 'previous', 'nearest'.
     search_method = 'cover_or_next',
   }
+
+  -- Move cursor to corresponding edge of `a` textobject
+  local jump_textobject = require('ucw.keys.actions').jump_textobject
+  local gen_action = function(seq)
+    local edge = ({ ['['] = 'left', [']'] = 'right' })[seq:sub(1, 1)]
+    local ai_type = seq:sub(2, 2)
+    local prev_next = ({ l = 'prev', n = 'next' })[seq:sub(3, 3)]
+    vim.keymap.set({"n", "v"}, seq,
+      function()
+        return string.format([[<Cmd>lua UCW.jump_textobject('%s', '%s', '%s')<CR>]], prev_next, edge, ai_type)
+      end,
+      {
+        expr = true,
+        desc = string.format('Jump to %s edge of %s `%s` text object', edge, ai_type, prev_next)
+      }
+    )
+  end
+  gen_action('[al')
+  gen_action(']al')
+  gen_action('[an')
+  gen_action(']an')
+  gen_action('[in')
+  gen_action(']in')
+  gen_action('[il')
+  gen_action(']il')
 end
 
 return M
