@@ -23,8 +23,9 @@ function M.config()
   vim.cmd [[hi link FloatBorder Normal]]
   require('dressing').setup {
     input = {
-      winblend = 0,
-      -- winhighlight = 'Normal',
+      win_options = {
+        winblend = 0,
+      }
     },
     select = {
       get_config = function(opts)
