@@ -36,15 +36,7 @@ function M.config()
         selector = 'div[role="textbox"][aria-label="Message Body"]',
         priority = 1,
       },
-      ['docs\\.google\\.com'] = {
-        takeover = 'never',
-        priority = 1,
-      },
-      ['slides\\.google\\.com'] = {
-        takeover = 'never',
-        priority = 1,
-      },
-      ['sheets\\.google\\.com'] = {
+      ['(docs|slides|sheets)\\.google\\.com'] = {
         takeover = 'never',
         priority = 1,
       },
@@ -57,6 +49,10 @@ function M.config()
         priority = 1,
       },
       ['onedrive\\.live\\.com'] = {
+        takeover = 'never',
+        priority = 1,
+      },
+      ['discord\\.com'] = {
         takeover = 'never',
         priority = 1,
       },
