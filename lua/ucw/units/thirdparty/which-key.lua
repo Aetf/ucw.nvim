@@ -47,8 +47,7 @@ function M.config()
       r = { [[<cmd>Telescope lsp_references<cr>]], "Find references"},
       h = { [[<cmd>lua vim.lsp.buf.document_highlight()<cr>]], "Highlight symbol under cursor" },
       ['<C-L>'] = { [[<cmd>lua vim.lsp.buf.clear_references()<cr>]], "Clear document highlights from current buffer" },
-      f = { [[<cmd>lua vim.lsp.buf.formatting()<cr>]], "Format the current buffer" },
-      F = { [[<cmd>lua vim.lsp.buf.range_formatting()<cr>]], "Format the visual selection" },
+      f = { [[<cmd>lua vim.lsp.buf.format({ async = false })<cr>]], "Format the current buffer (or visual selection)" },
       R = { [[<cmd>lua vim.lsp.buf.rename()<cr>]], "Rename the symbol under cursor" },
     }
   }
