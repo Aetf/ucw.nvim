@@ -21,17 +21,6 @@ local function on_new_config(new_config, root_dir)
 end
 
 local function on_attach(client, bufnr)
-  -- integrate with native vim
-  if client.resolved_capabilities.goto_definition == true then
-    vim.api.nvim_buf_set_option(bufnr, "tagfunc", "v:lua.vim.lsp.tagfunc")
-  end
-
-  if vim.api.nvim_buf_get_option(bufnr, "formatexpr") == "" then
-    if client.resolved_capabilities.document_formatting == true then
-      vim.api.nvim_buf_set_option(bufnr, "formatexpr", "v:lua.vim.lsp.formatexpr()")
-    end
-  end
-
   -- register a few buffer local shortcuts
   local wk = require('which-key')
   wk.register({
