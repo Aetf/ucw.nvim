@@ -107,18 +107,26 @@ end
 ---install all hooks to lspconfig
 function M.install()
   local lspconfig = require('lspconfig')
-  lspconfig.util.on_setup = lspconfig.util.add_hook_after(
-    lspconfig.util.on_setup,
-    function(config, user_config)
-      call_hook('on_server_setup', config.name, config)
+  local lutil = require('lspconfig.util')
 
-      -- mix in our hooks
-      config.on_new_config = util.add_hook_after(config.on_new_config, function(new_config, root_dir)
+  -- mix in our hooks in global defaults
+  lutil.default_config = vim.tbl_extend(
+    'force',
+    lutil.default_config,
+    {
+      on_new_config = lutil.add_hook_after(lutil.default_config.on_new_config, function(new_config, root_dir)
         call_hook('on_new_config', new_config.name, new_config, root_dir)
-      end)
-      config.on_attach = util.add_hook_after(config.on_attach, function(client, bufnr)
+      end),
+      on_attach = lutil.add_hook_after(lutil.default_config.on_attach, function(client, bufnr)
         call_hook('on_attach', client.name, client, bufnr)
       end)
+    }
+  )
+  -- add in our setup hooks
+  lutil.on_setup = lutil.add_hook_after(
+    lutil.on_setup,
+    function(config, user_config)
+      call_hook('on_server_setup', config.name, config)
     end
   )
 

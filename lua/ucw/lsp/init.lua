@@ -35,8 +35,8 @@ local function on_attach(client, bufnr)
   -- register a few buffer local shortcuts
   local wk = require('which-key')
   wk.register({
-    ['<M-Enter>'] = { [[<cmd>lua vim.lsp.buf.code_action()<cr>]], "Code actions" },
-    ['<M-S-Enter>'] = { [[<cmd>lua vim.lsp.buf.range_code_action()<cr>]], "Range code actions" },
+    ['<M-CR>'] = { [[<cmd>lua vim.lsp.buf.code_action()<cr>]], "Code actions" },
+    ['<M-S-CR>'] = { [[<cmd>lua vim.lsp.buf.range_code_action()<cr>]], "Range code actions" },
     g = {
       ['0'] = { [[<cmd>Telescope lsp_document_symbols<cr>]], "Symbols in the current buffer"},
       W = { [[<cmd>Telescope lsp_workspace_symbols<cr>]], "Symbols in the current workspace"},
