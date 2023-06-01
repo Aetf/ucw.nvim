@@ -4,7 +4,8 @@ M.url = 'nvim-treesitter/nvim-treesitter'
 M.description = 'Treesitter does syntax and folding'
 
 M.run = function()
-  vim.cmd 'TSUpdate'
+  local ts_update = require('nvim-treesitter.install').update({ with_sync = true })
+  ts_update()
 end
 
 -- ways to activate this
@@ -33,7 +34,6 @@ function M.config()
       'fish',
       'glsl',
       'go',
-      'help', -- vim help files
       'hjson',
       'html',
       'java',
@@ -63,6 +63,7 @@ function M.config()
       'tsx',
       'typescript',
       'vim',
+      'vimdoc', -- vim help files
       'vue',
       'yaml',
     },
@@ -121,6 +122,16 @@ function M.config()
   -- code folding
   vim.opt.foldmethod = 'expr'
   vim.opt.foldexpr = 'nvim_treesitter#foldexpr()'
+  ---WORKAROUND for No folds found error
+  -- See https://github.com/nvim-treesitter/nvim-treesitter/wiki/Installation#packernvim
+  vim.api.nvim_create_autocmd({'BufEnter','BufAdd','BufNew','BufNewFile','BufWinEnter'}, {
+    group = vim.api.nvim_create_augroup('TS_FOLD_WORKAROUND', {}),
+    callback = function()
+      vim.opt.foldmethod     = 'expr'
+      vim.opt.foldexpr       = 'nvim_treesitter#foldexpr()'
+    end
+  })
+  ---ENDWORKAROUND
 
   -- Additional parser
   require("nvim-treesitter.parsers").get_parser_configs().just = {
