@@ -113,8 +113,8 @@ function M.config()
     ['<leader>s'] = {
       name = "+session",
       s = { [[<cmd>Telescope session-lens search_session<cr>]], "Open session" },
-      c = { [[<cmd>SaveSession<cr>]], "Manually save session" },
-      r = { [[<cmd>RestoreSession<cr>]], "Manually restore session" },
+      c = { [[<cmd>SessionSave<cr>]], "Manually save session" },
+      r = { [[<cmd>SessionRestore<cr>]], "Manually restore session" },
     },
 
     ['<leader>t'] = {
