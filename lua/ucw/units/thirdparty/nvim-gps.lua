@@ -3,6 +3,8 @@ local M = {}
 
 M.url = 'SmiteshP/nvim-gps'
 M.description = 'Show location in statusline based on treesitter'
+-- TODO(replace with nvim-navic)
+M.disabled = true
 
 M.requires = {
   'treesitter',
