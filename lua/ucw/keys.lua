@@ -28,6 +28,9 @@ map('n', '<c-s>', '<cmd>w<cr>')
 map('i', '<c-s>', '<esc><cmd>w<cr>')
 map('v', '<c-s>', '<esc><cmd>w<cr>')
 
+-- clear things
+vim.keymap.set('n', '<esc>', actions.clear, { silent = true })
+
 -- jk move over visual lines, but over physical lines when used with a count
 vim.keymap.set('n', 'j', function()
   return vim.v.count > 0 and 'j' or 'gj'
@@ -36,15 +39,16 @@ vim.keymap.set('n', 'k', function()
   return vim.v.count > 0 and 'k' or 'gk'
 end, { expr = true, silent = true })
 
--- clear things
-vim.keymap.set('n', '<esc>', actions.clear, { silent = true })
-
 -- jump to start/end of a text object
 map('n', 'gS', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_go_start<cr>g@]], opts)
 map('n', 'gE', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_go_end<cr>g@]], opts)
 
--- folding vs lsp
+-- folding and lsp
 vim.keymap.set('n', 'K', actions.hoverK, { desc = "Hover over symbol", silent = true })
+
+-- common pairs
+vim.keymap.set('n', ']q', [[<cmd>cnext<cr>]])
+vim.keymap.set('n', '[q', [[<cmd>cprevious<cr>]])
 
 -- For mouse
 map({'n', 'i', 'v'}, '<X2Mouse>', '<c-i>', opts)
