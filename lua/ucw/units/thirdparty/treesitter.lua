@@ -82,13 +82,6 @@ function M.config()
       enable = true,
     },
 
-    -- accurate commentstring
-    context_commentstring = {
-      enable = true,
-      -- commentstring update will be handled by the actual commenting plugin
-      enable_autocmd = false,
-    },
-
     -- rainbow parenthesis
     rainbow = {
       enable = true,

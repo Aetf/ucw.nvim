@@ -301,7 +301,7 @@ function nvimctl:sync(cb)
       if unit.url and unit.url ~= "" then
         local pkg = vim.deepcopy(unit.install_opts) or {}
         pkg.as = unit.name
-        pkg.run = unit.run
+        pkg.build = unit.run
         pkg.opt = true
         if string.find(unit.url, [[://]]) then
           pkg.url = unit.url

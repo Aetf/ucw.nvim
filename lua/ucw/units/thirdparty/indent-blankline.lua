@@ -11,19 +11,7 @@ M.activation = {
 }
 
 function M.config()
-  require('indent_blankline').setup {
-    show_trailing_blankline_indent = false,
-    show_current_context = true,
-    show_current_context_start = true,
-    filetype_exclude = {
-      'lspinfo',
-      'packer',
-      'checkhealth',
-      'help',
-      '',
-      'neo-tree'
-    },
-  }
+  require('ibl').setup {}
 end
 
 return M
