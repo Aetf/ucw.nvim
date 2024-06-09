@@ -11,6 +11,9 @@ M.activation = {
 function M.config()
   -- vim.opt.guifont = 'Comic Code Ligatures:h12'
   vim.opt.guifont = 'ComicCodeLigatures Nerd Font Mono:h12'
+  if vim.fn.has('macunix') then
+    vim.opt.guifont = 'ComicCodeLigatures Nerd Font Mono:h16'
+  end
 
   vim.g.neovide_remember_window_size = true
 
