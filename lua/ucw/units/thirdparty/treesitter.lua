@@ -82,11 +82,6 @@ function M.config()
       enable = true,
     },
 
-    -- rainbow parenthesis
-    rainbow = {
-      enable = true,
-    },
-
     -- markid
     markid = {
       enable = true,

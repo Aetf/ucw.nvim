@@ -1,6 +1,6 @@
 local M = {}
 
-M.url = 'p00f/nvim-ts-rainbow'
+M.url = 'https://gitlab.com/HiPhish/rainbow-delimiters.nvim'
 M.description = 'Rainbow!'
 
 M.after = {
