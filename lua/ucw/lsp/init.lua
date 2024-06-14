@@ -9,9 +9,17 @@ local au = require('au')
 local hooks = require('ucw.lsp.hooks')
 
 -- reexport a few
+M.register_on_setup_handler = hooks.register_on_setup_handler
 M.register_on_server_setup = hooks.register_on_server_setup
 M.register_on_new_config = hooks.register_on_new_config
 M.register_on_attach = hooks.register_on_attach
+
+local function default_setup_handler(server_name)
+  local lspconfig = require('lspconfig')
+  lspconfig[server_name].setup{}
+  -- prevent further hook processing
+  return true
+end
 
 local function on_new_config(new_config, root_dir)
   local root_dir_name = vim.fn.fnamemodify(root_dir, ':p:~')
@@ -20,7 +28,33 @@ local function on_new_config(new_config, root_dir)
   })
 end
 
-local function on_attach(client, bufnr)
+function setup_codelens_refresh(client, bufnr)
+  local status_ok, codelens_supported = pcall(function()
+    return client.supports_method("textDocument/codeLens")
+  end)
+  if not status_ok or not codelens_supported then
+    return
+  end
+  local group = "lsp_code_lens_refresh"
+  local cl_events = { "BufEnter", "InsertLeave" }
+  local ok, cl_autocmds = pcall(vim.api.nvim_get_autocmds, {
+    group = group,
+    buffer = bufnr,
+    event = cl_events,
+  })
+  if ok and #cl_autocmds > 0 then
+      return
+  end
+  vim.api.nvim_create_augroup(group, { clear = false })
+  vim.api.nvim_create_autocmd(cl_events, {
+    group = group,
+    buffer = bufnr,
+    callback = vim.lsp.codelens.refresh,
+  })
+  vim.lsp.codelens.refresh( { bufnr = bufnr })
+end
+
+local function setup_keymap(client, bufnr)
   -- register a few buffer local shortcuts
   local wk = require('which-key')
   wk.register({
@@ -39,7 +73,6 @@ local function on_attach(client, bufnr)
     ['<c-k>'] = { '<cmd>lua vim.diagnostic.open_float()<cr>', "Show diagnostics on the current line" },
     ['<M-S-r>'] = { [[<cmd>lua vim.lsp.buf.rename()<cr>]], "Rename the symbol under cursor" },
   }, { buffer = bufnr })
-
 end
 
 function M.config()
@@ -47,8 +80,15 @@ function M.config()
 
   require('ucw.lsp.vscode').install()
 
+  hooks.register_on_setup_handler('.*', default_setup_handler)
   hooks.register_on_new_config('.*', on_new_config)
-  hooks.register_on_attach('.*', on_attach)
+  hooks.register_on_attach('.*', setup_keymap)
+  hooks.register_on_attach('.*', setup_codelens_refresh)
+
+end
+
+function M.activate()
+  hooks.activate()
 end
 
 return M

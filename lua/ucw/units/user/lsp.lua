@@ -21,6 +21,10 @@ M.activation = {
 
 function M.config()
   require('ucw.lsp').config()
+  require('ucw.lsp').activate()
+  vim.lsp.inlay_hint.enable()
+  -- reload current buffer
+  vim.cmd('e')
 end
 
 return M

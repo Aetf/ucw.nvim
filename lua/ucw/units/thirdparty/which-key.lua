@@ -49,6 +49,7 @@ function M.config()
       ['<C-L>'] = { [[<cmd>lua vim.lsp.buf.clear_references()<cr>]], "Clear document highlights from current buffer" },
       f = { [[<cmd>lua vim.lsp.buf.format({ async = false })<cr>]], "Format the current buffer (or visual selection)" },
       R = { [[<cmd>lua vim.lsp.buf.rename()<cr>]], "Rename the symbol under cursor" },
+      ['<CR>'] = { [[<cmd> lua vim.lsp.codelens.run()<cr>]], "Run codelens at current line" },
     }
   }
 

@@ -1,6 +1,7 @@
 --[[
 -- This module implements centralized hook handling for lsp with the ability to
 -- filter based on server name:
+-- * on_setup_handler
 -- * on_server_setup
 -- * on_new_config
 -- * on_attach
@@ -45,6 +46,7 @@ local M = {}
 
 ---@type table<string, ucw.lsp.hooks.Hook[]>
 local hooks = {
+  on_setup_handler = {},
   on_server_setup = {},
   on_new_config = {},
   on_attach = {},
@@ -54,21 +56,25 @@ local function call_hook(hook_name, server_name, ...)
   -- call from lang module
   local present, m = pcall(require, 'ucw.lsp.lang.' .. server_name)
   if present and m[hook_name] ~= nil then
-    local ok, err = pcall(m[hook_name], ...)
+    local ok, err_or_stop = pcall(m[hook_name], ...)
     if not ok then
       vim.notify(
-        string.format("Failed to call `ucw.lsp.lang.%s.%s':\n%s", server_name, hook_name, err),
+        string.format("Failed to call `ucw.lsp.lang.%s.%s':\n%s", server_name, hook_name, err_or_stop),
         vim.log.levels.ERROR,
         { title = "[ucw.lsp] on_server_setup error" }
       )
+    else
+      if err_or_stop then
+        return
+      end
     end
   elseif not present then
-    -- module not found
+    -- notify for errors other than module not found
     if not string.find(m, 'not found:') then
       vim.notify(
         string.format("Failed to load `ucw.lsp.lang.%s':\n%s", server_name, vim.inspect(m)),
         vim.log.levels.ERROR,
-        { title = "[ucw.lsp] on_server_setup error" }
+        { title = "[ucw.lsp] Hook Error" }
       )
     end
   end
@@ -76,9 +82,28 @@ local function call_hook(hook_name, server_name, ...)
   -- call registered hooks
   for _, hook in ipairs(hooks[hook_name]) do
     if string.find(server_name, hook.ptn) then
-      hook.cb(...)
+      local ok, err_or_stop = pcall(hook.cb, ...)
+      if not ok then
+        vim.notify(
+          string.format("Failed to call %s for %s':\n%s", hook_name, server_name, err_or_stop),
+          vim.log.levels.ERROR,
+          { title = "[ucw.lsp] Hook Error" }
+        )
+      else
+        if err_or_stop then
+          return
+        end
+      end
     end
   end
+end
+
+---register the on_setup_handler hook.
+---This can be used to run custom lspconfig setup function
+---@param ptn string
+---@param cb fun(opts)
+function M.register_on_setup_handler(ptn, cb)
+  table.insert(hooks.on_setup_handler, { ptn=ptn, cb=cb })
 end
 
 ---register the on_server_setup hook.
@@ -117,11 +142,17 @@ function M.install()
       on_new_config = lutil.add_hook_after(lutil.default_config.on_new_config, function(new_config, root_dir)
         call_hook('on_new_config', new_config.name, new_config, root_dir)
       end),
-      on_attach = lutil.add_hook_after(lutil.default_config.on_attach, function(client, bufnr)
-        call_hook('on_attach', client.name, client, bufnr)
-      end)
     }
   )
+  -- use autocmd for on_attach
+  vim.api.nvim_create_autocmd('LspAttach', {
+    callback = function(args)
+      local bufnr = args.buf
+      local client = vim.lsp.get_client_by_id(args.data.client_id)
+      call_hook('on_attach', client.name, client, bufnr)
+    end
+  })
+
   -- add in our setup hooks
   lutil.on_setup = lutil.add_hook_after(
     lutil.on_setup,
@@ -130,11 +161,16 @@ function M.install()
     end
   )
 
-  -- register a default server setup handler
+  -- on_setup_handler can't be installed now. It can only be done while actually
+  -- activating LSP.
+end
+
+function M.activate()
+  -- trigger setup for all currently installed servers (and futuer servers added
+  -- during runtime)
   require("mason-lspconfig").setup_handlers({
     function(server_name)
-      local lspconfig = require('lspconfig')
-      lspconfig[server_name].setup{}
+      call_hook('on_setup_handler', server_name, server_name)
     end
   })
 end

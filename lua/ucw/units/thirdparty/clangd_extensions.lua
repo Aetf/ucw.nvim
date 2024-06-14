@@ -15,12 +15,13 @@ M.activation = {
 }
 
 function M.config()
+  lsp = require('ucw.lsp')
   -- Initialize the LSP via clangd_extensions
-  require('mason-lspconfig').setup_handlers({
-    ['clangd'] = function()
-      require('clangd_extensions').setup{}
-    end
-  })
+  lsp.register_on_setup_handler('clangd', function()
+    require('clangd_extensions').setup{}
+    -- prevent further hook processing
+    return true
+  end)
 end
 
 return M

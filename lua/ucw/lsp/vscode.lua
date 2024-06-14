@@ -78,11 +78,18 @@ local function dir_changed(client, settings_file)
   end
 end
 
+local watching_client_ids = {}
+
 local function watch_settings_change(client, _)
   -- skip for singlefile mode
   if not client.config.workspace_folders then
     return
   end
+  if watching_client_ids[client.id] then
+    -- client already handled
+    return
+  end
+  watching_client_ids[client.id] = true
   -- for all workspace folders
   for _, folder in pairs(client.config.workspace_folders) do
     local root_dir = vim.uri_to_fname(folder.uri)
@@ -96,6 +103,7 @@ local function watch_settings_change(client, _)
         -- we save a ref in callback so watcher won't be deleted even
         -- when the local watcher goes out of scope
         watcher:close()
+        watching_client_ids[client.id] = nil
         return
       end
       dir_changed(client, settings_file)
