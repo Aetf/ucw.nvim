@@ -83,6 +83,12 @@ au.group('InsertNoFold', {
 -- live command preview
 vim.opt.inccommand = 'split'
 
+-- diff mode
+-- do a second diff stage to match lines in hunk
+vim.opt.diffopt:append('linematch:120')
+-- generate minimal diff
+vim.opt.diffopt:append('algorithm:histogram')
+
 -- Program beheavior
 
 -- timeout in ms to wait for a mapped sequence to complete, also controls which-key
