@@ -55,6 +55,9 @@ local function win_backward_buf(win, current_buf)
   end
 
   local getjumplist = vim.fn.getjumplist(win)[1]
+  if getjumplist == nil or #getjumplist == 0 then
+    return
+  end
   local jumplist = getjumplist[1]
   if #jumplist == 0 then
     return
