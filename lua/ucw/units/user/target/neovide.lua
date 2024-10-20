@@ -10,7 +10,7 @@ M.activation = {
 
 function M.config()
   -- vim.opt.guifont = 'Comic Code Ligatures:h12'
-  if vim.fn.has('macunix') then
+  if vim.loop.os_uname().sysname == 'Darwin' then
     vim.opt.guifont = 'ComicCodeLigatures Nerd Font:h16'
   else
     vim.opt.guifont = 'ComicCodeLigatures Nerd Font Mono:h12'
