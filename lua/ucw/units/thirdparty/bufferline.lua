@@ -21,7 +21,6 @@ function M.config()
       show_buffer_icons = true,
       show_close_icon = false,
       diagnostics = 'nvim_lsp',
-      diagnostics_update_in_insert = true,
       show_tab_indicators = true,
       -- tabpage indicator color is too washed out
       highlights = {

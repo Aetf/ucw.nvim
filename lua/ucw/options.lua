@@ -108,8 +108,8 @@ vim.opt.undofile = true
 -- : - Command history
 vim.opt.shada = [[!,'1000,<500,s100,h,/100,:100,f1]]
 
--- more info to save in session
-vim.opt.sessionoptions:append('winpos,terminal')
+-- more info to save in session (required by auto-session)
+vim.opt.sessionoptions:append('winpos,terminal,localoptions')
 -- saving options may interference with packer.nvim lazy loading
 vim.opt.sessionoptions:remove('options')
 
