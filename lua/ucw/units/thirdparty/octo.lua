@@ -8,7 +8,7 @@ M.requires = {
 }
 M.wants = {
   'telescope',
-  'nvim-web-devicons',
+  'mini-icons',
 }
 
 M.activation = {

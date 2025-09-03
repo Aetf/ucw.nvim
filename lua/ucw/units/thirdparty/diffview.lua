@@ -5,7 +5,7 @@ M.description = 'Single tabpage interface for easily cycling through diffs for a
 
 M.wants = {
   'plenary',
-  'nvim-web-devicons',
+  'mini-icons',
 }
 M.after = {
   'plenary',

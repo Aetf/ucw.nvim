@@ -4,7 +4,7 @@ M.url = 'akinsho/bufferline.nvim'
 M.description = 'Tab bar'
 
 M.wants = {
-  'nvim-web-devicons',
+  'mini-icons',
 }
 
 M.activation = {

@@ -2,6 +2,7 @@ local M = {}
 
 M.url = 'onsails/lspkind-nvim'
 M.description = 'Vscode-like pictograms for neovim lsp completion items'
+M.disabled = true
 
 M.requires = {
   'nvim-cmp',

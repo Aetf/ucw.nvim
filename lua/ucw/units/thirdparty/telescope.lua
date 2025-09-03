@@ -5,7 +5,7 @@ M.description = 'Fuzzy finder'
 
 M.wants = {
   'plenary',
-  'nvim-web-devicons', -- icons
+  'mini-icons', -- icons
   'treesitter', -- finder/preview
 }
 M.after = {

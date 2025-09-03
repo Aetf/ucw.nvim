@@ -4,7 +4,7 @@ M.url = 'nvim-lualine/lualine.nvim'
 M.description = 'Statusline'
 
 M.wants = {
-  'nvim-web-devicons',
+  'mini-icons',
   'nvim-gps',
 }
 

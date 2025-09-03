@@ -80,6 +80,7 @@ end
 
 function M.activate()
   hooks.activate()
+  MiniIcons.tweak_lsp_kind()
 end
 
 return M

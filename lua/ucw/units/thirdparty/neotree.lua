@@ -11,18 +11,18 @@ M.requires = {
   "nui",
 }
 M.wants = {
-  "nvim-web-devicons",
+  "mini-icons",
 }
 M.after = {
   "plenary",
-  "nvim-web-devicons",
+  "mini-icons",
   "nui",
 }
 
 -- ways to activate this
 M.activation = {
   wanted_by = {
-    'target.basic'
+    'mini-icons'
   }
 }
 

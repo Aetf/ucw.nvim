@@ -6,13 +6,13 @@ M.url = 'folke/snacks.nvim'
 M.description = 'A collection of QoL plugins for Neovim'
 
 M.wants = {
-  'nvim-web-devicons', -- icons
+  'mini-icons', -- icons
 }
 
 M.requires = {
 }
 M.after = {
-  'nvim-web-devicons', -- icons
+  'mini-icons', -- icons
 }
 
 -- ways to activate this

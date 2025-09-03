@@ -9,10 +9,10 @@ M.requires = {
   'which-key',
 }
 M.wants = {
-  'nvim-web-devicons',
+  'mini-icons',
 }
 M.after = {
-  'nvim-web-devicons',
+  'mini-icons',
   'which-key',
 }
 

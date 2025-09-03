@@ -9,14 +9,12 @@ M.requires = {
 }
 
 M.wants = {
-  'nvim-web-devicons', -- icons
   'nvim-notify',
   'treesitter',
 }
 
 M.after = {
   'nui',
-  'nvim-web-devicons', -- icons
   'nvim-notify',
   'treesitter',
 }
