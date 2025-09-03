@@ -42,6 +42,7 @@ function M.config()
       'json',
       'json5',
       'jsonc',
+      'just',
       'latex',
       'llvm',
       'lua',
@@ -122,14 +123,6 @@ function M.config()
   ---ENDWORKAROUND
 
   -- Additional parser
-  require("nvim-treesitter.parsers").get_parser_configs().just = {
-    install_info = {
-      url = "https://github.com/IndianBoy42/tree-sitter-just",
-      files = { "src/parser.c", "src/scanner.cc" },
-      branch = "main",
-    },
-    maintainers = { "@IndianBoy42" },
-  }
 end
 
 return M
