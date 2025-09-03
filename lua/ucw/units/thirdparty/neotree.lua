@@ -12,7 +12,6 @@ M.requires = {
 }
 M.wants = {
   "nvim-web-devicons",
-  'dressing', -- for rename input
 }
 M.after = {
   "plenary",
