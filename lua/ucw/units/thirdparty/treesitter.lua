@@ -123,6 +123,14 @@ function M.config()
   ---ENDWORKAROUND
 
   -- Additional parser
+  require("nvim-treesitter.parsers").get_parser_configs().openscad = {
+    install_info = {
+      url = "https://github.com/bollian/tree-sitter-openscad",
+      files = { "src/parser.c" },
+      branch = "master",
+    },
+    maintainers = { "@bollian" },
+  }
 end
 
 return M
