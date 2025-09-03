@@ -15,13 +15,7 @@ M.activation = {
 }
 
 function M.config()
-  lsp = require('ucw.lsp')
-  -- Initialize the LSP via clangd_extensions
-  lsp.register_on_setup_handler('clangd', function()
-    require('clangd_extensions').setup{}
-    -- prevent further hook processing
-    return true
-  end)
+  require('clangd_extensions').setup{}
 end
 
 return M

@@ -1,7 +1,6 @@
 --[[
 -- This module implements centralized hook handling for lsp with the ability to
 -- filter based on server name:
--- * on_setup_handler
 -- * on_server_setup
 -- * on_new_config
 -- * on_attach
@@ -18,11 +17,9 @@
 --   + `ucw.lsp.hooks.register_on_server_setup`
 --   + `ucw.lsp.hooks.register_on_new_config`
 --   + `ucw.lsp.hooks.register_on_attach`
--- * ucw.lsp.hooks register with mason-lspconfig default setup handler
--- * plugins register with mason-lspconfig special setup handlers
--- * mason-lspconfig will trigger setup handlers after lsp server
---   packages being installed/available
--- * lspconfig[server_name].setup is called
+-- * LSP target enabled
+-- * mason-lspconfig will trigger vim.lsp.enable for installed servers
+-- * vim.lsp.enable([server_name]) is called
 -- * lspconfig's on_setup hooks are called
 --   + mason-lspconfig's on_setup
 --   + ucw.lsp.hooks's on_setup
@@ -46,7 +43,6 @@ local M = {}
 
 ---@type table<string, ucw.lsp.hooks.Hook[]>
 local hooks = {
-  on_setup_handler = {},
   on_server_setup = {},
   on_new_config = {},
   on_attach = {},
@@ -96,14 +92,6 @@ local function call_hook(hook_name, server_name, ...)
       end
     end
   end
-end
-
----register the on_setup_handler hook.
----This can be used to run custom lspconfig setup function
----@param ptn string
----@param cb fun(opts)
-function M.register_on_setup_handler(ptn, cb)
-  table.insert(hooks.on_setup_handler, { ptn=ptn, cb=cb })
 end
 
 ---register the on_server_setup hook.
@@ -160,19 +148,11 @@ function M.install()
       call_hook('on_server_setup', config.name, config)
     end
   )
-
-  -- on_setup_handler can't be installed now. It can only be done while actually
-  -- activating LSP.
 end
 
 function M.activate()
-  -- trigger setup for all currently installed servers (and futuer servers added
-  -- during runtime)
-  require("mason-lspconfig").setup_handlers({
-    function(server_name)
-      call_hook('on_setup_handler', server_name, server_name)
-    end
-  })
+  -- all LSP servers are enabled as part of mason-lspconfig activation, which is
+  -- part of LSP target.
 end
 
 return M

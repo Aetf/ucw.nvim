@@ -9,17 +9,9 @@ local au = require('au')
 local hooks = require('ucw.lsp.hooks')
 
 -- reexport a few
-M.register_on_setup_handler = hooks.register_on_setup_handler
 M.register_on_server_setup = hooks.register_on_server_setup
 M.register_on_new_config = hooks.register_on_new_config
 M.register_on_attach = hooks.register_on_attach
-
-local function default_setup_handler(server_name)
-  local lspconfig = require('lspconfig')
-  lspconfig[server_name].setup{}
-  -- prevent further hook processing
-  return true
-end
 
 local function on_new_config(new_config, root_dir)
   local root_dir_name = vim.fn.fnamemodify(root_dir, ':p:~')
@@ -80,7 +72,6 @@ function M.config()
 
   require('ucw.lsp.vscode').install()
 
-  hooks.register_on_setup_handler('.*', default_setup_handler)
   hooks.register_on_new_config('.*', on_new_config)
   hooks.register_on_attach('.*', setup_keymap)
   hooks.register_on_attach('.*', setup_codelens_refresh)

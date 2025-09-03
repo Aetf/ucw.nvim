@@ -9,9 +9,6 @@ M.requisite = {
 }
 M.after = {
   'mason',
-  -- the doc says to *setup* mason-lspconfig *before* lspconfig, but the fact is,
-  -- lspconfig still has to be *loaded* before mason-lspconfig because
-  -- mason-lspconfig imports 'lspconfig' in its setup.
   'lspconfig',
 }
 
@@ -22,7 +19,10 @@ M.activation = {
 }
 
 function M.config()
-  require('mason-lspconfig').setup()
+  require('mason-lspconfig').setup {
+    -- vim.lsp.enable all installed servers
+    automatic_enable = true,
+  }
 end
 
 return M

@@ -26,12 +26,6 @@ M.activation = {
 -- setup runs before packadd
 function M.setup()
   lsp = require('ucw.lsp')
-  -- this is a fttype, so no need to call setup
-  -- disable ucw.lsp setup handler hook which actually calls lspconfig setup
-  lsp.register_on_setup_handler('rust_analyzer', function()
-    -- stop any further processing of hooks
-    return true
-  end)
   lsp.register_on_attach('rust_analyzer', function(client, bufnr)
     -- override code action to a more useful one
     vim.keymap.set(
