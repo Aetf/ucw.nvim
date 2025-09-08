@@ -22,9 +22,8 @@ M.activation = {
 function M.config()
   require('ucw.lsp').config()
   require('ucw.lsp').activate()
-  vim.lsp.inlay_hint.enable()
-  -- reload current buffer
-  vim.cmd('e')
+  -- reload current buffer for all LSP clients to attach
+  vim.cmd('LspStart')
 end
 
 return M

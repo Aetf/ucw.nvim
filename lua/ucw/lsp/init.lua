@@ -67,6 +67,10 @@ local function setup_keymap(client, bufnr)
   }, { buffer = bufnr })
 end
 
+local function enable_inlay_hint(client, bufnr)
+  vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+end
+
 function M.config()
   hooks.install()
 
@@ -75,7 +79,7 @@ function M.config()
   hooks.register_on_new_config('.*', on_new_config)
   hooks.register_on_attach('.*', setup_keymap)
   hooks.register_on_attach('.*', setup_codelens_refresh)
-
+  hooks.register_on_attach('.*', enable_inlay_hint)
 end
 
 function M.activate()
