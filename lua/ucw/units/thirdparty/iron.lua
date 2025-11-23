@@ -48,12 +48,13 @@ function M.config()
   }
 
   local wk = require('which-key')
-  for _, m in pairs({'n', 'v', 'i'}) do
-    wk.register({
-      ['<S-Enter>'] = { [[<cmd>lua require('ucw.keys.actions').iron_send_block({next=true})<cr>')]], "Send block to REPL and move to next" },
-      ['<C-Enter>'] = { [[<cmd>lua require('ucw.keys.actions').iron_send_block()<cr>')]], "Send block to REPL" },
-    }, { mode = m })
-  end
+  wk.add {
+    {
+      mode = { 'n', 'v', 'i' },
+      { "<C-Enter>", "<cmd>lua require('ucw.keys.actions').iron_send_block()<cr>')", desc = "Send block to REPL" },
+      { "<S-Enter>", "<cmd>lua require('ucw.keys.actions').iron_send_block({next=true})<cr>')", desc = "Send block to REPL and move to next"},
+    }
+  }
 end
 
 return M

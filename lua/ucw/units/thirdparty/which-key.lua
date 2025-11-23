@@ -51,111 +51,89 @@ function M.config()
   }
 
   -- Goto prev/next diag warning/error
-  wk.register {
-    g = {
-      ['['] = { [[<cmd>lua require('ucw.keys.actions').diag_prev()<cr>]], "Go to previous diagnostic" },
-      [']'] = { [[<cmd>lua require('ucw.keys.actions').diag_next()<cr>]], "Go to next diagnostic" },
-    },
+  wk.add {
+    { "g[", desc = "<cmd>lua require('ucw.keys.actions').diag_prev()<cr>" },
+    { "g]", desc = "<cmd>lua require('ucw.keys.actions').diag_next()<cr>" },
   }
 
   -- Git
-  wk.register {
-    ['<leader>g'] = {
-      name = "+git",
-      g = { [[<cmd>Neogit<cr>]], "Neogit" },
-    },
-    -- hunk navigation
-    [']c'] = { [[&diff ? ']c' : '<cmd>Gitsigns next_hunk<CR>']], "Next hunk", expr = true },
-    ['[c'] = { [[&diff ? ']c' : '<cmd>Gitsigns prev_hunk<CR>']], "Prev hunk", expr = true },
+  wk.add {
+    { "<leader>g", group = "git" },
+    { "<leader>gg", "<cmd>Neogit<cr>", desc = "Neogit" },
+    { "[c", "&diff ? ']c' : '<cmd>Gitsigns prev_hunk<CR>'", desc = "Prev hunk", expr = true, replace_keycodes = false },
+    { "]c", "&diff ? ']c' : '<cmd>Gitsigns next_hunk<CR>'", desc = "Next hunk", expr = true, replace_keycodes = false },
   }
+
   -- gitsigns
-  wk.register {
-    ['<leader>g'] = {
-      s = { '<cmd>Gitsigns stage_hunk<CR>', "Stage hunk", mode = 'n' },
-      r = { '<cmd>Gitsigns reset_hunk<CR>', "Reset hunk", mode = 'n' },
-      S = { '<cmd>Gitsigns stage_buffer<CR>', "Stage buffer", mode = 'n' },
-      u = { '<cmd>Gitsigns undo_stage_hunk<CR>', "Undo stage hunk", mode = 'n' },
-      R = { '<cmd>Gitsigns reset_buffer<CR>', "Reset buffer", mode = 'n' },
-      p = { '<cmd>Gitsigns preview_hunk<CR>', "Preview hunk", mode = 'n' },
-      b = { '<cmd>lua require"gitsigns".blame_line{full=true}<CR>', "Blame line" },
-      d = { '<cmd>Gitsigns diffthis<CR>', "Diff with index", mode = 'n' },
-      h = { '<cmd>DiffviewFileHistory<CR>', "History for current buffer", mode = 'n' },
-      t = {
-        name = "+toggles",
-        b = { '<cmd>Gitsigns toggle_current_line_blame<CR>', "Toggle current line blame" },
-        d = { '<cmd>Gitsigns toggle_deleted<CR>', "Toggle deleted" },
-      }
-    },
+  wk.add {
+    { "<leader>gR", "<cmd>Gitsigns reset_buffer<CR>", desc = "Reset buffer" },
+    { "<leader>gS", "<cmd>Gitsigns stage_buffer<CR>", desc = "Stage buffer" },
+    { "<leader>gb", '<cmd>lua require"gitsigns".blame_line{full=true}<CR>', desc = "Blame line" },
+    { "<leader>gd", "<cmd>Gitsigns diffthis<CR>", desc = "Diff with index" },
+    { "<leader>gh", "<cmd>DiffviewFileHistory<CR>", desc = "History for current buffer" },
+    { "<leader>gp", "<cmd>Gitsigns preview_hunk<CR>", desc = "Preview hunk" },
+    { "<leader>gr", "<cmd>Gitsigns reset_hunk<CR>", desc = "Reset hunk" },
+    { "<leader>gs", "<cmd>Gitsigns stage_hunk<CR>", desc = "Stage hunk" },
+    { "<leader>gt", group = "toggles" },
+    { "<leader>gtb", "<cmd>Gitsigns toggle_current_line_blame<CR>", desc = "Toggle current line blame" },
+    { "<leader>gtd", "<cmd>Gitsigns toggle_deleted<CR>", desc = "Toggle deleted" },
+    { "<leader>gu", "<cmd>Gitsigns undo_stage_hunk<CR>", desc = "Undo stage hunk" },
   }
-  wk.register {
-    ['<leader>g'] = {
-      s = { ':Gitsigns stage_hunk<CR>', "Stage hunk", mode = 'v' },
-      r = { ':Gitsigns reset_hunk<CR>', "Reset hunk", mode = 'v' },
-    },
+  wk.add {
+    { "<leader>gr", ":Gitsigns reset_hunk<CR>", desc = "Reset hunk", mode = "v" },
+    { "<leader>gs", ":Gitsigns stage_hunk<CR>", desc = "Stage hunk", mode = "v" },
   }
   -- text object
-  wk.register({
-    ['ic'] = { [[:<C-U>Gitsigns select_hunk<CR>]], "Select hunk (change) " },
-  }, { mode = 'x' })
-  wk.register({
-    ['ic'] = { [[:<C-U>Gitsigns select_hunk<CR>]], "Select hunk (change) " },
-  }, { mode = 'o' })
+  wk.add {
+    { "ic", ":<C-U>Gitsigns select_hunk<CR>", desc = "Select hunk (change) ", mode = "x" },
+    { "ic", ":<C-U>Gitsigns select_hunk<CR>", desc = "Select hunk (change) ", mode = "o" },
+  }
 
   -- Window and Buffer
-  wk.register({
-    -- for mouse middle button
-    ['<C-PageDown>'] = { [[<cmd>BufferLineCycleNext<cr>]], "Go To Next Buffer" },
-    ['<C-PageUp>'] = { [[<cmd>BufferLineCyclePrev<cr>]], "Go To Previous Buffer" },
-    ['<leader>`'] = { [[<C-^>]], "Go To Alternvative Buffer" },
-
-    ['<leader>s'] = {
-      name = "+session",
-      s = { [[<cmd>Telescope session-lens search_session<cr>]], "Open session" },
-      c = { [[<cmd>SessionSave<cr>]], "Manually save session" },
-      r = { [[<cmd>SessionRestore<cr>]], "Manually restore session" },
+  wk.add {
+    { "<C-PageDown>", "<cmd>BufferLineCycleNext<cr>", desc = "Go To Next Buffer" },
+    { "<C-PageUp>", "<cmd>BufferLineCyclePrev<cr>", desc = "Go To Previous Buffer" },
+    { "<M-Bar>", "<cmd>lua require('Navigator').tablast()<cr>", desc = "Go to last tab" },
+    { "<M-Bslash>", "<cmd>lua require('Navigator').previous()<cr>", desc = "Go to last window" },
+    { "<M-h>", "<cmd>lua require('Navigator').left()<cr>", desc = "Go to left window" },
+    { "<M-j>", "<cmd>lua require('Navigator').down()<cr>", desc = "Go to down window" },
+    { "<M-k>", "<cmd>lua require('Navigator').up()<cr>", desc = "Go to up window" },
+    { "<M-l>", "<cmd>lua require('Navigator').right()<cr>", desc = "Go to right window" },
+    { "<M-n>", "<cmd>lua require('Navigator').tabnext()<cr>", desc = "Go to next tab" },
+    { "<M-p>", "<cmd>lua require('Navigator').tabprev()<cr>", desc = "Go to previous tab" },
+    { "<S-Tab>", "<cmd>lua require('ucw.keys.actions').bufprev()<cr>", desc = "Go to previous buffer" },
+    { "<Tab>", "<cmd>lua require('ucw.keys.actions').bufnext()<cr>", desc = "Go to next buffer" },
+    { "<leader>`", "<C-^>", desc = "Go To Alternvative Buffer" },
+    { "<leader>b", group = "buffer" },
+    { "<leader>bX", "<cmd>lua require('ucw.keys.actions').bufdelete(0, true)<cr>", desc = "Delete current buffer" },
+    { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Go to buffer" },
+    { "<leader>bd", "<cmd>BufferLinePickClose<cr>", desc = "Pick Buffer To Close" },
+    { "<leader>bx", "<cmd>lua require('ucw.keys.actions').bufdelete()<cr>", desc = "Delete current buffer" },
+    { "<leader>s", group = "session" },
+    { "<leader>sc", "<cmd>SessionSave<cr>", desc = "Manually save session" },
+    { "<leader>sr", "<cmd>SessionRestore<cr>", desc = "Manually restore session" },
+    { "<leader>ss", "<cmd>Telescope session-lens search_session<cr>", desc = "Open session" },
+    { "<leader>t", group = "tab" },
+    { "<leader>tc", "<cmd>tabnew<cr>", desc = "Open new tab page" },
+    { "<leader>tn", "<cmd>tabnext<cr>", desc = "Go to next tab" },
+    { "<leader>to", "<cmd>tabonly<cr>", desc = "Close other tabs" },
+    { "<leader>tp", "<cmd>tabprev<cr>", desc = "Go to previous tab" },
+    { "<leader>tx", "<cmd>tabclose<cr>", desc = "Close current tab" },
+    { "<leader>w", group = "window" },
+    { "<leader>wh", "<cmd>vsplit<cr>", desc = "Create new window horizontally" },
+    { "<leader>wv", "<cmd>split<cr>", desc = "Create new window vertically" },
+    { "<leader>wx", "<C-w>c", desc = "Close current window" },
+  }
+  wk.add {
+    {
+      mode = { "t" },
+      { "<M-Bslash>", "<cmd>lua require('Navigator').previous()<cr>", desc = "Go to last window" },
+      { "<M-h>", "<cmd>lua require('Navigator').left()<cr>", desc = "Go to left window" },
+      { "<M-j>", "<cmd>lua require('Navigator').down()<cr>", desc = "Go to down window" },
+      { "<M-k>", "<cmd>lua require('Navigator').up()<cr>", desc = "Go to up window" },
+      { "<M-l>", "<cmd>lua require('Navigator').right()<cr>", desc = "Go to right window" },
     },
-
-    ['<leader>t'] = {
-      name = '+tab',
-      c = { [[<cmd>tabnew<cr>]], "Open new tab page" },
-      n = { [[<cmd>tabnext<cr>]], "Go to next tab" },
-      p = { [[<cmd>tabprev<cr>]], "Go to previous tab" },
-      x = { [[<cmd>tabclose<cr>]], "Close current tab" },
-      o = { [[<cmd>tabonly<cr>]], "Close other tabs" },
-    },
-    ['<M-n>'] = { [[<cmd>lua require('Navigator').tabnext()<cr>]], "Go to next tab" },
-    ['<M-p>'] = { [[<cmd>lua require('Navigator').tabprev()<cr>]], "Go to previous tab" },
-    ['<M-Bar>'] = { [[<cmd>lua require('Navigator').tablast()<cr>]], "Go to last tab" },
-
-    ['<leader>b'] = {
-      name = '+buffer',
-      d = { [[<cmd>BufferLinePickClose<cr>]], "Pick Buffer To Close" },
-      x = { [[<cmd>lua require('ucw.keys.actions').bufdelete()<cr>]], "Delete current buffer" },
-      X = { [[<cmd>lua require('ucw.keys.actions').bufdelete(0, true)<cr>]], "Delete current buffer" },
-      b = { [[<cmd>Telescope buffers<cr>]], "Go to buffer" },
-    },
-    ['<Tab>'] = { [[<cmd>lua require('ucw.keys.actions').bufnext()<cr>]], "Go to next buffer" },
-    ['<S-Tab>'] = { [[<cmd>lua require('ucw.keys.actions').bufprev()<cr>]], "Go to previous buffer" },
-
-    ['<leader>w'] = {
-      name = '+window',
-      x = { [[<C-w>c]], "Close current window" },
-      v = { [[<cmd>split<cr>]], "Create new window vertically" },
-      h = { [[<cmd>vsplit<cr>]], "Create new window horizontally" },
-    },
-    ['<M-h>'] = { [[<cmd>lua require('Navigator').left()<cr>]], "Go to left window" },
-    ['<M-j>'] = { [[<cmd>lua require('Navigator').down()<cr>]], "Go to down window" },
-    ['<M-k>'] = { [[<cmd>lua require('Navigator').up()<cr>]], "Go to up window" },
-    ['<M-l>'] = { [[<cmd>lua require('Navigator').right()<cr>]], "Go to right window" },
-    ['<M-Bslash>'] = { [[<cmd>lua require('Navigator').previous()<cr>]], "Go to last window" },
-  })
-  wk.register({
-    ['<M-h>'] = { [[<cmd>lua require('Navigator').left()<cr>]], "Go to left window" },
-    ['<M-j>'] = { [[<cmd>lua require('Navigator').down()<cr>]], "Go to down window" },
-    ['<M-k>'] = { [[<cmd>lua require('Navigator').up()<cr>]], "Go to up window" },
-    ['<M-l>'] = { [[<cmd>lua require('Navigator').right()<cr>]], "Go to right window" },
-    ['<M-Bslash>'] = { [[<cmd>lua require('Navigator').previous()<cr>]], "Go to last window" },
-  }, { mode = 't' })
+  }
 end
 
 return M
