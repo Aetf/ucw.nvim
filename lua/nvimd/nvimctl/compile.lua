@@ -6,24 +6,23 @@ local fmt = string.format
 ---@param should_profile boolean
 ---@return string
 local profile_time = function(should_profile)
-  return fmt(
-    [[
-  local time
+  return fmt([[
+local time
+_G.profile_info = {}
+local should_profile = %s
+if should_profile then
+  local hrtime = vim.loop.hrtime
   _G.profile_info = {}
-  local should_profile = %s
-  if should_profile then
-    local hrtime = vim.loop.hrtime
-    _G.profile_info = {}
-    time = function(chunk, start)
-      if start then
-        profile_info[chunk] = hrtime()
-      else
-        profile_info[chunk] = (hrtime() - profile_info[chunk]) / 1e6
-      end
+  time = function(chunk, start)
+    if start then
+      profile_info[chunk] = hrtime()
+    else
+      profile_info[chunk] = (hrtime() - profile_info[chunk]) / 1e6
     end
-  else
-    time = function(chunk, start) end
   end
+else
+  time = function(chunk, start) end
+end
   ]],
     vim.inspect(should_profile)
   )
