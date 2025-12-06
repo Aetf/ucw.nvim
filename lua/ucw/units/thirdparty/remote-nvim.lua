@@ -3,10 +3,13 @@ local M = {}
 M.url = 'amitds1997/remote-nvim.nvim'
 M.description = 'Remote development in Neovim'
 
+M.requires = {
+  'telescope',
+}
+
 M.requisite = {
   'plenary',
   'nui',
-  'telescope',
 }
 
 M.after = {
