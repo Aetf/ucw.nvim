@@ -31,8 +31,19 @@ function M.config()
     devpod = {
       docker_binary = 'podman'
     },
+    remote = {
+      copy_dirs = {
+        config = {
+          compression = {
+            enabled = true,
+          },
+        },
+      },
+    },
     client_callback = function(port, workspace_config)
-      if vim.fn.has('macunix') then
+      local os_info = vim.loop.os_uname()
+      local sysname = os_info.sysname
+      if sysname == "Darwin" then
         local script = [[
             tell application "iTerm2"
               tell current window
@@ -44,6 +55,22 @@ function M.config()
         vim.system({'osascript'}, {
           stdin = script,
           detach = true,
+        })
+      elseif vim.fn.executable("neovide") == 1 then
+        local cmd = ('neovide --server localhost:%s'):format(port)
+        vim.fn.jobstart(cmd, {
+          detach = true,
+          on_exit = function(job_id, exit_code, event_type)
+            print("Client", job_id, "exited with code", exit_code, "Event type:", event_type)
+          end
+        })
+      elseif sysname == "Linux" then
+        local cmd = ('konsole -e nvim --server localhost:%s --remote-ui'):format(port)
+        vim.fn.jobstart(cmd, {
+          detach = true,
+          on_exit = function(job_id, exit_code, event_type)
+            print("Client", job_id, "exited with code", exit_code, "Event type:", event_type)
+          end
         })
       else
         print("You haven't setup client callback for remote-nvim")
