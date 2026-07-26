@@ -7,15 +7,12 @@ if #vim.api.nvim_list_uis() ~= 0 then
   error('Test driver init.lua called from non-headless nvim instance')
 end
 
--- Locate mini.nvim from already installed pack
-local paths = vim.api.nvim_get_runtime_file('pack/*/opt/mini/', false)
-if #paths > 0 then
-  vim.opt.rtp:append{ paths[1] }
-else
-  -- no already installed mini.nvim
-  -- assume it's already installed in CI
-  vim.opt.rtp:append{ vim.fn.getcwd() .. '/deps/mini.nvim' }
-end
+-- Test-only clone of mini.nvim, fetched via `just deps`. This is dedicated
+-- to running the test suite itself (mini.test) and is intentionally separate
+-- from the runtime mini.nvim plugin that lazy.nvim installs/manages on its
+-- own for actual editing features (see lua/ucw/plugins/mini.lua) - the two
+-- are not meant to share a copy.
+vim.opt.rtp:append{ vim.fn.getcwd() .. '/deps/mini.nvim' }
 
 -- Locate test helper rtp
 vim.opt.rtp:append{ vim.fn.getcwd() .. '/tests/aux' }

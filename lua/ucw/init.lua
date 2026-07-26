@@ -1,7 +1,21 @@
 local M = {}
 
+-- bootstrap lazy.nvim itself (clone on first run)
+local function bootstrap_lazy()
+  local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
+  if not (vim.uv or vim.loop).fs_stat(lazypath) then
+    vim.fn.system({
+      'git', 'clone', '--filter=blob:none',
+      'https://github.com/folke/lazy.nvim.git',
+      '--branch=stable',
+      lazypath,
+    })
+  end
+  vim.opt.rtp:prepend(lazypath)
+end
+
 function M.boot()
-  local utils = require('ucw.utils')
+  local targets = require('ucw.targets')
 
   -- Disable unused plugin hosts given we have lua now
   vim.g.loaded_python3_provider = 0
@@ -16,22 +30,19 @@ function M.boot()
   require('ucw.keys')
   require('ucw.extras')
 
-  local target = 'target.tui'
-  if utils.is_gui() then
-    target = 'target.gui'
-  elseif vim.g.started_by_firenvim then
-    target = 'target.firenvim'
-  end
-
-  require('nvimd').boot(
-    {
-      units_modules ={
-        'ucw.units.thirdparty',
-        'ucw.units.user',
-      }
+  bootstrap_lazy()
+  require('lazy').setup({
+    spec = {
+      { import = 'ucw.plugins' },
+      { import = 'ucw.plugins.user' },
     },
-    target
-  )
+    install = { colorscheme = { 'base16-eighties' } },
+    change_detection = { notify = false },
+  })
+
+  if targets.is_gui() then
+    require('ucw.gui').setup()
+  end
 end
 
 return M

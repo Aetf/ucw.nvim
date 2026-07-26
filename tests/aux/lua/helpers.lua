@@ -30,7 +30,7 @@ function H.mini_test_rtp()
     return paths[1]:gsub('lua/mini/test%.lua$', '')
 end
 
--- With nvimd
+-- With the full config booted (lazy.nvim + all plugins)
 function M.new_integration_test(opts)
     local child = MiniTest.new_child_neovim()
     local state = {
@@ -56,9 +56,15 @@ function M.new_integration_test(opts)
             -- make sure current directory (repo top-level) is in runtime path
             child.o.rtp = vim.fn.getcwd() .. "," .. child.o.rtp
 
-            -- use nvimd to manage the subsequence initializations
+            -- boot the full config, then set up mini.test on top (mini.nvim
+            -- is already a plugin the config installs, via lua/ucw/plugins/mini.lua)
             child.lua[[require('ucw').boot()]]
-            child.lua[[nvimctl:start('mini-test')]]
+            -- lazy.nvim's own bootstrap-install runs async; block until it
+            -- actually settles so the "full config booted" the test assumes
+            -- is genuinely fully installed, not mid-install (avoids flaky
+            -- screenshot/UI assertions racing lazy's install pipeline)
+            child.lua[[require('lazy.manage').install()]]
+            child.lua[[require('mini.test').setup()]]
         end, child),
 
         post_case = opts.hooks.post_case,
@@ -78,7 +84,7 @@ function M.new_integration_test(opts)
     return T, child
 end
 
--- Without nvimd
+-- Without booting the full config
 function M.new_unit_test(opts)
     local child = MiniTest.new_child_neovim()
 

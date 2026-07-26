@@ -32,7 +32,7 @@ local T, child = H.new_unit_test()
 ## Integration test
 
 Integration test is for testing the whole ucw.nvim config, so the child vim
-instance is brought up with nvimd.
+instance is brought up via `ucw.boot()` (lazy.nvim + all plugins).
 Full plugin is available and loaded.
 Note that a temporary directory is used as data path so each run will go through
 the installation process.

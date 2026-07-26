@@ -55,8 +55,8 @@ T['screenshot']['sees floating window content'] = function()
     -- On first run this writes tests/screenshots/<case-path>; later runs diff it.
     --
     -- To screenshot a lazily-loaded plugin's UI (telescope, which-key, …), first
-    -- activate it in the child, e.g.:
-    --   child.lua([[nvimctl:start('target.tui')]]) ; child.cmd('Telescope find_files')
+    -- trigger its lazy.nvim load in the child, e.g.:
+    --   child.cmd('Telescope find_files')
 end
 
 return T
