@@ -20,6 +20,11 @@ test stop_on_error *tags: deps
         -u ./tests/aux/driver_init.lua \
         -S ./tests/aux/driver_run.lua
 
+# Drive a live nvim TUI for observation (see docs/tui-observation.md)
+# e.g. `just tui start`, `just tui capture`, `just tui 'send' ':q<CR>'`, `just tui stop`
+tui *args:
+    @./scripts/tui-drive.sh {{ args }}
+
 mini_dir := 'deps/mini.nvim'
 
 # Install mini.test dependency
