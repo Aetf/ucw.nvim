@@ -151,7 +151,7 @@ local function latexformatexpr_restore(lnum, count)
 
   -- try to restore cursor position
   if need_cursor_update then
-    vim.api.nvim_win_set_curosr(0, new_pos)
+    vim.api.nvim_win_set_cursor(0, new_pos)
   end
 
   -- do not run builtin formatter

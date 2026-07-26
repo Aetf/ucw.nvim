@@ -9,7 +9,6 @@ M.wants = {
   'cmp-cmdline',
   'cmp-nvim-lua',
   'cmp-under-comparator',
-  'lspkind',
 }
 
 -- ways to activate this

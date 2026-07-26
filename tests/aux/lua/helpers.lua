@@ -65,8 +65,8 @@ function M.new_integration_test(opts)
 
         post_once = H.chain_after(opts.hooks.post_once, function()
             -- stop once all test cases are finished
-            -- child.stop()
-            -- vim.fn.delete(state.tempdir, "rf")
+            child.stop()
+            vim.fn.delete(state.tempdir, "rf")
         end, child),
     }
 

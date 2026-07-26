@@ -266,7 +266,7 @@ function M.FileWatcher.new(debounce_time)
       vim.schedule(function()
         vim.notify(
           string.format("Watching:\n%s\nError:\n%s", that.path, err),
-          vim.log.lvels.ERROR,
+          vim.log.levels.ERROR,
           { title = '[ucw.utils] Error in libuv watcher' }
         )
       end)

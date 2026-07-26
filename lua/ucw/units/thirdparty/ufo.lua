@@ -73,7 +73,8 @@ function M.config()
   -- tell any server that we support foldingRange
   require('ucw.lsp').register_on_server_setup('.*', function(opts)
     opts.capabilities = opts.capabilities or vim.lsp.protocol.make_client_capabilities()
-    opts.capabilities.textDocumentfoldingRange = {
+    opts.capabilities.textDocument = opts.capabilities.textDocument or {}
+    opts.capabilities.textDocument.foldingRange = {
       dynamicRegistration = false,
       lineFoldingOnly = true
     }

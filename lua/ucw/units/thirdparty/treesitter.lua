@@ -43,7 +43,6 @@ function M.config()
       'json5',
       'jsonc',
       'just',
-      'latex',
       'llvm',
       'lua',
       'make',
@@ -80,11 +79,6 @@ function M.config()
 
     -- indentation based on treesitter for the `=` operator
     indent = {
-      enable = true,
-    },
-
-    -- markid
-    markid = {
       enable = true,
     },
 

@@ -1,6 +1,6 @@
 local M = {}
 
-M.url = 'TimUntersberger/neogit'
+M.url = 'NeogitOrg/neogit'
 M.description = 'Git Text UI'
 
 M.wants = {

@@ -20,19 +20,21 @@ M.activation = {
 function M.config()
   require('gitsigns').setup()
   -- define some functions as vim commands so they can be used with telescope
-  -- XXX: waiting for neovim 0.7 release for nvim_add_user_command API
-  vim.cmd [[command! GitsignsStageHunk <cmd>Gitsigns stage_hunk<cr>]]
-  vim.cmd [[command! GitsignsResetHunk <cmd>Gitsigns reset_hunk<cr>]]
-  vim.cmd [[command! GitsignsUndoStageHunk <cmd>lua require('gitsigns').undo_stage_hunk()<cr>]]
-  vim.cmd [[command! GitsignsPreviewHunk <cmd>lua require('gitsigns').preview_hunk()<cr>]]
+  local function cmd(name, fn)
+    vim.api.nvim_create_user_command(name, fn, {})
+  end
+  cmd('GitsignsStageHunk', function() require('gitsigns').stage_hunk() end)
+  cmd('GitsignsResetHunk', function() require('gitsigns').reset_hunk() end)
+  cmd('GitsignsUndoStageHunk', function() require('gitsigns').undo_stage_hunk() end)
+  cmd('GitsignsPreviewHunk', function() require('gitsigns').preview_hunk() end)
 
-  vim.cmd [[command! GitsignsStageBuffer <cmd>lua require('gitsigns').stage_buffer()<cr>]]
-  vim.cmd [[command! GitsignsResetBuffer <cmd>lua require('gitsigns').reset_buffer()<cr>]]
-  vim.cmd [[command! GitsignsBlameLine <cmd>lua require('gitsigns').blame_line{full=true}<cr>]]
-  vim.cmd [[command! GitsignsToggleCurrentLineBlame <cmd>lua require('gitsigns').toggle_current_line_blame()<cr>]]
-  vim.cmd [[command! GitsignsDiffThis <cmd>lua require('gitsigns').diffthis()<cr>]]
-  vim.cmd [[command! GitsignsDiff <cmd>lua require('gitsigns').diffthis('~')<cr>]]
-  vim.cmd [[command! GitsignsToggleDeleted <cmd>lua require('gitsigns').toggle_deleted()<cr>]]
+  cmd('GitsignsStageBuffer', function() require('gitsigns').stage_buffer() end)
+  cmd('GitsignsResetBuffer', function() require('gitsigns').reset_buffer() end)
+  cmd('GitsignsBlameLine', function() require('gitsigns').blame_line { full = true } end)
+  cmd('GitsignsToggleCurrentLineBlame', function() require('gitsigns').toggle_current_line_blame() end)
+  cmd('GitsignsDiffThis', function() require('gitsigns').diffthis() end)
+  cmd('GitsignsDiff', function() require('gitsigns').diffthis('~') end)
+  cmd('GitsignsToggleDeleted', function() require('gitsigns').toggle_deleted() end)
 end
 
 return M
