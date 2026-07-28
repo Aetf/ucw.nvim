@@ -22,22 +22,21 @@ local function config()
   wk.add {
     { '<leader>l', group = 'LSP' },
     { '<leader>ll', function()
+      -- nvim_exec_autocmds for a User event runs its callbacks (including
+      -- lazy.nvim's event-load handler) synchronously, so every plugin
+      -- gated on `event = 'User UcwLspEnable'` is fully loaded by the time
+      -- this call returns - no need to defer anything after it.
       vim.api.nvim_exec_autocmds('User', { pattern = 'UcwLspEnable' })
-      -- lazy.nvim flips a plugin's loaded state synchronously, but its
-      -- plugin/*.lua sourcing lands a tick later - schedule so it's
-      -- actually available by the time we use it.
-      vim.schedule(function()
-        require('ucw.lsp').config()
-        require('ucw.lsp').activate()
-        -- Neovim 0.12 ships a native `:lsp` command; nvim-lspconfig detects
-        -- this and no longer registers :LspStart at all (see its
-        -- plugin/lspconfig.lua). mason-lspconfig's automatic_enable=true
-        -- already called vim.lsp.enable() for every installed server as
-        -- part of .activate() above - the only thing left is to retrigger
-        -- attachment for the *already open* current buffer, since its
-        -- FileType event already fired before the server was enabled.
-        vim.cmd('doautocmd FileType')
-      end)
+      require('ucw.lsp').config()
+      require('ucw.lsp').activate()
+      -- Neovim 0.12 ships a native `:lsp` command; nvim-lspconfig detects
+      -- this and no longer registers :LspStart at all (see its
+      -- plugin/lspconfig.lua). mason-lspconfig's automatic_enable=true
+      -- already called vim.lsp.enable() for every installed server as
+      -- part of .activate() above - the only thing left is to retrigger
+      -- attachment for the *already open* current buffer, since its
+      -- FileType event already fired before the server was enabled.
+      vim.cmd('doautocmd FileType')
     end, desc = "Enable LSP" },
     { '<leader>la', [[<cmd>lua vim.lsp.buf.code_action()<cr>]], desc = "Code actions" },
     { '<leader>lA', [[<cmd>lua vim.lsp.buf.range_code_action()<cr>]], desc = "Range code actions" },

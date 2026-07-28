@@ -8,7 +8,6 @@ local T, child = H.new_unit_test()
 local load_module = function(name) child.lua(([[_G.M = require(...)]]), { name }) end
 local set_lines = function(lines) child.api.nvim_buf_set_lines(0, 0, -1, true, lines) end
 local poke_eventloop = function() child.api.nvim_eval('1') end
-local sleep = function(ms) vim.loop.sleep(ms); poke_eventloop() end
 --stylua: ignore end
 
 -- Both line and col is 1-based, inclusive range [from, to]
