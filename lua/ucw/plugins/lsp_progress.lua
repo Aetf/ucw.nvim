@@ -1,6 +1,14 @@
+-- Server progress spinner in lualine.
+--
+-- `LspAttach` rather than the LSP `ft` trigger: setup costs 3-12 ms (it
+-- rebuilds and re-applies the whole lualine config), and the component has
+-- nothing to show until a client exists anyway. Attaching is already past the
+-- point where the file is on screen, so this cost is never on the path to a
+-- rendered buffer.
 return {
   'linrongbin16/lsp-progress.nvim',
-  event = 'User UcwLspEnable',
+  cond = require('ucw.targets').is_full_ui,
+  event = 'LspAttach',
   dependencies = { 'nvim-lualine/lualine.nvim' },
   config = function()
     local lsp_progress = require('lsp-progress')

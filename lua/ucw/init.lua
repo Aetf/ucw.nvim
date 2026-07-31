@@ -30,6 +30,14 @@ function M.boot()
   require('ucw.keys')
   require('ucw.extras')
 
+  -- Per-client LSP buffer setup (keymaps, inlay hints, codelens, .vscode
+  -- settings). Eager on purpose, and it costs exactly one autocmd: clients
+  -- arrive from two directions - `vim.lsp.enable()` once nvim-lspconfig is
+  -- loaded by filetype, and rustaceanvim starting its own on `ft=rust` without
+  -- nvim-lspconfig ever loading at all. Hanging this off either one leaves the
+  -- other with no keymaps and no hints.
+  require('ucw.lsp.attach').setup()
+
   bootstrap_lazy()
   require('lazy').setup({
     spec = {

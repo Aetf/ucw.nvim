@@ -12,7 +12,12 @@ end
 
 return {
   'https://git.sr.ht/~whynothugo/lsp_lines.nvim',
-  event = 'User UcwLspEnable',
+  cond = require('ucw.targets').is_full_ui,
+  -- The `User UcwLspEnable` event this used to ride is gone with `<leader>ll`;
+  -- diagnostics only exist once something attached anyway. Phase 4 is expected
+  -- to delete this plugin outright - its rendering is 100% native
+  -- `vim.diagnostic.config { virtual_lines = ... }` now.
+  event = 'LspAttach',
   config = function()
     require('lsp_lines').setup()
 

@@ -45,15 +45,29 @@ local function config()
   vim.keymap.set('n', 'zR', require('ufo').openAllFolds)
   vim.keymap.set('n', 'zM', require('ufo').closeAllFolds)
 
-  -- tell any server that we support foldingRange
-  require('ucw.lsp').register_on_server_setup('.*', function(opts)
-    opts.capabilities = opts.capabilities or vim.lsp.protocol.make_client_capabilities()
-    opts.capabilities.textDocument = opts.capabilities.textDocument or {}
-    opts.capabilities.textDocument.foldingRange = {
-      dynamicRegistration = false,
-      lineFoldingOnly = true
-    }
-  end)
+  -- Tell any server that we support foldingRange.
+  --
+  -- This used to go through `ucw.lsp.register_on_server_setup`, a hook
+  -- monkey-patched onto lspconfig's setup path - which servers stopped taking
+  -- once they came up through native `vim.lsp.enable()`, so folding capability
+  -- had silently not been advertised to anyone. `vim.lsp.config('*')` is the
+  -- native lowest-priority layer, and capabilities is a table, so this merges
+  -- with blink.cmp's contribution instead of replacing it.
+  --
+  -- Ordering matters and is load-bearing: every '*' capability contributor has
+  -- to run before the first `vim.lsp.enable()`. This spec is eager and LSP is
+  -- `ft`-triggered, so startup strictly precedes it; tests/test_lsp.lua asserts
+  -- the merged result rather than trusting that.
+  vim.lsp.config('*', {
+    capabilities = {
+      textDocument = {
+        foldingRange = {
+          dynamicRegistration = false,
+          lineFoldingOnly = true,
+        },
+      },
+    },
+  })
 
   require('ufo').setup {
     -- timeout in ms to highlight the range when opening the folded line, 0 to disable

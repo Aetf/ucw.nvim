@@ -18,43 +18,36 @@ local function config()
     { '<M-S-f>', [[<cmd>Telescope live_grep<cr>]], desc = "Find in CWD" },
     { '<M-f>', [[<cmd>Telescope current_buffer_fuzzy_find<cr>]], desc = "Find in File" },
   }
-  -- LSP
+  -- LSP.
+  --
+  -- `<leader>ll` ("Enable LSP") is gone: LSP comes up by itself now, on the
+  -- FileType of a supported buffer. See lua/ucw/plugins/lspconfig.lua.
+  --
+  -- The right-hand sides come from `ucw.lsp.actions` rather than being spelled
+  -- out here, because the same actions are also bound buffer-locally on bare
+  -- `g` keys by `ucw.lsp.attach`. Two copies of the same `vim.lsp.*` call is
+  -- how `<leader>lA` (range_code_action, removed from Neovim in 0.10) and
+  -- `<leader>lH` (vim.lsp.declaration, never existed) went on being bound to
+  -- nothing for years. Bindings themselves are Phase 9's business; this is
+  -- only about where they are defined.
+  local lsp_actions = require('ucw.lsp.actions')
   wk.add {
     { '<leader>l', group = 'LSP' },
-    { '<leader>ll', function()
-      -- nvim_exec_autocmds for a User event runs its callbacks (including
-      -- lazy.nvim's event-load handler) synchronously, so every plugin
-      -- gated on `event = 'User UcwLspEnable'` is fully loaded by the time
-      -- this call returns - no need to defer anything after it.
-      vim.api.nvim_exec_autocmds('User', { pattern = 'UcwLspEnable' })
-      require('ucw.lsp').config()
-      require('ucw.lsp').activate()
-      -- Neovim 0.12 ships a native `:lsp` command; nvim-lspconfig detects
-      -- this and no longer registers :LspStart at all (see its
-      -- plugin/lspconfig.lua). mason-lspconfig's automatic_enable=true
-      -- already called vim.lsp.enable() for every installed server as
-      -- part of .activate() above - the only thing left is to retrigger
-      -- attachment for the *already open* current buffer, since its
-      -- FileType event already fired before the server was enabled.
-      vim.cmd('doautocmd FileType')
-    end, desc = "Enable LSP" },
-    { '<leader>la', [[<cmd>lua vim.lsp.buf.code_action()<cr>]], desc = "Code actions" },
-    { '<leader>lA', [[<cmd>lua vim.lsp.buf.range_code_action()<cr>]], desc = "Range code actions" },
-    { '<leader>l0', [[<cmd>Telescope lsp_document_symbols<cr>]], desc = "Symbols in the current buffer" },
-    { '<leader>lW', [[<cmd>Telescope lsp_workspace_symbols<cr>]], desc = "Symbols in the current workspace" },
-    { '<leader>le', [[<cmd>Telescope diagnostics<cr>]], desc = "Diagnostics for current buffer" },
-    { '<leader>lD', [[<cmd>Telescope lsp_implementations<cr>]], desc = "Go to implementation" },
-    { '<leader>ld', [[<cmd>Telescope lsp_definitions<cr>]], desc = "Go to definition" },
-    { '<leader>lt', [[<cmd>Telescope lsp_type_definitions<cr>]], desc = "Go to type definition" },
-    { '<leader>lH', [[<cmd>lua vim.lsp.declaration()<cr>]], desc = "Go to declaration" },
-    { '<leader>lr', [[<cmd>Telescope lsp_references<cr>]], desc = "Find references" },
-    { '<leader>lh', [[<cmd>lua vim.lsp.buf.document_highlight()<cr>]], desc = "Highlight symbol under cursor" },
-    { '<leader>l<C-L>', [[<cmd>lua vim.lsp.buf.clear_references()<cr>]],
-      desc = "Clear document highlights from current buffer" },
-    { '<leader>lf', [[<cmd>lua vim.lsp.buf.format({ async = false })<cr>]],
-      desc = "Format the current buffer (or visual selection)" },
-    { '<leader>lR', [[<cmd>lua vim.lsp.buf.rename()<cr>]], desc = "Rename the symbol under cursor" },
-    { '<leader>l<CR>', [[<cmd> lua vim.lsp.codelens.run()<cr>]], desc = "Run codelens at current line" },
+    lsp_actions.wk('<leader>la', 'code_action'),
+    lsp_actions.wk('<leader>l0', 'document_symbols'),
+    lsp_actions.wk('<leader>lW', 'workspace_symbols'),
+    lsp_actions.wk('<leader>le', 'diagnostics'),
+    lsp_actions.wk('<leader>lD', 'implementations'),
+    lsp_actions.wk('<leader>ld', 'definitions'),
+    lsp_actions.wk('<leader>lt', 'type_definitions'),
+    lsp_actions.wk('<leader>lH', 'declaration'),
+    lsp_actions.wk('<leader>lr', 'references'),
+    lsp_actions.wk('<leader>lh', 'document_highlight'),
+    lsp_actions.wk('<leader>l<C-L>', 'clear_references'),
+    lsp_actions.wk('<leader>lf', 'format'),
+    lsp_actions.wk('<leader>lR', 'rename'),
+    lsp_actions.wk('<leader>l<CR>', 'codelens_run'),
+    lsp_actions.wk('<leader>lI', 'toggle_inlay_hint'),
   }
 
   -- Goto prev/next diag warning/error

@@ -1,8 +1,28 @@
+-- Per-workspace server settings from `.vscode/settings.json`, so a project
+-- configured for VSCode works here without a second config file.
+--
+-- Rewritten in Phase 3. The old implementation had two halves: an initial load
+-- on lspconfig's `on_new_config`, and a live-reload file watcher on attach.
+-- The `on_new_config` half fired **zero** times once servers started coming up
+-- through native `vim.lsp.enable()` (it was installed by monkey-patching
+-- lspconfig internals), so settings only ever applied if the file changed
+-- *after* the server was already running.
+--
+-- Rather than restore the initial load on `before_init` - which would mean a
+-- line copied into every `after/lsp/<name>.lua`, silently forgotten on the
+-- next server added - both halves now run through the same code path on
+-- `LspAttach`: read the file, merge over the server's static settings, push
+-- `workspace/didChangeConfiguration`. That is exactly what the working half
+-- already did, it needs no per-server registration, and it covers clients
+-- started outside `vim.lsp.enable()` (rustaceanvim's) for free.
+--
+-- The cost is one extra round trip: a server starts with its static settings
+-- and is corrected immediately afterwards. That is the same contract the
+-- live-reload half has always relied on.
+
 local F = vim.fn
-local L = vim.loop
 
 local utils = require('ucw.utils')
-local logger = require('ucw.log').logger()
 
 local M = {}
 
@@ -28,93 +48,95 @@ end
 ---@param path string
 ---@return table|nil
 function M.load(path)
-  -- open file
-  local fp, _ = io.open(path, 'r')
+  local fp = io.open(path, 'r')
   if not fp then
     return
   end
-  -- load string
   local settings_str = fp:read('*a')
-  if not settings_str then
+  fp:close()
+  if not settings_str or settings_str == '' then
     return
   end
-  -- decode json
-  local obj = vim.fn.json_decode(settings_str)
-  if not obj then
+  local ok, obj = pcall(vim.json.decode, settings_str)
+  if not ok or type(obj) ~= 'table' then
     return
   end
-  -- normalize keys
-  local settings = normalize_keys(obj)
-  return settings
+  return normalize_keys(obj)
 end
 
----Apply settings and remember previous one
-local function apply_settings(config, obj)
-  local static_settings = config.static_settings or config.settings or {}
-  static_settings = vim.deepcopy(static_settings)
-  config.settings = vim.tbl_deep_extend('force', static_settings, obj)
-end
+---Per-client state: the settings the server was configured with (so reloads
+---merge over a fixed base instead of compounding), the files being watched,
+---and the watcher handles keeping themselves alive.
+---@type table<integer, { base: table, files: string[], watchers: table[] }>
+local state = {}
 
----Used to inject config from root_dir
-local function on_new_config_workdir(new_config, root_dir)
-  new_config.static_settings = vim.deepcopy(new_config.settings)
-  local path = locate_settings_file(root_dir)
-  local obj = M.load(path)
-  if obj then
-    apply_settings(new_config, obj)
+---@param client vim.lsp.Client
+---@param quiet boolean whether to skip the notification (initial load)
+local function reload(client, quiet)
+  local st = state[client.id]
+  if not st then
+    return
   end
-end
 
-local function dir_changed(client, settings_file)
-  local obj = M.load(settings_file)
-  if obj then
-    apply_settings(client.config, obj)
-    client.workspace_did_change_configuration(client.config.settings)
+  local merged = vim.deepcopy(st.base)
+  local applied = {}
+  for _, file in ipairs(st.files) do
+    local obj = M.load(file)
+    if obj then
+      merged = vim.tbl_deep_extend('force', merged, obj)
+      table.insert(applied, file)
+    end
+  end
+  if #applied == 0 then
+    return
+  end
+
+  client.settings = merged
+  client:notify('workspace/didChangeConfiguration', { settings = merged })
+
+  if not quiet then
     vim.notify(
-      string.format('Reloaded config:\n%s', settings_file),
+      string.format('Reloaded config:\n%s', table.concat(applied, '\n')),
       vim.log.levels.INFO,
-      { title = string.format('LSP [%s]', client.name)}
+      { title = string.format('LSP [%s]', client.name) }
     )
   end
 end
 
-local watching_client_ids = {}
-
-local function watch_settings_change(client, _)
-  -- skip for singlefile mode
-  if not client.config.workspace_folders then
+---Called once per client from the LspAttach handler.
+---@param client vim.lsp.Client
+function M.attach(client)
+  if state[client.id] then
     return
   end
-  if watching_client_ids[client.id] then
-    -- client already handled
+  -- single-file mode has no workspace to read a .vscode/ directory from
+  local folders = client.workspace_folders
+  if not folders or #folders == 0 then
     return
   end
-  watching_client_ids[client.id] = true
-  -- for all workspace folders
-  for _, folder in pairs(client.config.workspace_folders) do
-    local root_dir = vim.uri_to_fname(folder.uri)
-    -- watch the parent folder of the settings file
-    local settings_file = locate_settings_file(root_dir)
 
-    -- setup a luv fs event watcher on it, and a debounce time
+  local st = { base = vim.deepcopy(client.settings or {}), files = {}, watchers = {} }
+  state[client.id] = st
+
+  for _, folder in ipairs(folders) do
+    table.insert(st.files, locate_settings_file(vim.uri_to_fname(folder.uri)))
+  end
+
+  -- the load that never used to happen
+  reload(client, true)
+
+  for _, file in ipairs(st.files) do
     local watcher = utils.FileWatcher.new(2000)
-    watcher:start(settings_file, function(_, _, _)
+    table.insert(st.watchers, watcher)
+    watcher:start(file, function()
       if client:is_stopped() then
-        -- we save a ref in callback so watcher won't be deleted even
-        -- when the local watcher goes out of scope
         watcher:close()
-        watching_client_ids[client.id] = nil
+        state[client.id] = nil
         return
       end
-      dir_changed(client, settings_file)
+      reload(client, false)
     end)
   end
-end
-
-function M.install()
-  local ucwlsp = require('ucw.lsp')
-  ucwlsp.register_on_new_config('.*', on_new_config_workdir)
-  ucwlsp.register_on_attach('.*', watch_settings_change)
 end
 
 return M

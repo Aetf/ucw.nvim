@@ -38,8 +38,10 @@ Personal config (`lua/ucw/`):
 - `units/thirdparty/*.lua` — one file per plugin (the base layer).
 - `units/user/*.lua` — user overrides; a file with the **same unit name** merges over
   the thirdparty one (later roots win).
-- `lsp/` — the LSP hooks framework (`init.lua`, `hooks.lua`, `vscode.lua`) and
-  per-server config in `lsp/lang/<server>.lua`.
+- `lsp/` — LSP wiring: `servers.lua` (the server list), `init.lua`
+  (enable/filetypes), `attach.lua` (`LspAttach` handlers), `actions.lua`,
+  `vscode.lua`, plus per-server helper modules. Per-server *config* lives in
+  the repo's top-level `after/lsp/<server>.lua`, which Neovim discovers itself.
 - `lua/au.lua` — the autocmd DSL.
 - `ftplugin/` — standard filetype configs.
 
@@ -81,10 +83,16 @@ Activation sequence per unit: `setup()` → `packadd` → source its `after/` fi
   (`units/thirdparty/which-key.lua`) via `wk.add {...}`; named actions in
   `keys/actions.lua`.
 - **Options** — plain `vim.opt.*` in `options.lua`, heavily commented with *why*.
-- **LSP** — never configure servers ad hoc. Register hooks through
-  `ucw/lsp/hooks.lua` (`on_server_setup` / `on_new_config` / `on_attach`) or add
-  `ucw/lsp/lang/<server>.lua`. LSP is **deferred** (not in the default TUI target);
-  it starts via `<leader>ll` (`nvimctl:start('target.lsp')`).
+- **LSP** — there is no framework to learn; use Neovim's native layers.
+  To add a server: one line in `lua/ucw/lsp/servers.lua` (`name = { filetypes }`),
+  which drives `vim.lsp.enable()`, Mason's `ensure_installed` and the lazy `ft`
+  trigger at once; add `after/lsp/<name>.lua` only if it needs settings, and
+  keep that file **table-only** (function fields replace nvim-lspconfig's
+  outright instead of composing). Per-buffer behaviour goes in an `LspAttach`
+  autocmd — `lua/ucw/lsp/attach.lua` for anything general, or the plugin's own
+  spec for anything server-specific. LSP starts by itself on the filetype of a
+  supported buffer; nothing is eager and there is no enable keybinding.
+  See `docs/design/phase3-lsp-redesign.md`.
 
 ## Runtime handles (interactive debugging)
 
