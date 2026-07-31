@@ -2,18 +2,15 @@
 -- cmp-path + cmp-cmdline + cmp-nvim-lua + cmp-under-comparator + cmp-nvim-lsp
 -- + cmp-nvim-lsp-signature-help + LuaSnip), 9 plugins collapsed into this one.
 --
--- Snippets are handled by Neovim's native `vim.snippet` - that is blink.cmp's
--- default backend, so there is no snippet engine to configure. friendly-snippets
--- is likewise auto-detected by the built-in `snippets` source and only needs to
--- be present as a data dependency.
-
--- Old nvim-cmp bound <Tab> to "complete" only when there is a non-blank char
--- before the cursor, so <Tab> at indentation still indents. blink has no
--- equivalent built-in command, so keep the predicate.
-local function has_words_before()
-  local line, col = unpack(vim.api.nvim_win_get_cursor(0))
-  return col ~= 0 and vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match('%s') == nil
-end
+-- Snippets are handled by Neovim's native `vim.snippet` - blink.cmp's default
+-- backend - so there is no snippet engine to configure. friendly-snippets is
+-- likewise auto-detected by the built-in `snippets` source and only needs to be
+-- present as a data dependency.
+--
+-- Everything set below differs from blink's defaults on purpose; anything the
+-- old nvim-cmp config specified that blink already does by default (source
+-- list, fuzzy backend, cmdline completion, nerd font variant, preselect) is
+-- deliberately left out rather than restated.
 
 return {
   'saghen/blink.cmp',
@@ -23,57 +20,42 @@ return {
   version = '1.*',
   dependencies = { 'rafamadriz/friendly-snippets' },
   opts = {
+    -- `enter` rather than `default`, because it matches what the nvim-cmp setup
+    -- actually bound: <CR> accepts, and <C-y> is left unmapped (nvim-cmp had it
+    -- explicitly disabled). <Tab>/<S-Tab> move between snippet tabstops, which
+    -- is also what Neovim 0.11+ maps them to natively - the old config's
+    -- "Tab also walks the completion menu" chain is dropped in favour of
+    -- <C-n>/<C-p>, so Tab means one thing again.
     keymap = {
-      preset = 'default',
-      -- Faithful port of the old nvim-cmp <Tab>/<S-Tab> chain: move in the
-      -- menu first, then jump snippet tabstops, then open the menu. Each
-      -- command returns false when it does not apply, falling through.
-      ['<Tab>'] = {
-        'select_next',
-        'snippet_forward',
-        function(cmp)
-          if has_words_before() then return cmp.show() end
-        end,
-        'fallback',
-      },
-      ['<S-Tab>'] = { 'select_prev', 'snippet_backward', 'fallback' },
-      ['<CR>'] = { 'accept', 'fallback' },
+      preset = 'enter',
+      -- nvim-cmp's manual trigger
       ['<M-.>'] = { 'show', 'fallback' },
-      -- was explicitly disabled under nvim-cmp; keep it free
-      ['<C-y>'] = false,
     },
-    appearance = { nerd_font_variant = 'mono' },
     completion = {
-      -- nvim-cmp showed docs by default, so this is parity rather than a new
-      -- behaviour; the delay keeps it from flickering while cycling items.
-      documentation = { auto_show = true, auto_show_delay_ms = 200 },
-      -- old config used experimental.ghost_text instead of inserting text as
-      -- you move through the list
+      -- nvim-cmp showed documentation by default; blink does not
+      documentation = { auto_show = true },
+      -- nvim-cmp's `experimental.ghost_text`. Paired with auto_insert = false
+      -- so the buffer only changes on accept: with both on you would get the
+      -- preview inserted *and* ghosted.
       ghost_text = { enabled = true },
-      list = { selection = { preselect = true, auto_insert = false } },
+      list = { selection = { auto_insert = false } },
     },
-    signature = {
-      -- replaces cmp-nvim-lsp-signature-help. Upstream still labels this
-      -- experimental; <C-k> toggles it, LSP trigger chars show it automatically.
-      enabled = true,
-    },
+    -- replaces cmp-nvim-lsp-signature-help. Upstream still labels this
+    -- experimental; <C-k> toggles it, LSP trigger chars show it automatically.
+    signature = { enabled = true },
     sources = {
-      default = { 'lsp', 'path', 'snippets', 'buffer' },
       providers = {
         -- carried over from cmp-buffer's `keyword_length = 6`: buffer words are
         -- noisy, so only offer them once the prefix is long enough to be a real
         -- query. Under nvim-cmp buffer was additionally a second-tier fallback
-        -- group; blink scores all sources together instead, which surfaces
-        -- buffer words a little more often than before.
+        -- group; blink scores all sources together instead, so this threshold
+        -- is now the only thing keeping buffer words out of short completions.
         buffer = { min_keyword_length = 6 },
       },
     },
-    cmdline = {
-      -- replaces cmp-cmdline
-      enabled = true,
-    },
-    fuzzy = { implementation = 'prefer_rust_with_warning' },
   },
+  -- so a file in lua/ucw/plugins/user/ can add a source without silently
+  -- replacing the whole default list
   opts_extend = { 'sources.default' },
   config = function(_, opts)
     local blink = require('blink.cmp')

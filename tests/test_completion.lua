@@ -111,6 +111,10 @@ end
 
 T['sources'] = new_set()
 
+-- Asserts the *effective* config, not what the spec happens to spell out: most
+-- of these now come from blink's own defaults rather than from our opts, and
+-- the point is that the behaviour the old cmp cluster provided is still there
+-- either way.
 T['sources']['configured source set matches the replaced cmp sources'] = function()
     eq(child.lua_get([[require('blink.cmp.config').sources.default]]), { 'lsp', 'path', 'snippets', 'buffer' })
     -- carried over from cmp-buffer's `keyword_length = 6`
