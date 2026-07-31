@@ -50,23 +50,22 @@ local function config()
     hi.FoldColumn = { fg = colors.base03, bg = colors.base00 }
     hi.Folded = { fg = colors.base02, bg = colors.base00 }
 
-    -- plugin: nvim-cmp
-    hi.CmpItemAbbrDeprecated = 'Deprecated'
-    hi.CmpItemAbbrMatch = 'SearchMatch'
-    hi.CmpItemAbbrMatchFuzzy = 'SearchMatch'
-    hi.CmpItemKindText = 'TSText'
-    hi.CmpItemKindMethod = 'TSMethod'
-    hi.CmpItemKindFunction = 'TSFunction'
-    hi.CmpItemKindConstructor = 'TSConstructor'
-    hi.CmpItemKindField = 'TSField'
-    hi.CmpItemKindVariable = 'TSVariable'
-    hi.CmpItemKindInterface = 'TSText'
-    hi.CmpItemKindProperty = 'TSProperty'
-    hi.CmpItemKindUnit = 'TSKeyword'
-    hi.CmpItemKindKeyword = 'TSKeyword'
-    hi.CmpItemKindConstant = 'TSConstant'
-    hi.CmpItemKindOperator = 'TSOperator'
-    hi.CmpItemKindTypeParameter = 'TSType'
+    -- plugin: blink.cmp
+    hi.BlinkCmpLabelDeprecated = 'Deprecated'
+    hi.BlinkCmpLabelMatch = 'SearchMatch'
+    hi.BlinkCmpKindText = 'TSText'
+    hi.BlinkCmpKindMethod = 'TSMethod'
+    hi.BlinkCmpKindFunction = 'TSFunction'
+    hi.BlinkCmpKindConstructor = 'TSConstructor'
+    hi.BlinkCmpKindField = 'TSField'
+    hi.BlinkCmpKindVariable = 'TSVariable'
+    hi.BlinkCmpKindInterface = 'TSText'
+    hi.BlinkCmpKindProperty = 'TSProperty'
+    hi.BlinkCmpKindUnit = 'TSKeyword'
+    hi.BlinkCmpKindKeyword = 'TSKeyword'
+    hi.BlinkCmpKindConstant = 'TSConstant'
+    hi.BlinkCmpKindOperator = 'TSOperator'
+    hi.BlinkCmpKindTypeParameter = 'TSType'
 
     -- plugin: neo-tree
     -- See ":help neo-tree-highlights" for a list of available highlight groups

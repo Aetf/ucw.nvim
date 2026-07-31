@@ -65,6 +65,34 @@ function M.new_integration_test(opts)
             -- screenshot/UI assertions racing lazy's install pipeline)
             child.lua[[require('lazy.manage').install()]]
             child.lua[[require('mini.test').setup()]]
+
+            -- Booting the full config prints more than fits the child's
+            -- 24-line screen (treesitter warning, plugin install notices, ...),
+            -- which leaves Neovim sitting at a hit-enter prompt. Nothing is
+            -- drawn for it, but it silently swallows the first keystrokes a
+            -- test sends, so any typing-based test appears to do nothing at
+            -- all. Dismiss it, then confirm we really are back in normal mode
+            -- rather than assuming the <CR> was enough.
+            child.lua[[
+                if vim.api.nvim_get_mode().mode ~= 'n' then
+                  vim.api.nvim_feedkeys(
+                    vim.api.nvim_replace_termcodes('<CR>', true, false, true), 'x', false)
+                end
+            ]]
+            local mode = child.lua_get[[vim.api.nvim_get_mode().mode]]
+            if mode ~= 'n' then
+                error(('child stuck in mode %q after boot; a prompt is still pending'):format(mode))
+            end
+
+            -- Separately: the first `nvim_feedkeys` batch sent after that
+            -- prompt is cleared gets truncated - only its first key survives,
+            -- the rest is dropped. Measured, not guessed: feeding "icopyri" as
+            -- the first batch lands in insert mode with an empty line, while
+            -- the identical call as the second batch types the whole word.
+            -- Burn that first batch here on a pair of harmless <Esc>s so tests
+            -- get a child that types the keys they actually asked for.
+            child.lua[[vim.api.nvim_feedkeys('\27\27', 'nt', false)]]
+            child.api.nvim_eval('1')
         end, child),
 
         post_case = opts.hooks.post_case,
