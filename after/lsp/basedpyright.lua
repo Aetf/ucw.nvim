@@ -1,8 +1,8 @@
--- Table fields only: upstream nvim-lspconfig defines `on_attach` for pyright,
--- and a function field in this layer would replace it outright.
+-- Table fields only: upstream nvim-lspconfig defines `on_attach` for
+-- basedpyright, and a function field in this layer would replace it outright.
 --
--- pyright does not watch the filesystem itself, so it needs the client to do
--- it: https://github.com/microsoft/pyright/issues/4635. Neovim advertises
+-- basedpyright inherits pyright's lack of filesystem watching, so it needs the
+-- client to do it: https://github.com/microsoft/pyright/issues/4635. Neovim advertises
 -- `didChangeWatchedFiles.dynamicRegistration = false` by default (measured),
 -- so this is a real change rather than a restatement.
 -- Note client-side watching can be expensive on large repos, see

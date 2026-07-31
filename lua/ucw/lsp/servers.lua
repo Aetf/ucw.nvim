@@ -17,8 +17,11 @@
 return {
   lua_ls = { 'lua' },
 
-  -- Python is pyright (types) + ruff (lint); Phase 6 makes ruff the formatter too.
-  pyright = { 'python' },
+  -- Python is basedpyright (types) + ruff (lint); Phase 6 makes ruff the
+  -- formatter too. basedpyright rather than pyright: it is the actively
+  -- developed fork (more inference, baseline files, inlay hints) and Mason
+  -- installs it from PyPI, where pyright is an npm package.
+  basedpyright = { 'python' },
   ruff = { 'python' },
 
   texlab = { 'tex', 'plaintex', 'bib' },
@@ -34,6 +37,10 @@ return {
   marksman = { 'markdown', 'markdown.mdx' },
 
   taplo = { 'toml' },
+  -- jsonls is `vscode-json-language-server`, a Node script: it needs `node` on
+  -- PATH at *runtime*, not just to install. If it silently fails to attach,
+  -- check `~/.local/state/nvim/lsp.log` for `env: 'node': No such file or
+  -- directory` before suspecting anything here.
   jsonls = { 'json', 'jsonc' },
   clangd = { 'c', 'c.doxygen', 'cpp', 'cpp.doxygen', 'objc', 'objcpp', 'cuda' },
 

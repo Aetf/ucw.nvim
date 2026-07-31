@@ -270,13 +270,13 @@ T['capabilities']['blink and ufo both reach every server'] = function()
     eq(caps.textDocument.signatureHelp ~= nil, true)
 end
 
-T['capabilities']['pyright asks for client-side file watching'] = function()
+T['capabilities']['basedpyright asks for client-side file watching'] = function()
     load_lsp()
     -- measured: the global default is `false`, so this is a real change and not
     -- a restatement of what Neovim already advertises
     eq(child.lua_get([[vim.lsp.config['*'].capabilities.workspace.didChangeWatchedFiles.dynamicRegistration]]), false)
     eq(
-        child.lua_get([[vim.lsp.config['pyright'].capabilities.workspace.didChangeWatchedFiles.dynamicRegistration]]),
+        child.lua_get([[vim.lsp.config['basedpyright'].capabilities.workspace.didChangeWatchedFiles.dynamicRegistration]]),
         true
     )
 end

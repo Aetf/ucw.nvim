@@ -116,7 +116,7 @@ T['servers']['rust is left to rustaceanvim'] = function()
 end
 
 T['servers']['filetypes() is the sorted, deduplicated union'] = function()
-    -- pyright and ruff both claim `python`; it must appear once
+    -- basedpyright and ruff both claim `python`; it must appear once
     local fts = child.lua_get([[require('ucw.lsp').filetypes()]])
     local seen = {}
     for _, ft in ipairs(fts) do

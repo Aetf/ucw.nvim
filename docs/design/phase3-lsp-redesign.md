@@ -1,7 +1,9 @@
 # Phase 3 design: LSP subsystem redesign
 
-Status: **revision 2** — reviewed against the original 14 goals, corrected by a
-second round of measurements. Nothing implemented yet.
+Status: **revision 3 — implemented** (commit "Phase 3: replace the LSP hook
+framework with Neovim's native config layers"). Revision 2 reviewed the design
+against the original 14 goals; revision 3 folds back what building it actually
+taught, including two claims that only a real TUI could falsify.
 
 Goal 5 of the modernization ("redesign the LSP system"), plus the LSP half of
 goal 1 ("keep the systemd per-context loading idea"). This document records what
@@ -10,8 +12,11 @@ native LSP framework actually guarantees (also measured), and proposes a design
 that follows from those two.
 
 Revision 2 changed four load-bearing claims that revision 1 got wrong, and added
-the activation model, which revision 1 omitted entirely. Each is called out
-inline as **[r2]**.
+the activation model, which revision 1 omitted entirely. Revision 3 corrects the
+performance figures to as-built numbers, fixes an upstream-function-field survey
+that a source grep had gotten wrong, records where the attach handlers actually
+have to live, and swaps pyright for basedpyright. Each is called out inline as
+**[r2]** / **[r3]**.
 
 ---
 
@@ -163,16 +168,23 @@ Of nvim-lspconfig's 407 configs, 7 define `before_init`, 10 `on_init`, 25
 
 | server | upstream function fields |
 |---|---|
-| `lua_ls` | `on_init` |
-| `pyright` | `on_attach` |
+| `basedpyright` | `on_attach` |
 | `texlab` | `on_attach` |
-| `clangd` | `on_attach`, `on_init` |
-| `ruff` `ltex_plus` `marksman` `taplo` `jsonls` | none |
-| (`rust_analyzer`, not used) | `before_init`, `on_attach` |
+| `clangd` | `get_language_id`, `on_attach`, `on_init` |
+| `ltex_plus` | `get_language_id` |
+| `jsonls` | `cmd` (a function) |
+| `lua_ls` `ruff` `marksman` `taplo` | none |
+| (`rust_analyzer`, not used) | `before_init`, `on_attach`, `root_dir` |
+
+**[r3] Corrected**: revision 2 built this table by grepping nvim-lspconfig's
+sources and got `lua_ls` wrong — its `on_init` is an *example inside a
+docstring*. The only trustworthy method is to load the configs and check the
+type of each value, which is what the numbers above come from and what
+`tests/test_lsp.lua` does.
 
 So **no server we enable defines `before_init`**, and any design that puts a
 fan-out in `on_attach` or `on_init` at the `'*'` layer would be silently
-clobbered for `lua_ls`, `pyright`, `texlab` and `clangd`.
+clobbered for `basedpyright`, `texlab` and `clangd`.
 
 ### `before_init` timing, and what it cannot do
 
@@ -368,12 +380,13 @@ after/lsp/            -- per-server config; nvim discovers these natively.
   texlab.lua
   ltex_plus.lua
   marksman.lua
-  pyright.lua
+  basedpyright.lua
   clangd.lua
 lua/ucw/lsp/
   servers.lua         -- the single registration point: server -> filetypes
   init.lua            -- enable(), server_names(), filetypes()
-  attach.lua          -- LspAttach handlers, each guarded by supports_method
+  attach.lua          -- LspAttach handlers
+  actions.lua         -- LSP actions as data, bound by attach.lua + which-key
   vscode.lua          -- .vscode/settings.json, rewritten onto LspAttach
   ltex_dict.lua       -- ltex dictionary helpers
 ```
@@ -392,12 +405,12 @@ cannot be derived from the registry at that moment. One small table solves both:
 -- the runtimepath. tests/test_lsp.lua asserts it matches what nvim-lspconfig
 -- actually declares, so it cannot drift silently.
 return {
-  lua_ls    = { 'lua' },
-  pyright   = { 'python' },
-  ruff      = { 'python' },
-  texlab    = { 'tex', 'plaintex', 'bib' },
-  ltex_plus = { 'tex', 'bib', 'markdown', 'gitcommit' },
-  marksman  = { 'markdown', 'markdown.mdx' },
+  lua_ls       = { 'lua' },
+  basedpyright = { 'python' },
+  ruff         = { 'python' },
+  texlab       = { 'tex', 'plaintex', 'bib' },
+  ltex_plus    = { 'tex', 'plaintex', 'bib', 'markdown' },
+  marksman     = { 'markdown', 'markdown.mdx' },
   taplo     = { 'toml' },
   jsonls    = { 'json', 'jsonc' },
   clangd    = { 'c', 'cpp', 'objc', 'objcpp', 'cuda', 'proto' },
@@ -493,10 +506,10 @@ Nine servers. Rust is deliberately absent — rustaceanvim owns it.
 | server | `after/lsp/` file | content |
 |---|---|---|
 | `lua_ls` | yes | LuaJIT runtime, `vim` global, telemetry off; workspace library delegated to lazydev |
-| `pyright` | yes | `didChangeWatchedFiles.dynamicRegistration = true` — measured **not** covered by the global capabilities (`false`), so it is a real setting |
+| `basedpyright` | yes | `didChangeWatchedFiles.dynamicRegistration = true` — measured **not** covered by the global capabilities (`false`), so it is a real setting |
 | `ruff` | no | replaces pylsp. The registry has both `ruff` and the deprecated `ruff_lsp`; we use `ruff` |
 | `texlab` | yes | backward search, build/chktex/synctex settings (see the CHKTEXRC note below) |
-| `ltex_plus` | yes | dictionary machinery + the three `_ltex.*` entries in `commands` |
+| `ltex_plus` | yes | narrowed `filetypes`, `.obsidian` root marker, and the three `_ltex.*` entries in `commands` |
 | `marksman` | yes | `root_markers` extended for Obsidian (below) |
 | `taplo` | no | old module was already an empty stub |
 | `jsonls` | no | its only setting (`snippetSupport`) measures `true` already via blink's global capabilities — pure deletion |
@@ -505,9 +518,18 @@ Nine servers. Rust is deliberately absent — rustaceanvim owns it.
 Dropped: `pylsp` (superseded by ruff), `sumneko_lua` (renamed to `lua_ls`),
 `rust_analyzer` (rustaceanvim's), `zeta_note` (retired upstream).
 
-**Python ends up as pyright + ruff** — pyright for types, ruff for lint. That is
+**Python ends up as basedpyright + ruff** — one for types, one for lint. That is
 the current mainstream split and lines up with Phase 6, where ruff also becomes
 the formatter.
+
+**[r3] basedpyright rather than pyright.** It is the actively developed fork
+(more inference, baseline files, inlay hints), and — the reason it came up at
+all — Mason installs it from PyPI while `pyright` and `jsonls`
+(`vscode-langservers-extracted`) are npm packages. On this machine npm was
+unusable: node was installed but pinned in no mise config, so every shim failed
+with `No version is set for shim: npm`. That is fixed separately (a `node = "25"`
+pin in the dotfiles), so `jsonls` works too — but basedpyright is the better
+server regardless, so the swap stands on its own.
 
 #### `lua_ls` + lazydev.nvim — adopt
 
