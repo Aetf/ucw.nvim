@@ -9,6 +9,10 @@ were verification gaps and both pass. The design document is now at revision 4
 and carries the outcomes. This file is left as the point-in-time record of what
 the review found and how — deliberately not rewritten into the past tense.
 
+**Then a second round reviewed the fixes themselves, and found G1** — the same
+providers[2] trap as F1, one level further out, and the one that actually fires
+in daily use. See §5, appended at the end; the design document is at revision 5.
+
 **Verdict: do not accept as-is.** One confirmed regression (F1), two undeclared
 behaviour changes (F2, F3), one verification-plan item that was never reported
 (F4, now run — it passes), and a test-suite blind spot that lets F1 through
@@ -304,3 +308,78 @@ EOF
 chmod +x /tmp/nvim-firenvim
 UCW_TUI_NVIM=/tmp/nvim-firenvim scripts/tui-drive.sh start fixture.vim
 ```
+
+---
+
+## 5. Second round — reviewing the fixes (commit `e7b8cd3`)
+
+Appended, not merged into the sections above: §1-§4 are the record of reviewing
+`6aac305`, this is the record of reviewing what fixed it.
+
+The two behaviour decisions (S2 `virtual_lines`, S3 `<leader>lp`) re-check
+clean, `tests/test_diagnostics.lua` and the new fold cases assert what their
+comments claim, and `just all` is 81/81. One finding.
+
+### G1 — the selector ignores `buftype`, so `nofile` buffers hit F1's trap (blocker)
+
+F1 was fixed as *"a parser is not enough, it also needs a fold query"*. But the
+escaping-`providers[2]` exception is a **class**, not that one case, and the
+fix did not go back and ask who else raises. `ufo/provider/treesitter.lua:177`:
+
+```lua
+local bt = buf:buftype()
+if bt ~= '' and bt ~= 'acwrite' then
+    if bt == 'nofile' then
+        error('UfoFallbackException')     -- <- from providers[2], escapes
+    end
+    return
+end
+```
+
+and `ufo/provider/lsp/init.lua:48` rejects with the same exception for `nofile`,
+so providers[1] bails first and hands straight to the raise. `provider_selector`
+took `(_, filetype, _)` — the third parameter is `buftype`, and it was discarded.
+
+**Measured**, A/B in the real TUI on a scratch (`nofile`) `filetype=lua`
+buffer built the way a plugin builds one:
+
+| selector | providers | selected | folded lines | `:messages` |
+|---|---|---|---|---|
+| as fixed in `e7b8cd3` | `{'lsp','treesitter'}` | `nil` | 0 | `UnhandledPromiseRejection … treesitter.lua:177` |
+| pre-Phase-4 default | `{'lsp','indent'}` | `indent` | 6 | clean |
+
+Not a contrived buffer: ufo attaches on `BufWinEnter`, **floating windows
+included**. Measured on the real hover path —
+
+```lua
+vim.lsp.util.open_floating_preview({ '# Heading', '', 'some text' }, 'markdown', {})
+```
+
+— which is what `K` (`ucw.keys.actions.hoverK` → `vim.lsp.buf.hover`) ends up
+calling: the float is `nofile` with `filetype=markdown`, markdown has both a
+bundled parser and a `folds` query, so `has_parser` says yes and **every hover
+left a traceback in `:messages`**. Telescope-style preview buffers are the same
+shape, and they lose their folds as well.
+
+**Fixed** by gating on `buftype` first, which is also the rule ufo's own
+providers follow — only `''` and `'acwrite'` reach either provider's real code
+path, and for every other buftype the treesitter provider returns nothing at
+all, so `indent` is the only provider that can answer (and is what the
+pre-Phase-4 default gave them):
+
+```lua
+local function provider_selector(_, filetype, buftype)
+  if buftype ~= '' and buftype ~= 'acwrite' then
+    return { 'lsp', 'indent' }
+  end
+  return has_parser(filetype) and { 'lsp', 'treesitter' } or { 'lsp', 'indent' }
+end
+```
+
+Verified after the fix: the scratch buffer is back to `indent` with 6 folds, the
+hover float leaves `:messages` clean, and an ordinary `.lua` file still selects
+`lsp`/`treesitter`. Regression test in `tests/test_fold.lua` ("falls back to
+indent on a `nofile` buffer"), which asserts both halves of the symptom — the
+provider *and* the absence of `UnhandledPromiseRejection` in `:messages` —
+and was checked in reverse: drop the gate and exactly that case fails, with
+`selectedProvider` stuck at `none`. 82/82.

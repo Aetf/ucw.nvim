@@ -79,7 +79,20 @@ end
 -- Preferring treesitter also makes the two halves of this config agree: a
 -- buffer without LSP now folds by treesitter here *and* in firenvim/vscode,
 -- where folds come from `vim.treesitter.foldexpr()` (see ucw.options).
-local function provider_selector(_, filetype, _)
+--
+-- The buftype gate is the same providers[2] trap as the fold query above, found
+-- the same way and one level further out: ufo's treesitter provider raises
+-- UfoFallbackException for `nofile` too, and its LSP provider rejects with the
+-- same exception for `nofile`, so both bail and the raise escapes. ufo attaches
+-- on BufWinEnter, floating windows included, so this fired on every `K` - the
+-- hover float is `nofile` with `filetype=markdown`, which does have a parser and
+-- a fold query. Only '' and 'acwrite' reach either provider's real code path;
+-- for every other buftype treesitter returns nothing at all, so indent is the
+-- only provider that can answer, which is also what the pre-Phase-4 default did.
+local function provider_selector(_, filetype, buftype)
+  if buftype ~= '' and buftype ~= 'acwrite' then
+    return { 'lsp', 'indent' }
+  end
   return has_parser(filetype) and { 'lsp', 'treesitter' } or { 'lsp', 'indent' }
 end
 

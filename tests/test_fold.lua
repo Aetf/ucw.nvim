@@ -68,6 +68,22 @@ local vim_fixture = {
     'endfunction',
 }
 
+-- Indent-foldable Lua: a bundled parser *and* a `folds` query, so nothing about
+-- the language keeps ufo's treesitter provider away from it.
+local lua_fixture = {
+    'local function outer()',
+    '  local t = {',
+    '    a = 1,',
+    '    b = 2,',
+    '  }',
+    '  return t',
+    'end',
+    '',
+    'local function second()',
+    '  return 42',
+    'end',
+}
+
 -- A file Neovim detects as `help` from its modeline. `buftype` stays empty
 -- because it is an ordinary file, not `:help` - which matters: both ufo
 -- providers bail early on a `help` buftype, so only this shape reaches the
@@ -207,6 +223,37 @@ T['provider selection']['uses the LSP provider when the server advertises foldin
     -- The server's ranges, not treesitter's - which would have nested the `if`
     -- block and folded the second function too.
     eq(fold_levels(11), '0 1 1 1 1 0 0 0 0 0 0')
+end
+
+-- The same providers[2] escape as the fold-query case above, one level further
+-- out, and the one that actually fires in daily use: ufo's treesitter provider
+-- raises UfoFallbackException on a `nofile` buffer too, and its LSP provider
+-- rejects with the same exception, so nothing is left to catch it. ufo attaches
+-- on BufWinEnter and that includes floating windows, so every `K` hit this - the
+-- hover float is `nofile` with `filetype=markdown`, a language that does have a
+-- parser and a fold query, so `has_parser` alone happily picked treesitter.
+T['provider selection']['falls back to indent on a nofile buffer'] = function()
+    -- Built the way a plugin builds one: scratch (so `buftype` is `nofile` from
+    -- birth, before ufo caches it) with a filetype, then displayed.
+    child.lua([[
+        local buf = vim.api.nvim_create_buf(false, true)
+        vim.api.nvim_buf_set_lines(buf, 0, -1, false, ...)
+        vim.bo[buf].filetype = 'lua'
+        vim.api.nvim_set_current_buf(buf)
+    ]], { lua_fixture })
+    eq(child.lua_get([[vim.bo.buftype]]), 'nofile')
+    -- `lua` clears `has_parser` on both counts, so only the buftype gate can
+    -- keep treesitter out of providers[2] here.
+    eq(child.lua_get([[vim.treesitter.language.add('lua') == true]]), true)
+    eq(child.lua_get([[#vim.treesitter.query.get_files('lua', 'folds') > 0]]), true)
+
+    eq(wait_for_provider(), 'indent')
+    eq(any_line_folded(), true)
+    -- The other half of the symptom, and the only half a user without folds in
+    -- a scratch buffer would ever notice.
+    eq(child.lua_get([[
+        vim.api.nvim_exec2('messages', { output = true }).output
+          :find('UnhandledPromiseRejection') ~= nil]]), false)
 end
 
 T['full UI'] = new_set()

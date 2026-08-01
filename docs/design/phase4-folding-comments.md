@@ -1,11 +1,18 @@
 # Phase 4 design: folding, commenting, diagnostic rendering
 
-Status: **revision 4 — implemented, reviewed, corrected.**
+Status: **revision 5 — implemented, reviewed twice, corrected.**
 
 Revision 4 folds in `phase4-acceptance-review.md`: one confirmed regression in
 the provider selector (§3.3 step 4 / §7), the two undeclared behaviour changes
 it turned up (now S2 and S3 in §4), and the two verification-plan items that
 r3 never reported on (§6a).
+
+Revision 5 folds in that review's §5, which reviewed the r4 fixes themselves
+and found one more (G1): the same escaping-`providers[2]` exception as r4's,
+reached through `buftype` instead of a missing fold query, and firing on every
+`K` — see §3.3 step 4 and §7. The lesson is in §7: r4 fixed *a case* of that
+exception rather than *the class*, so the second occurrence was still open with
+a full green suite.
 
 Revision 2 recorded the three decisions taken after reviewing r1 (keep
 `nvim-ufo`; core `gc`; keep `vim-fold-cycle`), and answered two questions r1
@@ -380,6 +387,16 @@ Concretely:
    escapes the promise chain. The buffer gets no folds at all plus an
    `UnhandledPromiseRejection` in `:messages`. `has_parser` has to test
    `#vim.treesitter.query.get_files(lang, 'folds') > 0` as well. See §7.
+
+   **r5 correction — the third parameter is load-bearing too.** That same
+   exception escapes for `buftype == 'nofile'`, where *both* providers raise it
+   (`provider/treesitter.lua:177`, `provider/lsp/init.lua:48`), and the selector
+   was discarding `buftype` as `_`. ufo attaches on `BufWinEnter`, floating
+   windows included, so this fired on every `K`: the hover float is `nofile`
+   with `filetype=markdown`, which has both a parser and a fold query. The
+   selector now gates on `buftype` first — only `''` and `'acwrite'` reach
+   either provider's real code path, so everything else gets `indent`, which is
+   what the pre-Phase-4 default gave them anyway. See §7.
 5. **Delete the `InsertNoFold` autocmd** (`options.lua:63-81`) — §1.2: it is
    an identity operation under ufo and it cannot influence what ufo does. The
    `normal! zv` on `InsertLeave` can be kept as a one-line autocmd if you want
@@ -602,6 +619,19 @@ Two things worth recording from building it:
   `openscad` ship a parser and no fold query. Fixed in r4; the lesson is that
   "does the provider *work* here" is the question, and a parser was only a
   proxy for it.
+
+  **And it happened a second time, because r4 fixed the case instead of the
+  class.** Nothing raises `UfoFallbackException` *only* over a missing fold
+  query: `buftype == 'nofile'` raises it too, from both providers, and the
+  selector was ignoring `buftype` entirely. Since ufo attaches on
+  `BufWinEnter` — floating windows included — the `nofile`, `filetype=markdown`
+  hover float meant **every `K` printed a traceback**, which the r4 review had
+  not thought to look for because it was hunting fold *content*, not noise.
+  Fixed in r5 by gating on `buftype` before anything else. The general lesson,
+  now twice: when a dependency's error escapes because of *where the call sits*
+  (`providers[2]` has no catcher), enumerate every path that raises it — fixing
+  one of them tells you nothing about the others, and the test suite stays green
+  either way.
 * **Fold state is window-local and order-dependent.** Moving settings between
   files changes *when* they run relative to plugin `config` functions. The
   embedded contexts are the blind spot; cover them with explicit assertions
