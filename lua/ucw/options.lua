@@ -45,36 +45,45 @@ vim.opt.list = true
 vim.opt.listchars = 'tab:  ⇥,trail:␣,nbsp:☠'
 
 -- folding
+--
+-- Which engine provides folds depends on the context, and this is the only
+-- place that branch is stated:
+--
+--   * full UI (tui/gui) -> nvim-ufo, which owns 'foldmethod', 'foldexpr',
+--     'foldlevel' and 'foldtext' itself. See lua/ucw/plugins/ufo.lua.
+--   * firenvim/vscode   -> ufo is not loaded (`cond = is_full_ui`), so folds
+--     come from Neovim's native treesitter foldexpr, set below.
+--
+-- Before Phase 4 the second case was served by a `foldmethod`/`foldexpr` pair
+-- in treesitter.lua that only ever reached those contexts *because* ufo
+-- happened not to load and overwrite it - accident rather than design.
+--
 -- show a column of fold marker
 vim.opt.foldcolumn = '1'
--- fold level higher than this will be closed by default
-vim.opt.foldlevel = 1
 -- minimum lines to fold
 vim.opt.foldminlines = 3
--- unfolds the line in which the cursor is located when opening a file
-au.group('OpenFoldOnEnter', {
+if not require('ucw.targets').is_full_ui() then
+  vim.opt.foldmethod = 'expr'
+  vim.opt.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+  -- These contexts have a cramped layout (a browser textarea, a VSCode editor
+  -- pane), so opening files mostly folded is the useful default there. The
+  -- full UI gets ufo's `foldlevel = 99` instead, which is a requirement of
+  -- ufo's manual-fold model rather than a preference - see ufo.lua.
+  vim.opt.foldlevel = 1
+end
+-- Unfold the line the cursor lands on, when opening a file and when leaving
+-- insert mode. Only does anything where 'foldlevel' is low enough for folds to
+-- be closed in the first place, i.e. the embedded contexts above.
+--
+-- This used to be paired with an `InsertEnter` handler that forced
+-- `foldmethod=manual` for the duration of insert mode - a real trick for expr
+-- folds, but a measured no-op under ufo, which sets `foldmethod=manual` itself
+-- and recomputes folds from its own async provider rather than from 'foldexpr'.
+-- Removed in Phase 4; see docs/design/phase4-folding-comments.md §1.2.
+au.group('UnfoldCursorLine', {
   {
-    'BufWinEnter', '*',
+    { 'BufWinEnter', 'InsertLeave' }, '*',
     function()
-      vim.cmd [[normal! zv]]
-    end
-  }
-})
--- disable folding while in insert mode, to avoid sudden jumps
-au.group('InsertNoFold', {
-  {
-    'InsertEnter', '*',
-    function()
-      vim.w.oldfdm = vim.wo.foldmethod
-      vim.wo.foldmethod = 'manual'
-    end
-  },
-  {
-    'InsertLeave', '*',
-    function()
-      if vim.w.oldfdm then
-        vim.wo.foldmethod = vim.w.oldfdm
-      end
       vim.cmd [[normal! zv]]
     end
   },
@@ -169,6 +178,16 @@ vim.diagnostic.config {
     source = 'if_many',
     prefix = '●',
     --prefix = 'Hahaha:',
+  },
+  -- Full diagnostic text under the cursor's line only, toggled by `<leader>lp`
+  -- (ucw.keys.actions.toggle_virtual_lines).
+  --
+  -- This used to be lsp_lines.nvim, which replaced core's `virtual_lines`
+  -- handler with its own. Core absorbed the same rendering (measured: same
+  -- box drawing, same multi-line indentation), so the plugin is gone. Note the
+  -- option is `current_line`; lsp_lines called it `only_current_line`.
+  virtual_lines = {
+    current_line = true,
   },
   -- display higher severity signs over lower ones
   severity_sort = true,

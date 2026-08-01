@@ -46,6 +46,18 @@ map('n', 'gE', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_
 -- folding and lsp
 vim.keymap.set('n', 'K', actions.hoverK, { desc = "Hover over symbol", silent = true })
 
+-- Commenting is Neovim's own since 0.10: `gc` (operator + textobject) and `gcc`
+-- (line, honours a count), with 'commentstring' resolved through treesitter
+-- including injected languages. That is exactly what Comment.nvim +
+-- nvim-ts-context-commentstring provided here, so both were dropped in Phase 4;
+-- all that needs config is the editor-style shortcut for the common case.
+if require('ucw.utils').is_gui() then
+  map('n', '<c-/>', 'gcc', { noremap = false })
+else
+  -- this is actually Ctrl + /, but in a terminal nvim sees it as <c-_>
+  map('n', '<c-_>', 'gcc', { noremap = false })
+end
+
 -- common pairs
 vim.keymap.set('n', ']q', [[<cmd>cnext<cr>]])
 vim.keymap.set('n', '[q', [[<cmd>cprevious<cr>]])

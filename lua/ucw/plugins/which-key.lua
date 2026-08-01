@@ -48,6 +48,15 @@ local function config()
     lsp_actions.wk('<leader>lR', 'rename'),
     lsp_actions.wk('<leader>l<CR>', 'codelens_run'),
     lsp_actions.wk('<leader>lI', 'toggle_inlay_hint'),
+    -- Not an `ucw.lsp.actions` entry: this is diagnostic *rendering*, not a
+    -- per-client request, and it has no bare-`g` counterpart. It used to be
+    -- defined by the lsp_lines.nvim spec, which Phase 4 deleted in favour of
+    -- core's `virtual_lines` handler.
+    {
+      '<leader>lp',
+      require('ucw.keys.actions').toggle_virtual_lines,
+      desc = 'Toggle diagnostic virtual lines',
+    },
   }
 
   -- Goto prev/next diag warning/error

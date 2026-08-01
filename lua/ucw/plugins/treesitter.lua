@@ -95,8 +95,13 @@ return {
       end,
     })
 
-    -- highlighting, folding, indentation are all natively provided by
-    -- Neovim/this plugin now - just need to opt in per-buffer
+    -- highlighting and indentation are natively provided by Neovim/this plugin
+    -- now - just need to opt in per-buffer.
+    --
+    -- Folding is deliberately *not* set here. It was overwritten per-window by
+    -- nvim-ufo in the full UI anyway, so this spec was a second, invisible
+    -- source of fold state; the embedded contexts only got their folds from it
+    -- by accident. Fold policy lives in ucw.options and ucw.plugins.ufo now.
     vim.api.nvim_create_autocmd('FileType', {
       callback = function(args)
         pcall(vim.treesitter.start, args.buf)
@@ -105,7 +110,5 @@ return {
         end)
       end,
     })
-    vim.opt.foldmethod = 'expr'
-    vim.opt.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
   end,
 }
