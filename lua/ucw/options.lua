@@ -1,5 +1,6 @@
 local au = require('au')
 local utils = require('ucw.utils')
+local targets = require('ucw.targets')
 
 -- UI elements
 vim.opt.number = true
@@ -62,7 +63,7 @@ vim.opt.listchars = 'tab:  ⇥,trail:␣,nbsp:☠'
 vim.opt.foldcolumn = '1'
 -- minimum lines to fold
 vim.opt.foldminlines = 3
-if not require('ucw.targets').is_full_ui() then
+if not targets.is_full_ui() then
   vim.opt.foldmethod = 'expr'
   vim.opt.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
   -- These contexts have a cramped layout (a browser textarea, a VSCode editor
@@ -186,9 +187,12 @@ vim.diagnostic.config {
   -- handler with its own. Core absorbed the same rendering (measured: same
   -- box drawing, same multi-line indentation), so the plugin is gone. Note the
   -- option is `current_line`; lsp_lines called it `only_current_line`.
-  virtual_lines = {
-    current_line = true,
-  },
+  --
+  -- Off in the embedded contexts, the same branch (and the same reason) as
+  -- 'foldlevel' above: a browser textarea or a VSCode editor pane cannot spare
+  -- two or three lines under the cursor. lsp_lines was `cond = is_full_ui`, so
+  -- this is where that condition went rather than a new restriction.
+  virtual_lines = targets.is_full_ui() and { current_line = true } or false,
   -- display higher severity signs over lower ones
   severity_sort = true,
 }

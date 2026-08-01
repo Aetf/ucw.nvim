@@ -33,16 +33,39 @@ local function ufo_color()
   utils.highlight.UfoFoldedBg = 'IncSearch'
 end
 
--- Does this filetype have a treesitter parser that can actually be loaded?
+-- Can ufo's treesitter provider actually fold this filetype?
 --
--- Deliberately not "is it listed in treesitter.lua's `ensure_installed`": a
--- parser listed there is not necessarily compiled (this machine has no
--- `tree-sitter` CLI, so only Neovim's bundled parsers exist). Claiming
--- treesitter folds for a language whose parser is missing would leave the
--- buffer with no folds at all, since ufo only consults two providers.
+-- Two things have to hold, and both are checked against the running Neovim
+-- rather than against a list:
+--
+-- 1. A parser must load. Deliberately not "is it listed in treesitter.lua's
+--    `ensure_installed`": a parser listed there is not necessarily compiled
+--    (this machine has no `tree-sitter` CLI, so only Neovim's bundled parsers
+--    exist). Note `language.add` returns `nil, err` instead of raising, so the
+--    return value is what has to be tested - a `pcall` around it always
+--    succeeds.
+-- 2. A `folds` query must exist. `ufo/provider/treesitter.lua` raises
+--    UfoFallbackException without one, and that exception has nowhere to go:
+--    ufo consults exactly two providers, and a raise from the *second* one
+--    escapes the whole promise chain (`ufo/provider/init.lua` calls the
+--    fallback inside the main provider's rejection handler, unguarded). The
+--    buffer ends up with no folds at all and an UnhandledPromiseRejection in
+--    `:messages`.
+--
+-- Getting (2) wrong is not hypothetical: `vimdoc` is one of the parsers
+-- bundled with Neovim and ships no `folds.scm`, so editing any plugin's
+-- `doc/*.txt` hit exactly this. Of the languages in `ensure_installed`,
+-- dockerfile, json5, llvm, pug, rst and openscad are in the same position.
+--
+-- This looks at the host language only. ufo raises only when *no* tree in the
+-- buffer has a fold query, so a host language without one whose injections
+-- have one would still fold; those pick `indent` here instead.
 local function has_parser(filetype)
   local lang = vim.treesitter.language.get_lang(filetype)
-  return lang ~= nil and vim.treesitter.language.add(lang) == true
+  if lang == nil or vim.treesitter.language.add(lang) ~= true then
+    return false
+  end
+  return #vim.treesitter.query.get_files(lang, 'folds') > 0
 end
 
 -- ufo's default is `{'lsp', 'indent'}` (ufo/fold/manager.lua), and it only ever

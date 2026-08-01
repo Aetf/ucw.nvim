@@ -68,6 +68,72 @@ local vim_fixture = {
     'endfunction',
 }
 
+-- A file Neovim detects as `help` from its modeline. `buftype` stays empty
+-- because it is an ordinary file, not `:help` - which matters: both ufo
+-- providers bail early on a `help` buftype, so only this shape reaches the
+-- selector. `vimdoc` is one of the seven parsers bundled with Neovim, and
+-- there is no `vimdoc/folds.scm` anywhere, which is the combination that broke.
+local help_fixture = {
+    '*fixture.txt*',
+    '',
+    '==============================================================================',
+    'INTRO                                                        *fixture-intro*',
+    '',
+    'Some text',
+    '  indented a',
+    '  indented b',
+    '',
+    'More text',
+    '  indented c',
+    '  indented d',
+    '',
+    ' vim:tw=78:ts=8:ft=help:norl:',
+}
+
+-- An in-process language server that advertises folding and answers with fixed
+-- ranges, the same trick tests/test_lsp.lua uses: `cmd` may be a function
+-- returning an RPC object, so this needs no binary and no subprocess. The test
+-- child has a scratch XDG_DATA_HOME, so no real server is installed in it.
+local FAKE_FOLDING_SERVER = [[
+  function _G.new_folding_server(ranges)
+    return function(dispatchers)
+      local closing, id = false, 0
+      return {
+        request = function(method, _, callback)
+          id = id + 1
+          if method == 'initialize' then
+            callback(nil, {
+              capabilities = { foldingRangeProvider = true },
+              serverInfo = { name = 'fake-folding' },
+            })
+          elseif method == 'textDocument/foldingRange' then
+            callback(nil, ranges)
+          else
+            callback(nil, nil)
+          end
+          return true, id
+        end,
+        notify = function(method)
+          if method == 'exit' then dispatchers.on_exit(0, 15) end
+          return true
+        end,
+        is_closing = function() return closing end,
+        terminate = function() closing = true end,
+      }
+    end
+  end
+]]
+
+local function any_line_folded()
+    return child.lua_get([[
+        (function()
+          for i = 1, vim.api.nvim_buf_line_count(0) do
+            if vim.fn.foldlevel(i) > 0 then return true end
+          end
+          return false
+        end)()]])
+end
+
 T['provider selection'] = new_set()
 
 T['provider selection']['prefers treesitter over indent when a parser exists'] = function()
@@ -102,6 +168,47 @@ T['provider selection']['falls back to indent with no parser and no LSP'] = func
     eq(child.lua_get([[vim.fn.foldlevel(2) > 0]]), true)
 end
 
+-- The case the first version of `has_parser` got wrong. A loadable parser is
+-- not enough: ufo's treesitter provider raises UfoFallbackException when the
+-- language has no `folds` query, and since it sits in providers[2] there is
+-- nothing left to fall back to - the buffer got no folds at all, plus an
+-- UnhandledPromiseRejection. Indent folds are the right answer here.
+T['provider selection']['falls back to indent when the parser has no fold query'] = function()
+    open_fixture('.txt', help_fixture)
+    eq(child.lua_get([[vim.bo.filetype]]), 'help')
+    -- not `:help`, an ordinary file - otherwise both providers bail on buftype
+    eq(child.lua_get([[vim.bo.buftype]]), '')
+
+    -- The two halves `has_parser` has to check, asserted separately so a
+    -- failure says which one moved.
+    eq(child.lua_get([[vim.treesitter.language.add('vimdoc') == true]]), true)
+    eq(child.lua_get([[#vim.treesitter.query.get_files('vimdoc', 'folds')]]), 0)
+
+    eq(wait_for_provider(), 'indent')
+    eq(any_line_folded(), true)
+end
+
+-- The path most buffers actually take, and the one with no coverage at all
+-- before: a server that advertises `foldingRangeProvider` wins over both.
+T['provider selection']['uses the LSP provider when the server advertises folding'] = function()
+    open_fixture('.vim', vim_fixture)
+    child.lua(FAKE_FOLDING_SERVER)
+    child.lua([[
+        vim.lsp.start({
+          name = 'fake-folding',
+          cmd = _G.new_folding_server({
+            -- LSP folding ranges are 0-based and end-inclusive: lines 2-5.
+            { startLine = 1, endLine = 4 },
+          }),
+        }, { bufnr = 0 })
+    ]])
+
+    eq(wait_for_provider(), 'lsp')
+    -- The server's ranges, not treesitter's - which would have nested the `if`
+    -- block and folded the second function too.
+    eq(fold_levels(11), '0 1 1 1 1 0 0 0 0 0 0')
+end
+
 T['full UI'] = new_set()
 
 T['full UI']['ufo owns the fold options'] = function()
@@ -112,6 +219,42 @@ T['full UI']['ufo owns the fold options'] = function()
     -- has to be 99 - see lua/ucw/plugins/ufo.lua.
     eq(child.lua_get([[vim.wo.foldmethod]]), 'manual')
     eq(child.lua_get([[vim.wo.foldlevel]]), 99)
+end
+
+-- D1 kept ufo for exactly two things core has no answer for. Both live in the
+-- UI layer, so neither shows up in buffer state - they have to be read off the
+-- rendered screen, or they can break under an ufo bump with every other
+-- assertion in this file still green.
+T['full UI']['renders the line count in fold text, and peeks on K'] = function()
+    open_fixture('.vim', vim_fixture)
+    wait_for_provider()
+    -- 'foldlevel' is 99, so nothing is closed until asked.
+    child.cmd('normal! 1Gzc')
+    eq(child.lua_get([[vim.fn.foldclosed(1)]]), 1)
+
+    local row
+    for _, line in ipairs(child.get_screenshot().text) do
+        local text = table.concat(line)
+        if text:find('function! Foo') then
+            row = text
+            break
+        end
+    end
+    eq(row ~= nil, true)
+    -- `fold_virt_text_handler` appends `  <folded lines> `; the fold spans
+    -- lines 1-6, so the count is 5.
+    eq(row:match('(%d+)%s*$'), '5')
+
+    -- `K` is `ucw.keys.actions.hoverK`: ufo's peek first, LSP hover second.
+    -- `:normal` without `!` so this goes through the mapping.
+    child.cmd('normal K')
+    eq(child.lua_get([[
+        (function()
+          for _, win in ipairs(vim.api.nvim_list_wins()) do
+            if vim.api.nvim_win_get_config(win).relative ~= '' then return true end
+          end
+          return false
+        end)()]]), true)
 end
 
 T['full UI']['nothing sets a global foldexpr behind ufo'] = function()

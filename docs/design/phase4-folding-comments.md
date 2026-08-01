@@ -1,6 +1,11 @@
 # Phase 4 design: folding, commenting, diagnostic rendering
 
-Status: **revision 3 — implemented.**
+Status: **revision 4 — implemented, reviewed, corrected.**
+
+Revision 4 folds in `phase4-acceptance-review.md`: one confirmed regression in
+the provider selector (§3.3 step 4 / §7), the two undeclared behaviour changes
+it turned up (now S2 and S3 in §4), and the two verification-plan items that
+r3 never reported on (§6a).
 
 Revision 2 recorded the three decisions taken after reviewing r1 (keep
 `nvim-ufo`; core `gc`; keep `vim-fold-cycle`), and answered two questions r1
@@ -366,6 +371,15 @@ Concretely:
    it stays correct as parsers get installed — note this machine currently has
    only the 7 bundled parsers, so a naive filetype list would be wrong here in
    a way that would not show up until the `tree-sitter` CLI exists.
+
+   **r4 correction — this is half a check.** A loadable parser is not
+   sufficient: ufo's treesitter provider raises `UfoFallbackException` when the
+   language has no `folds` query, and since it sits in `providers[2]` there is
+   nowhere left to fall back to — `ufo/provider/init.lua` calls the fallback
+   *inside* the main provider's rejection handler, unguarded, so the exception
+   escapes the promise chain. The buffer gets no folds at all plus an
+   `UnhandledPromiseRejection` in `:messages`. `has_parser` has to test
+   `#vim.treesitter.query.get_files(lang, 'folds') > 0` as well. See §7.
 5. **Delete the `InsertNoFold` autocmd** (`options.lua:63-81`) — §1.2: it is
    an identity operation under ufo and it cannot influence what ufo does. The
    `normal! zv` on `InsertLeave` can be kept as a one-line autocmd if you want
@@ -417,6 +431,19 @@ measured), and `treesitter.lua` stops setting fold options (§3.3 step 1).
   editor pane), so opening files mostly folded is the useful default there.
   This is the first time that value is a stated choice rather than a line in
   `options.lua` that survived only where ufo did not load.
+
+Taken in r4, both flagged by the acceptance review as changes that happened
+without being decided:
+
+* **S2 — `virtual_lines` in firenvim/vscode: off.** `lsp_lines.nvim` was
+  `cond = is_full_ui`; moving its default into `ucw.options` (§3.2) quietly
+  widened it to every context. Same reasoning as S1: those layouts cannot
+  spare two or three lines under the cursor. The branch now sits next to the
+  fold branch, in the same `is_full_ui()` shape.
+* **S3 — `<leader>lp` modes: normal + visual.** The deleted spec bound it with
+  `vim.keymap.set('', …)` — normal, visual/select and operator-pending. The
+  which-key entry that replaced it defaulted to normal only. Operator-pending
+  is meaningless for a toggle; the other two are restored.
 
 Nothing open.
 
@@ -510,13 +537,33 @@ All measured in a real TUI or a real headless boot, not inferred:
 | `<c-_>` → `gcc` | mapped; `gcc` resolves to `vim/_core/defaults`, not a plugin |
 | `virtual_lines` handler | `$VIMRUNTIME/lua/vim/diagnostic.lua`, config `{ current_line = true }` |
 | `<leader>lp` | toggles off and back on, rendering matches the old plugin |
-| `just unit` / `just int` | 28 + 45 cases, 0 failures |
+| `just unit` / `just int` | 28 + 53 cases, 0 failures |
 
-New tests: `tests/test_fold.lua` (6 cases — provider selection per buffer kind,
-ufo's ownership of the fold options, no global `foldexpr`, and the
-firenvim/vscode branch) and `tests/test_comment.lua` (6 cases — injected
+Added in r4, after the acceptance review:
+
+| Check | Result |
+|---|---|
+| Provider on a buffer whose parser has **no fold query** (`ft=help`, `buftype=''` — `vimdoc` is bundled, ships no `folds.scm`) | **was broken**: `{'lsp','treesitter'}`, no provider settled, 0 folds, `UnhandledPromiseRejection` in `:messages`. Fixed: `{'lsp','indent'}`, selected **indent**, 5/21 lines folded |
+| Provider with a server advertising `foldingRangeProvider` (in-process fake) | selected **lsp**, and the ranges applied are the server's |
+| ufo fold text on screen, real TUI | the `  5` line count renders on the closed fold line |
+| `K` on a closed fold | ufo's peek float opens, through the `hoverK` mapping |
+| `<CR>` / `<BS>` (vim-fold-cycle) on **expr** folds — §5 item 3, never run in r3 | works: `<CR>` opens the nested fold, again cycles round and closes the outer one, `<BS>` reverses it. D3 holds on both fold engines |
+| `gc` as a **textobject** — §5 item 6, never run in r3 | `dgc` deletes exactly the comment block; `gcap` comments a paragraph |
+| `virtual_lines` in a firenvim boot (S2) | `false`, with `foldmethod=expr` / `foldlevel=1` unchanged |
+| `<leader>lp` modes (S3) | bound in `n` and `v` |
+
+New tests: `tests/test_fold.lua` (9 cases — provider selection per buffer kind
+including the missing-fold-query case and the LSP case, ufo's ownership of the
+fold options, the fold text and peek popup on screen, no global `foldexpr`, and
+the firenvim/vscode branch), `tests/test_comment.lua` (6 cases — injected
 commentstring, buffer commentstring, count, visual operator, the `<c-_>`
-shortcut, and that neither comment plugin is installed any more).
+shortcut, and that neither comment plugin is installed any more) and
+`tests/test_diagnostics.lua` (5 cases — the default, that the handler is core's,
+S2, the toggle in both directions, and S3).
+
+Each of the three r4 fixes was checked the other way round as well: with the fix
+reverted, exactly its own test fails and nothing else does. r3's tests passed
+either way, which is how the provider bug shipped.
 
 Two things worth recording from building it:
 
@@ -544,6 +591,17 @@ Two things worth recording from building it:
   buffers that have no parser, and ufo would fall through to nothing rather
   than to indent. Verify with a filetype that has an entry in
   `ensure_installed` but no compiled parser — that is most of them here.
+
+  **This risk was right about the direction and wrong about the failure mode,
+  and it happened.** The check written from it tested the parser and shipped;
+  what actually bites is a missing *fold query*. `vimdoc` is bundled with
+  Neovim and has no `folds.scm`, so `has_parser('help')` was true on a machine
+  with no `tree-sitter` CLI at all, and editing any plugin's `doc/*.txt` lost
+  its folds. Once parsers are installed it widens: of the 47 languages in
+  `ensure_installed`, `dockerfile`, `json5`, `llvm`, `pug`, `rst`, `vimdoc` and
+  `openscad` ship a parser and no fold query. Fixed in r4; the lesson is that
+  "does the provider *work* here" is the question, and a parser was only a
+  proxy for it.
 * **Fold state is window-local and order-dependent.** Moving settings between
   files changes *when* they run relative to plugin `config` functions. The
   embedded contexts are the blind spot; cover them with explicit assertions

@@ -56,6 +56,10 @@ local function config()
       '<leader>lp',
       require('ucw.keys.actions').toggle_virtual_lines,
       desc = 'Toggle diagnostic virtual lines',
+      -- lsp_lines bound this with `vim.keymap.set('', ...)`, i.e. normal +
+      -- visual/select + operator-pending; which-key defaults to normal only.
+      -- Operator-pending is meaningless for a toggle, the other two are not.
+      mode = { 'n', 'v' },
     },
   }
 

@@ -4,6 +4,11 @@ Reviewed: commit `6aac305` ("Phase 4: give folding one owner, and drop three
 plugins for core equivalents") against `docs/design/phase4-folding-comments.md`
 (r3) and the plan file's Phase 4 section.
 
+**Resolved.** F1, F2, F3 and F5 are fixed in the follow-up commit; F4 and F6
+were verification gaps and both pass. The design document is now at revision 4
+and carries the outcomes. This file is left as the point-in-time record of what
+the review found and how — deliberately not rewritten into the past tense.
+
 **Verdict: do not accept as-is.** One confirmed regression (F1), two undeclared
 behaviour changes (F2, F3), one verification-plan item that was never reported
 (F4, now run — it passes), and a test-suite blind spot that lets F1 through
