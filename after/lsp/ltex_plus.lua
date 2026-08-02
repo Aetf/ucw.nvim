@@ -8,8 +8,10 @@
 --
 -- `commands` is a table field of vim.lsp.ClientConfig
 -- (runtime/lua/vim/lsp/client.lua:72), so the three off-spec `_ltex.*` handlers
--- are plain data - no `on_init` hook needed. Dictionary loading rides on
--- LspAttach, see lua/ucw/lsp/ltex_dict.lua.
+-- are plain data - no `on_init` hook needed. Those handlers only *write* the
+-- dictionary files; reading them back is `ucw.lsp.vscode`'s job, because
+-- `<root>/.vscode/ltex.<key>.<lang>.txt` is a `.vscode` setting like any other
+-- (docs/design/phase3-settings-composition.md).
 local ltex_dict = require('ucw.lsp.ltex_dict')
 
 return {

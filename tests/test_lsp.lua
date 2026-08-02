@@ -480,12 +480,152 @@ T['vscode settings']['single-file clients are left alone'] = function()
     )
 end
 
--- Two modules write `client.settings`: this one, from a snapshot taken at
--- attach, and `ucw.lsp.ltex_dict`, later and on top. Recomputing from the
--- snapshot therefore used to throw the dictionaries away on every reload
--- (acceptance review P2) - and the two files live in the same `.vscode/`
--- directory by design, so they co-occur in exactly the projects that care.
-T['vscode settings']['a reload keeps what ltex_dict added on top'] = function()
+-- The number of `didChangeConfiguration` notifications is part of the contract,
+-- not an implementation detail: each one makes a pull-model server re-read its
+-- config and re-check every open document, and the announce-and-re-apply design
+-- this replaced sent up to four of them to open one file (measured - see
+-- docs/design/phase3-settings-composition.md §1).
+T['vscode settings']['each change is pushed exactly once'] = function()
+    local root = child.lua_get([[
+        (function()
+          local dir = vim.fn.tempname()
+          vim.fn.mkdir(dir .. '/.vscode', 'p')
+          vim.fn.writefile({ '{ "probe.value": 1 }' }, dir .. '/.vscode/settings.json')
+          vim.g.__root = dir
+          return dir
+        end)()
+    ]])
+
+    local id = start_fake('faketest', '{}', root)
+    local function pushes()
+        return child.lua_get([[
+            (function()
+              local n = 0
+              for _, note in ipairs(_G.fake_notifications) do
+                if note.method == 'workspace/didChangeConfiguration' then n = n + 1 end
+              end
+              return n
+            end)()
+        ]])
+    end
+    eq(pushes(), 1)
+
+    child.lua(([[
+        vim.fn.writefile({ '{ "probe.value": 2 }' }, vim.g.__root .. '/.vscode/settings.json')
+        _G.reloaded = vim.wait(10000, function()
+          return vim.lsp.get_client_by_id(%d).settings.probe.value == 2
+        end, 100)
+    ]]):format(id))
+    eq(child.lua_get([[_G.reloaded]]), true)
+    eq(pushes(), 2)
+end
+
+-- A workspace with nothing to say must say nothing. Before the push-when-changed
+-- guard, attaching pushed unconditionally, so every client in every project got
+-- woken up for a `.vscode/` that does not exist.
+T['vscode settings']['a workspace with no .vscode is silent'] = function()
+    local root = child.lua_get([[
+        (function()
+          local dir = vim.fn.tempname()
+          vim.fn.mkdir(dir, 'p')
+          return dir
+        end)()
+    ]])
+    start_fake('faketest', '{}', root)
+    eq(
+        child.lua_get([[
+            (function()
+              for _, n in ipairs(_G.fake_notifications) do
+                if n.method == 'workspace/didChangeConfiguration' then return true end
+              end
+              return false
+            end)()
+        ]]),
+        false
+    )
+    -- ...and looking for the settings must not have created the directory it
+    -- looked in. `ltex_dict.get_settings_dir` used to `mkdir` on the *read*
+    -- path, so every project that ever opened a prose file was left with an
+    -- empty `.vscode/` in it (measured, design §1).
+    eq(child.lua_get(([[vim.fn.isdirectory(%q)]]):format(root .. '/.vscode')), 0)
+end
+
+-- The base snapshot exists so a key *removed* from settings.json goes away
+-- instead of surviving in the accumulated settings forever. Nothing asserted
+-- that before this rewrite, which made it the likeliest thing to lose.
+T['vscode settings']['a key removed from settings.json disappears'] = function()
+    local root = child.lua_get([[
+        (function()
+          local dir = vim.fn.tempname()
+          vim.fn.mkdir(dir .. '/.vscode', 'p')
+          vim.fn.writefile({ '{ "probe.keep": 1, "probe.drop": 2 }' }, dir .. '/.vscode/settings.json')
+          vim.g.__root = dir
+          return dir
+        end)()
+    ]])
+
+    local id = start_fake('faketest', '{}', root)
+    eq(child.lua_get(([[vim.lsp.get_client_by_id(%d).settings.probe.drop]]):format(id)), 2)
+
+    child.lua(([[
+        vim.fn.writefile({ '{ "probe.keep": 1 }' }, vim.g.__root .. '/.vscode/settings.json')
+        _G.reloaded = vim.wait(10000, function()
+          return vim.lsp.get_client_by_id(%d).settings.probe.drop == nil
+        end, 100)
+    ]]):format(id))
+    eq(child.lua_get([[_G.reloaded]]), true)
+    eq(child.lua_get(([[vim.lsp.get_client_by_id(%d).settings.probe.keep]]):format(id)), 1)
+end
+
+-- `<dir>/<key>.<variant>.txt` is a `.vscode` setting, so it applies with no
+-- `settings.json` present at all - which is what a vault built only by
+-- `_ltex.addToDictionary` looks like. This used to be `ucw.lsp.ltex_dict`'s own
+-- `LspAttach` handler; it is `ucw.lsp.vscode`'s SIDECAR_KEYS now.
+T['vscode settings']['sidecar files apply without a settings.json'] = function()
+    local root = child.lua_get([[
+        (function()
+          local dir = vim.fn.tempname()
+          vim.fn.mkdir(dir .. '/.vscode', 'p')
+          vim.fn.writefile({ 'orloj', '', 'hradcany' }, dir .. '/.vscode/ltex.dictionary.en-US.txt')
+          return dir
+        end)()
+    ]])
+    local id = start_fake('faketest', '{}', root)
+    -- blank lines are not words
+    eq(
+        child.lua_get(([==[vim.lsp.get_client_by_id(%d).settings.ltex.dictionary['en-US']]==]):format(id)),
+        { 'orloj', 'hradcany' }
+    )
+end
+
+-- Sidecars *union* with what settings.json declared for the same key. They
+-- cannot be merged with `vim.tbl_deep_extend`, which replaces a nested list
+-- wholesale (measured, design §2) - a naive layer would silently drop every
+-- word declared inline.
+T['vscode settings']['sidecar entries are unioned with declared ones'] = function()
+    local root = child.lua_get([[
+        (function()
+          local dir = vim.fn.tempname()
+          vim.fn.mkdir(dir .. '/.vscode', 'p')
+          vim.fn.writefile({ '{ "ltex.dictionary": { "en-US": ["declared"] } }' },
+                           dir .. '/.vscode/settings.json')
+          vim.fn.writefile({ 'orloj', 'declared' }, dir .. '/.vscode/ltex.dictionary.en-US.txt')
+          return dir
+        end)()
+    ]])
+    local id = start_fake('faketest', '{}', root)
+    -- declared first, file entries appended, no duplicate
+    eq(
+        child.lua_get(([==[vim.lsp.get_client_by_id(%d).settings.ltex.dictionary['en-US']]==]):format(id)),
+        { 'declared', 'orloj' }
+    )
+end
+
+-- The P2 regression. It used to be a race between two writers of
+-- `client.settings` patched up with a `User` autocmd; it holds structurally now,
+-- because the dictionary file is one of the inputs `ucw.lsp.vscode` composes
+-- rather than something written on top of its output afterwards.
+T['vscode settings']['a reload keeps what the dictionary files added'] = function()
     load_lsp()
     child.lua(FAKE_SERVER)
 

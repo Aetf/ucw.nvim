@@ -28,6 +28,5 @@ return {
   dependencies = { 'williamboman/mason.nvim' },
   config = function()
     require('ucw.lsp').setup()
-    require('ucw.lsp.ltex_dict').setup()
   end,
 }

@@ -117,11 +117,14 @@ Activation sequence per unit: `setup()` → `packadd` → source its `after/` fi
     `mason.nvim`.** Mason's `setup()` is what puts the server binaries on
     `PATH`; without it a client simply never starts, and says so nowhere —
     not in `:messages`, not in `lsp.log`.
-  - **If you write `client.settings`, you are not the only one.**
-    `ucw.lsp.vscode` rebuilds them from an attach-time snapshot on every
-    `.vscode/settings.json` change, so anything added afterwards has to
-    re-apply on `User UcwLspSettingsReloaded` (`ucw.lsp.ltex_dict` is the
-    worked example).
+  - **`ucw.lsp.vscode` is the only writer of `client.settings`.** It rebuilds
+    them from an attach-time snapshot on every `.vscode/` change, so a second
+    writer is silently overwritten. Anything file-backed belongs in that
+    module's `SIDECAR_KEYS` instead: `<dir>/<key>.<variant>.txt` is unioned into
+    `settings[<key>][<variant>]`, which is how the ltex dictionaries work.
+    `ucw.lsp.ltex_dict` writes those files and calls `vscode.reload()`; it never
+    touches `client.settings`. See
+    `docs/design/phase3-settings-composition.md`.
   - **A toggle and the thing it toggles must agree on scope.**
     `vim.lsp.inlay_hint`'s global flag is the user preference; `attach.lua`
     mirrors it per buffer. Enabling a capability with a literal `true` at
