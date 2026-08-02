@@ -94,6 +94,25 @@ local function reload(client, quiet)
   client.settings = merged
   client:notify('workspace/didChangeConfiguration', { settings = merged })
 
+  -- `st.base` is a snapshot of the settings the client was *configured* with,
+  -- so recomputing from it drops anything another part of this config added to
+  -- `client.settings` afterwards. There is exactly one such author today -
+  -- `ucw.lsp.ltex_dict`, whose dictionaries land in the same `.vscode/`
+  -- directory as the file being watched here - and before this event, editing
+  -- `settings.json` in a vault silently un-learned every word ever added to it
+  -- (Phase 3 acceptance review, P2).
+  --
+  -- Announced as a plain `User` autocmd rather than a registration API: that
+  -- is the same "server-specific behaviour needs no private API of this
+  -- config" rule the whole phase is built on. Contributors re-apply their own
+  -- layer and push again; the extra round trip is the same contract the reload
+  -- already lives with.
+  vim.api.nvim_exec_autocmds('User', {
+    pattern = 'UcwLspSettingsReloaded',
+    modeline = false,
+    data = { client_id = client.id },
+  })
+
   if not quiet then
     vim.notify(
       string.format('Reloaded config:\n%s', table.concat(applied, '\n')),
@@ -130,13 +149,61 @@ function M.attach(client)
     table.insert(st.watchers, watcher)
     watcher:start(file, function()
       if client:is_stopped() then
-        watcher:close()
-        state[client.id] = nil
+        M.detach(client.id)
         return
       end
       reload(client, false)
     end)
   end
+end
+
+---Whether a `.vscode/settings.json` watcher is currently running for a client.
+---Exists so the lifetime is observable - from a test, and from `:lua =` when
+---wondering why a settings file is or is not being picked up.
+---@param client_id integer
+---@return boolean
+function M.is_watching(client_id)
+  return state[client_id] ~= nil
+end
+
+---Stop watching for a client that is gone.
+---
+---The watchers used to be torn down only if one of them happened to fire again
+---after the client had stopped, so a `:LspRestart` or a crash left a 2-second
+---poll running for the rest of the session, with its `state` entry pinned
+---(Phase 3 acceptance review, P5). `M.setup()` below hangs this off
+---`LspDetach`; the in-watcher call above stays as the belt-and-braces path for
+---a client that dies without detaching.
+---@param client_id integer
+function M.detach(client_id)
+  local st = state[client_id]
+  if not st then
+    return
+  end
+  state[client_id] = nil
+  for _, watcher in ipairs(st.watchers) do
+    watcher:close()
+  end
+end
+
+function M.setup()
+  vim.api.nvim_create_autocmd('LspDetach', {
+    group = vim.api.nvim_create_augroup('ucw.lsp.vscode', { clear = true }),
+    desc = 'ucw: stop watching .vscode/settings.json for a departed client',
+    callback = function(args)
+      local client_id = args.data.client_id
+      -- LspDetach is per *buffer*, and it fires while the buffer is still in
+      -- `client.attached_buffers` (client.lua:1363 runs before :1392), so
+      -- "is this the last one" means "is any *other* buffer still attached".
+      -- The client stays useful - and its watcher stays up - as long as one is.
+      local still_attached = vim.iter(vim.lsp.get_buffers_by_client_id(client_id)):any(function(buf)
+        return buf ~= args.buf
+      end)
+      if not still_attached then
+        M.detach(client_id)
+      end
+    end,
+  })
 end
 
 return M

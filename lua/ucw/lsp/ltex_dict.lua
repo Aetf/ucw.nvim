@@ -138,9 +138,30 @@ M.commands = {
 ---whole point of dropping `ucw.lsp.hooks` is that server-specific behaviour
 ---needs no private API of this config.
 function M.setup()
+  local group = vim.api.nvim_create_augroup('ucw.lsp.ltex', { clear = true })
+
   vim.api.nvim_create_autocmd('LspAttach', {
-    group = vim.api.nvim_create_augroup('ucw.lsp.ltex', { clear = true }),
+    group = group,
     desc = 'ucw: load ltex dictionaries for the attached workspace',
+    callback = function(args)
+      local client = vim.lsp.get_client_by_id(args.data.client_id)
+      if client and client.name == SERVER then
+        reload(client)
+      end
+    end,
+  })
+
+  -- `ucw.lsp.vscode` rebuilds `client.settings` from the snapshot it took at
+  -- attach time, which predates the dictionaries loaded above. So every edit to
+  -- `<root>/.vscode/settings.json` used to un-learn every word in
+  -- `<root>/.vscode/ltex.*.txt` - the two files live in the same directory by
+  -- design, so they co-occur in exactly the projects this matters for
+  -- (Phase 3 acceptance review, P2). Re-apply on top of whatever it just
+  -- pushed, using the same code path as the initial load.
+  vim.api.nvim_create_autocmd('User', {
+    group = group,
+    pattern = 'UcwLspSettingsReloaded',
+    desc = 'ucw: re-apply ltex dictionaries after a .vscode settings reload',
     callback = function(args)
       local client = vim.lsp.get_client_by_id(args.data.client_id)
       if client and client.name == SERVER then

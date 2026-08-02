@@ -125,6 +125,30 @@ T['activation']['mason-lspconfig does not auto-enable anything'] = function()
     eq(child.lua_get([[vim.lsp.is_enabled('rust_analyzer')]]), false)
 end
 
+-- `mason.setup()` is what puts `<data>/mason/bin` on PATH, and every server
+-- binary this config runs lives there. A spec that starts a language server
+-- without depending on mason is relying on something else having loaded it
+-- first: rustaceanvim did exactly that, and only worked because it happens to
+-- `require('mason-registry')` while probing for codelldb (acceptance review
+-- P4). Without the PATH edit it starts no client and says nothing.
+T['activation']['every spec that starts a server depends on mason'] = function()
+    local missing = child.lua_get([[
+        (function()
+          local plugins = require('lazy.core.config').plugins
+          local bad = {}
+          for _, name in ipairs({ 'nvim-lspconfig', 'rustaceanvim' }) do
+            local deps = plugins[name] and plugins[name].dependencies or {}
+            if not vim.tbl_contains(deps, 'mason.nvim') then
+              table.insert(bad, name .. ': ' .. vim.inspect(deps, { newline = ' ', indent = '' }))
+            end
+          end
+          table.sort(bad)
+          return bad
+        end)()
+    ]])
+    eq(missing, {})
+end
+
 T['activation']['ensure_installed tracks the server list'] = function()
     eq(
         child.lua_get([[require('lazy.core.config').plugins['mason-lspconfig.nvim'].opts.ensure_installed]]),
@@ -354,6 +378,56 @@ T['attach']['inlay hints and codelens are enabled per buffer'] = function()
     eq(child.lua_get([[vim.lsp.codelens.is_enabled({ bufnr = 0 })]]), true)
 end
 
+T['inlay hint toggle'] = new_set()
+
+-- `<leader>lI` runs `enable(not is_enabled())`, i.e. it reads and writes the
+-- *global* flag. Attach used to write only the buffer flag, leaving the global
+-- one at its `false` default, so the first press "enabled" hints that were
+-- already on and it took two presses to turn anything off (acceptance review
+-- P1). The fix is that the global flag *is* the preference and attach mirrors
+-- it, so assert both halves.
+T['inlay hint toggle']['the preference is on by default'] = function()
+    start_fake('faketest', '{ inlayHintProvider = true }')
+    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled()]]), true)
+    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
+end
+
+T['inlay hint toggle']['one press turns hints off, the next turns them back on'] = function()
+    start_fake('faketest', '{ inlayHintProvider = true }')
+
+    child.lua([[require('ucw.lsp.actions').call('toggle_inlay_hint')]])
+    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), false)
+    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled()]]), false)
+
+    child.lua([[require('ucw.lsp.actions').call('toggle_inlay_hint')]])
+    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
+end
+
+-- The second half of P1: turning them off has to survive opening the next file.
+-- Attach fires again there, and a literal `true` would quietly undo the toggle.
+T['inlay hint toggle']['a buffer attached after the toggle respects it'] = function()
+    start_fake('faketest', '{ inlayHintProvider = true }')
+    child.lua([[require('ucw.lsp.actions').call('toggle_inlay_hint')]])
+
+    -- same client, new buffer - i.e. what `:edit <another .lua>` does
+    start_fake('faketest', '{ inlayHintProvider = true }')
+    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), false)
+end
+
+-- And the reason attach still writes the buffer flag rather than leaning on
+-- inheritance: upstream's own LspDetach handler `_disable()`s the buffer when
+-- the last inlay-capable client leaves, which *rawsets* `false` while the
+-- global flag is true. Without the re-assert, a :LspRestart would leave hints
+-- off in that buffer forever.
+T['inlay hint toggle']['hints come back after a detach/reattach cycle'] = function()
+    local id = start_fake('faketest', '{ inlayHintProvider = true }')
+    child.lua(([[vim.lsp.buf_detach_client(0, %d)]]):format(id))
+    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), false)
+
+    child.lua(([[vim.lsp.buf_attach_client(0, %d)]]):format(id))
+    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
+end
+
 T['vscode settings'] = new_set()
 
 -- The half of `.vscode/settings.json` support that never worked: initial load.
@@ -404,6 +478,90 @@ T['vscode settings']['single-file clients are left alone'] = function()
         ]]),
         false
     )
+end
+
+-- Two modules write `client.settings`: this one, from a snapshot taken at
+-- attach, and `ucw.lsp.ltex_dict`, later and on top. Recomputing from the
+-- snapshot therefore used to throw the dictionaries away on every reload
+-- (acceptance review P2) - and the two files live in the same `.vscode/`
+-- directory by design, so they co-occur in exactly the projects that care.
+T['vscode settings']['a reload keeps what ltex_dict added on top'] = function()
+    load_lsp()
+    child.lua(FAKE_SERVER)
+
+    local root = child.lua_get([[
+        (function()
+          local dir = vim.fn.tempname()
+          vim.fn.mkdir(dir .. '/.vscode', 'p')
+          vim.fn.writefile({ 'orloj' }, dir .. '/.vscode/ltex.dictionary.en-US.txt')
+          vim.fn.writefile({ '{ "ltex.language": "en-US" }' }, dir .. '/.vscode/settings.json')
+          vim.g.__root = dir
+          return dir
+        end)()
+    ]])
+
+    child.lua(([[
+        vim.cmd('enew!')
+        _G.cid = vim.lsp.start({
+          name = 'ltex_plus',
+          cmd = _G.new_fake_server({}),
+          root_dir = %q,
+        })
+    ]]):format(root))
+
+    -- both authors have had their say by the end of attach
+    eq(child.lua_get([==[vim.lsp.get_client_by_id(_G.cid).settings.ltex.dictionary['en-US']]==]), { 'orloj' })
+    eq(child.lua_get([[vim.lsp.get_client_by_id(_G.cid).settings.ltex.language]]), 'en-US')
+
+    -- now edit the settings file, which is what the watcher reacts to, and wait
+    -- for the change to land rather than for a fixed interval
+    child.lua([[
+        vim.fn.writefile({ '{ "ltex.language": "de-DE" }' }, vim.g.__root .. '/.vscode/settings.json')
+        _G.reloaded = vim.wait(10000, function()
+          return vim.lsp.get_client_by_id(_G.cid).settings.ltex.language == 'de-DE'
+        end, 100)
+    ]])
+    eq(child.lua_get([[_G.reloaded]]), true)
+
+    eq(child.lua_get([==[vim.lsp.get_client_by_id(_G.cid).settings.ltex.dictionary['en-US']]==]), { 'orloj' })
+end
+
+-- The watcher used to be torn down only if it happened to fire again after the
+-- client had stopped, so a :LspRestart left a 2-second poll running for the
+-- rest of the session (acceptance review P5).
+T['vscode settings']['the watcher stops when the last buffer detaches'] = function()
+    local root = child.lua_get([[
+        (function()
+          local dir = vim.fn.tempname()
+          vim.fn.mkdir(dir .. '/.vscode', 'p')
+          vim.fn.writefile({ '{ "a": 1 }' }, dir .. '/.vscode/settings.json')
+          return dir
+        end)()
+    ]])
+    local id = start_fake('faketest', '{}', root)
+    eq(child.lua_get(([[require('ucw.lsp.vscode').is_watching(%d)]]):format(id)), true)
+
+    -- LspDetach is per buffer and fires while the buffer is still attached, so
+    -- a second buffer has to keep it alive. Created off-screen on purpose:
+    -- `:enew` would abandon (and, unnamed and unmodified, wipe) the buffer the
+    -- client is already on, which is the thing being kept alive here.
+    local second = child.lua_get(([[
+        (function()
+          local buf = vim.api.nvim_create_buf(true, false)
+          vim.lsp.buf_attach_client(buf, %d)
+          return buf
+        end)()
+    ]]):format(id))
+    child.lua(([[vim.lsp.buf_detach_client(%d, %d)]]):format(second, id))
+    eq(child.lua_get(([[require('ucw.lsp.vscode').is_watching(%d)]]):format(id)), true)
+
+    -- ...and detaching the last one has to stop it
+    child.lua(([[
+        for _, buf in ipairs(vim.lsp.get_buffers_by_client_id(%d)) do
+          vim.lsp.buf_detach_client(buf, %d)
+        end
+    ]]):format(id, id))
+    eq(child.lua_get(([[require('ucw.lsp.vscode').is_watching(%d)]]):format(id)), false)
 end
 
 T['ltex'] = new_set()

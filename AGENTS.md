@@ -2,6 +2,17 @@
 
 Guidance for AI agents (and humans) editing this Neovim config. Read this first.
 
+> **Stale sections, deliberately.** The `nvimd` engine described below (units,
+> targets, `nvimctl`, paq-nvim, compiled targets) **no longer exists** — Phase 1
+> of the modernization replaced all of it with `lazy.nvim` specs under
+> `lua/ucw/plugins/`, and `lua/nvimd/` and `lua/ucw/units/` are deleted. The
+> rewrite of "Architecture map", "How to add or change a plugin", "Runtime
+> handles" and `docs/architecture.md` is Phase 10's job, so it is not being done
+> piecemeal. Until then: **"Key idioms" and everything from "Testing" down are
+> current**; treat "What this is" through "How to add or change a plugin" as
+> history. Ground truth is `lua/ucw/plugins/*.lua` and the phase design
+> documents in `docs/design/`.
+
 ## What this is
 
 `ucw.nvim` is a personal Neovim config built on a **systemd-inspired plugin/unit
@@ -80,8 +91,14 @@ Activation sequence per unit: `setup()` → `packadd` → source its `after/` fi
   `au.group('Name', { BufEnter = fn, ... })`. Raw `nvim_create_autocmd` also appears.
 - **Keymaps** — global maps via `require('ucw.utils').map(modes, lhs, rhs, opts)`
   (defaults `noremap=true`); the bulk of leader bindings live in which-key
-  (`units/thirdparty/which-key.lua`) via `wk.add {...}`; named actions in
-  `keys/actions.lua`.
+  (`lua/ucw/plugins/which-key.lua`) via `wk.add {...}`; named actions in
+  `keys/actions.lua`, and LSP ones in `lua/ucw/lsp/actions.lua`.
+  **which-key v3 trap**: the rhs is the *second array element*,
+  `{ lhs, rhs, desc = '...' }`. An entry with no rhs is accepted silently — it
+  registers a label for a key nobody mapped — so `{ lhs, desc = '<cmd>...<cr>' }`
+  (the shape the v2 → v3 conversion produced) is a key that does nothing and a
+  popup entry that reads like code. `g[`/`g]` were dead that way for a month;
+  `tests/test_keys.lua` now fails on any `desc` that looks like a rhs.
 - **Options** — plain `vim.opt.*` in `options.lua`, heavily commented with *why*.
 - **LSP** — there is no framework to learn; use Neovim's native layers.
   To add a server: one line in `lua/ucw/lsp/servers.lua` (`name = { filetypes }`),
@@ -93,6 +110,23 @@ Activation sequence per unit: `setup()` → `packadd` → source its `after/` fi
   spec for anything server-specific. LSP starts by itself on the filetype of a
   supported buffer; nothing is eager and there is no enable keybinding.
   See `docs/design/phase3-lsp-redesign.md`.
+
+  Three invariants that are easy to break silently, each one an acceptance
+  review finding (`docs/design/phase3-acceptance-review.md`):
+  - **A spec that starts a language server must `dependencies` on
+    `mason.nvim`.** Mason's `setup()` is what puts the server binaries on
+    `PATH`; without it a client simply never starts, and says so nowhere —
+    not in `:messages`, not in `lsp.log`.
+  - **If you write `client.settings`, you are not the only one.**
+    `ucw.lsp.vscode` rebuilds them from an attach-time snapshot on every
+    `.vscode/settings.json` change, so anything added afterwards has to
+    re-apply on `User UcwLspSettingsReloaded` (`ucw.lsp.ltex_dict` is the
+    worked example).
+  - **A toggle and the thing it toggles must agree on scope.**
+    `vim.lsp.inlay_hint`'s global flag is the user preference; `attach.lua`
+    mirrors it per buffer. Enabling a capability with a literal `true` at
+    attach makes any toggle over it appear to need two presses and forget
+    itself on the next file.
 
 ## Runtime handles (interactive debugging)
 

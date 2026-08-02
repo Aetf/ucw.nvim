@@ -1,9 +1,15 @@
 # Phase 3 design: LSP subsystem redesign
 
-Status: **revision 3 — implemented** (commit "Phase 3: replace the LSP hook
-framework with Neovim's native config layers"). Revision 2 reviewed the design
-against the original 14 goals; revision 3 folds back what building it actually
-taught, including two claims that only a real TUI could falsify.
+Status: **revision 4 — implemented, reviewed, findings fixed** (commits "Phase 3:
+replace the LSP hook framework with Neovim's native config layers",
+"Phase 3: pyright -> basedpyright", and the acceptance fixes). Revision 2
+reviewed the design against the original 14 goals; revision 3 folded back what
+building it actually taught, including two claims that only a real TUI could
+falsify. Revision 4 adds §6a — the verification results, which r3 left in the
+commit message where they cannot be revised — and corrects the two places where
+this document still described something the build had deliberately done
+differently. Findings are marked **[r4]**; the review itself is
+`docs/design/phase3-acceptance-review.md`, kept as the point-in-time record.
 
 Goal 5 of the modernization ("redesign the LSP system"), plus the LSP half of
 goal 1 ("keep the systemd per-context loading idea"). This document records what
@@ -453,16 +459,36 @@ vim.api.nvim_create_autocmd('LspAttach', {
   callback = function(args)
     local client = assert(vim.lsp.get_client_by_id(args.data.client_id))
     keymaps(client, args.buf)                       -- ported verbatim, see §5
-    if client:supports_method('textDocument/inlayHint') then
-      vim.lsp.inlay_hint.enable(true, { bufnr = args.buf })
-    end
-    if client:supports_method('textDocument/codeLens') then
-      -- refresh on BufEnter/InsertLeave, using the non-deprecated call shape
-    end
+    vim.lsp.inlay_hint.enable(pref, { bufnr = args.buf })
+    vim.lsp.codelens.enable(true, { bufnr = args.buf })
     require('ucw.lsp.vscode').attach(client)        -- see §5
   end,
 })
 ```
+
+**[r4] Two corrections to the sketch above**, both as built:
+
+* **No `supports_method` guards.** Both native entry points filter by
+  capability themselves — `inlay_hint` requests only clients matching
+  `textDocument/inlayHint` (`inlay_hint.lua:93`), and a codelens capability is
+  only instantiated where `supports_method` holds (`_capability.lua:146`) — so
+  a guard here would restate upstream. The double-rendered inlay hints this
+  phase fixes were never a missing guard; they were two rust-analyzer clients.
+  Revision 3 built it this way and left the reason in a code comment only.
+* **`pref`, not a literal `true`.** `vim.lsp.inlay_hint`'s *global* flag is the
+  user preference — it is what `enable(not is_enabled())` (the upstream toggle
+  idiom, and what `<leader>lI` runs) reads and writes — and this line carries it
+  to buffers that did not exist when the key was pressed. Writing a literal
+  `true` here left the global flag at its `false` default, so the first press of
+  the toggle "enabled" hints that were already on, and turning them off did not
+  survive opening the next file (review P1). `M.setup()` seeds the flag to
+  `true`; the per-buffer write stays because upstream's own `LspDetach` handler
+  `_disable()`s the buffer when the last capable client leaves
+  (`inlay_hint.lua:301`), which would otherwise leave hints off after a
+  `:LspRestart`.
+* Codelens needs no BufEnter/InsertLeave refresh augroup either: the native
+  provider attaches to the buffer and re-requests on change
+  (`codelens.lua:47`).
 
 ### rustaceanvim: why it cannot be "just another server"
 
@@ -640,9 +666,15 @@ Neovim 0.11's native `grn`/`gra`/`grr`/`gri`/`grt`/`gO` is a *binding content*
 question, and Phase 9 owns it; mixing it in here would entangle mechanism review
 with taste review, which the phase split exists to prevent.
 
-Same reasoning for inlay hints: this phase adds the `supports_method` guard and
-a named toggle action in `keys/actions.lua`, but **does not bind a key to it** —
-Phase 9 places it.
+Same reasoning for inlay hints: this phase adds a named toggle action, but
+Phase 9 decides where it really belongs.
+
+**[r4] What was actually built**: no `supports_method` guard (see §4), the
+action lives in `ucw/lsp/actions.lua` next to every other LSP entry point rather
+than in `keys/actions.lua`, and it **is** bound, provisionally, at
+`<leader>lI`. Binding it is what turned an untested action into a user-visible
+defect (review P1) — the mechanism review this phase was supposed to be reached
+a taste decision without saying so.
 
 The genuinely redundant piece — nothing here duplicates `which-key.lua` — turns
 out to be zero lines. Revision 1's "delete the duplicated block" item is dropped.
@@ -700,6 +732,48 @@ Verification, in the spirit of the previous phases (measured, not assumed):
 * `:checkhealth vim.lsp` — "Enabled Configurations" should match `servers.lua`
   exactly, with no surprise auto-enables.
 
+## 6a. [r4] As built: verification results
+
+Every item above, run. Measured on Neovim 0.12.3 against the real config, via
+`just ci`, `scripts/tui-drive.sh` and a firenvim-shaped boot. The first two
+columns of results come from the implementation commits; everything marked
+*(review)* was re-run during the acceptance review, which is also where the
+findings in §7a come from.
+
+| Verification item | Result |
+|---|---|
+| One rust client, one set of inlay hints | one `rust-analyzer`; the screen shows `let v: String = String::from("x")` — a single hint — plus the `▶︎ Run` codelens *(review)* |
+| `<leader>a` survives the duplicate-client fix | buffer-local on the Rust buffer; `tests/test_lsp.lua` pins both the match and the non-match |
+| The merge, not the bookkeeping | `vim.lsp.config['lua_ls']` carries upstream `cmd`/`filetypes` **and** our `settings`; `marksman.root_markers` has `.obsidian` and `.git` |
+| `servers.lua` has not drifted | every entry equals the resolved `filetypes`; asserted per server |
+| No plugin shadows our `after/lsp/` | none, including mason-lspconfig's own `after/lsp/` |
+| Capability ordering | `vim.lsp.config['*'].capabilities` carries blink's completion caps, ufo's `foldingRange`, and Neovim's own defaults at first `enable()` |
+| `LspAttach` reaches a client started outside `vim.lsp.enable()` | in-process fake server, no nvim-lspconfig loaded: keymaps, hints and `.vscode` settings all applied |
+| Live TUI, open a file cold | lua/python/toml/json/c++/markdown/tex/rust all attach with no manual step; also mid-session (`:edit` after starting with no file) *(review)* |
+| Startup unchanged | headless `--startuptime`, warm: 49.7–54.4 ms *(review)*; nothing LSP-related is on the startup path |
+| `:qa!` latency | a whole session that opens a file, waits for a client and quits: 118 ms (lua) / 159 ms (rust), process included *(review)* |
+| `:checkhealth vim.lsp` | "Enabled Configurations" is exactly the nine in `servers.lua` *(review)* |
+
+Two results worth stating on their own:
+
+* **`.vscode/settings.json` works end to end now**, both halves. Initial load:
+  `typeCheckingMode = "off"` from the file is in `client.settings` at attach and
+  the deliberately wrong return type reports nothing. Live reload: rewriting the
+  file to `"strict"` takes the same buffer from 0 to 1 diagnostic with no
+  restart. *(review)*
+* **basedpyright's `didChangeWatchedFiles` capability is a real change**, not a
+  restatement of Neovim's defaults: the client registers
+  `workspace/didChangeWatchedFiles`, while `ruff` in the same buffer has
+  `dynamicRegistration = false` and registers nothing. *(review)*
+
+**[r4] `:checkhealth vim.lsp` also reports three warnings**, and they are
+expected: `Unknown filetype 'c.doxygen'`, `'cpp.doxygen'` and `'markdown.mdx'`.
+All three come from upstream's `filetypes` lists, which `servers.lua` mirrors
+*exactly* because the drift test requires equality; nothing in this
+configuration ever sets those filetypes, so the corresponding lazy `ft` trigger
+entries are inert. Recorded so the next reader does not mistake them for a
+regression (review P8).
+
 ## 7. Risks
 
 * **`ft`-triggered activation makes the capability-ordering invariant
@@ -728,3 +802,32 @@ Verification, in the spirit of the previous phases (measured, not assumed):
   turn it off". `:lsp` (native, 0.12) and `:Lazy` cover the diagnosis side;
   if a manual off-switch is still wanted, `vim.lsp.enable(names, false)` is the
   one-liner — flagged for Phase 9 to place, not designed here.
+
+## 7a. [r4] What the acceptance review found, and what changed
+
+Full record in `docs/design/phase3-acceptance-review.md`. The design held —
+every decision in §3–§5 re-measured sound, and both headline bugs (the duplicate
+rust client, the dead `.vscode` initial load) are genuinely fixed. **The
+findings were all in the seams**, which is the reusable lesson: none of them is
+inside a module, all of them are between two.
+
+| # | What it was | Where it lives now |
+|---|---|---|
+| P1 | Two owners of the inlay-hint flag: attach wrote the buffer one, `<leader>lI` read the global one | the global flag *is* the preference, seeded in `attach.M.setup()`, mirrored per buffer on attach (§4) |
+| P2 | Two authors of `client.settings`: `ucw.lsp.vscode` recomputed from a snapshot that predated `ucw.lsp.ltex_dict`, so every settings reload un-learned the dictionary | `vscode.reload` fires `User UcwLspSettingsReloaded`; `ltex_dict` re-applies on it — an autocmd, not a registration API, per §4's rule |
+| P3 | `g[`/`g]` had not been mapped since Phase 1 — the which-key v2→v3 conversion put the rhs in `desc` | real rhs; `tests/test_keys.lua` guards the fingerprint (a `desc` that is an rhs). `vim.diagnostic.goto_next` went with it: deprecated for removal in 0.13, and unreachable for a month so nobody saw the warning |
+| P4 | `rustaceanvim` needs Mason's `PATH` but declared no dependency; it worked only because rustaceanvim itself requires `mason-registry` while probing for codelldb | `dependencies = { 'williamboman/mason.nvim' }`, asserted for every spec that starts a server |
+| P5 | `.vscode` watchers outlived their client unless one happened to fire again | `LspDetach` teardown, keyed on "no *other* buffer still attached" (the event fires before the buffer leaves `attached_buffers`) |
+| P7 | `tests/test_comment.lua` raced the treesitter injection parse, so `just ci` was green ~2 runs in 3 | one `parse(true)` in the fixture; `vim.treesitter.start()` only arms the highlighter, injected trees appear on redraw |
+
+Buffer-local keymaps are still not removed on `LspDetach` — accepted, not
+overlooked: `gd` and friends resolve to Telescope pickers that already report
+"no client" sensibly, and Phase 9 owns bindings, so the unmapping belongs with
+whatever replaces them.
+
+**The test-suite lesson repeats a third time.** Phase 3's own §6 list is good and
+every item on it passes; what it did not cover is the two-owner seams above,
+because each module's tests only exercise that module. Phase 4 learned "test the
+path that is not the main one" (F5); this phase adds "test the path that belongs
+to nobody". Every fix here landed with a regression test that was checked in
+reverse — revert the fix, exactly that test goes red.

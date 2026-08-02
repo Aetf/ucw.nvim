@@ -64,10 +64,11 @@ local T, child = H.new_integration_test()
   `M.cell(...)` output with `MiniTest.expect.equality`.
 - **Integration tests** boot the full config in the child. The harness points
   `XDG_DATA_HOME` at a fresh temp dir per run, so the **plugin install path is
-  exercised every time** (slower). The child starts the `mini-test` target
-  (`nvimctl:start('mini-test')`), not the full TUI target — activate other
-  targets/units explicitly if a test needs them. Example: `tests/test_boot.lua` is a
-  smoke test that just boots without error.
+  exercised every time** (slower), and blocks on `lazy.manage.install()` so a test
+  never races the installer. Everything is `lazy.nvim`-lazy in the child, so a
+  test that needs a plugin loads it explicitly
+  (`require('lazy').load({ plugins = { 'nvim-lspconfig' } })`). Example:
+  `tests/test_boot.lua` is a smoke test that just boots without error.
 
 ### Common child patterns
 
@@ -89,6 +90,32 @@ normal mode (`child.ensure_normal_mode()`) and/or raise `cmdheight`.
 Drop a `tests/test_<name>.lua` returning a `MiniTest.new_set()` (the helpers return
 one). It is picked up automatically and tagged unit/integration by the helper you use.
 Tests under `tests/` use 4-space indent (match the sibling files).
+
+## Rules earned the hard way
+
+Each of these comes from a bug that shipped green, recorded in
+`docs/design/phase*-acceptance-review.md`. They cost nothing to follow and each
+one has already caught something.
+
+- **Verify a regression test in reverse.** After fixing a bug, revert the fix and
+  confirm *that* test — and ideally only that test — goes red. A test written
+  from the same mental model as the fix passes either way otherwise; Phase 4's
+  fold tests were green both with and without the bug they were meant to pin.
+- **Test the seams, not just the modules.** Every Phase 3 finding was between two
+  modules, never inside one: two owners of one flag, two authors of one settings
+  table, one plugin depending on another's side effect. Per-module tests cannot
+  see any of that by construction — assert the *combined* end state.
+- **Never leave a test racing an async subsystem.** No sleeps and no retries:
+  find the call that makes it synchronous. Notably, `vim.treesitter.start()` only
+  arms the highlighter — injected language trees do not exist until something
+  parses, so a test touching injections needs an explicit
+  `vim.treesitter.get_parser(0):parse(true)`. Without it `tests/test_comment.lua`
+  passed about two runs in three, which is worse than failing.
+- **Run the suite twice before believing it.** A single green run does not
+  distinguish "correct" from "lucky".
+- **Green is not acceptance.** Two Phase 3 bugs and two Phase 4 bugs were found
+  only by driving a real TUI (`docs/tui-observation.md`) while the whole suite
+  was green. Assert on what is actually on screen or in `:messages`.
 
 ## Gaps
 

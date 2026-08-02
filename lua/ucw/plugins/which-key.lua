@@ -63,10 +63,33 @@ local function config()
     },
   }
 
-  -- Goto prev/next diag warning/error
+  -- Goto prev/next diag warning/error.
+  --
+  -- These were dead from Phase 1 (the which-key v2 -> v3 conversion) until the
+  -- Phase 3 acceptance review: the v2 form was `{ rhs, "description" }`, and
+  -- the conversion put the *rhs* in `desc` and gave the entry no rhs at all.
+  -- which-key accepts that happily - it just registers a label for a key that
+  -- is not mapped - so `maparg('g[', 'n')` was empty and pressing the key did
+  -- nothing, silently, for a month. Exactly what `ucw.lsp.actions` exists to
+  -- prevent, three lines below the block it guards. tests/test_keys.lua now
+  -- asserts these two really jump, and - generically - that no entry anywhere
+  -- carries a right-hand side in its `desc`, which is the fingerprint of this
+  -- mistake.
   wk.add {
-    { "g[", desc = "<cmd>lua require('ucw.keys.actions').diag_prev()<cr>" },
-    { "g]", desc = "<cmd>lua require('ucw.keys.actions').diag_next()<cr>" },
+    {
+      'g[',
+      function()
+        require('ucw.keys.actions').diag_prev()
+      end,
+      desc = 'Go to previous diagnostic',
+    },
+    {
+      'g]',
+      function()
+        require('ucw.keys.actions').diag_next()
+      end,
+      desc = 'Go to next diagnostic',
+    },
   }
 
   -- Git

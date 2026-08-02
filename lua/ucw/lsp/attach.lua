@@ -58,7 +58,20 @@ local function setup_capabilities(bufnr)
   -- (runtime/lua/vim/lsp/_capability.lua:146). A guard here would restate
   -- upstream behaviour, and the double-rendered inlay hints this phase fixes
   -- were never a missing guard - they were two rust-analyzer clients.
-  vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+
+  -- `is_enabled()` with no filter reads the *global* flag, which `M.setup()`
+  -- seeds to `true` and `<leader>lI` flips: it is the user's preference, and
+  -- this line is what carries it to a buffer that did not exist when the key
+  -- was pressed. Passing a literal `true` here instead is what made the toggle
+  -- unable to stick (Phase 3 acceptance review, P1).
+  --
+  -- The buffer-local write is not redundant with inheriting the global flag:
+  -- upstream's own `LspDetach` handler calls `_disable(bufnr)` when the last
+  -- inlay-capable client leaves (inlay_hint.lua:301), which *rawsets*
+  -- `enabled = false` on the buffer while the global flag is true. Without
+  -- re-asserting here, a `:LspRestart` or a server crash would leave that
+  -- buffer with hints off forever.
+  vim.lsp.inlay_hint.enable(vim.lsp.inlay_hint.is_enabled(), { bufnr = bufnr })
 
   -- `vim.lsp.codelens.refresh({ bufnr = ... })` is deprecated for removal in
   -- 0.13. Its replacement also subsumes the manual BufEnter/InsertLeave
@@ -68,6 +81,19 @@ local function setup_capabilities(bufnr)
 end
 
 function M.setup()
+  -- Inlay hints are on by default, expressed as the *global* flag rather than
+  -- as a literal `true` at attach time. That flag is what
+  -- `vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())` - the
+  -- upstream-documented toggle idiom, and what `<leader>lI` runs - reads and
+  -- writes. Seeding it here is what makes the first press turn hints *off*:
+  -- before, attach set only the buffer flag, the global one stayed `false`,
+  -- and the first press "enabled" hints that were already on.
+  vim.lsp.inlay_hint.enable(true)
+
+  -- the matching LspDetach half, so `.vscode/settings.json` watchers do not
+  -- outlive the client that wanted them
+  require('ucw.lsp.vscode').setup()
+
   vim.api.nvim_create_autocmd('LspAttach', {
     group = vim.api.nvim_create_augroup('ucw.lsp.attach', { clear = true }),
     desc = 'ucw: per-client LSP buffer setup',

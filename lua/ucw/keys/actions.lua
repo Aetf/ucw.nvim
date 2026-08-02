@@ -60,9 +60,9 @@ function M.bufprev()
 end
 
 local function diag_jump(direction)
-  local trouble_method, vim_method = unpack(({
-    next = {'next', 'goto_next'},
-    prev = {'previous', 'goto_prev'}
+  local trouble_method, count = unpack(({
+    next = { 'next', 1 },
+    prev = { 'previous', -1 },
   })[direction])
 
   local ok, trouble = pcall(require, 'trouble')
@@ -73,7 +73,20 @@ local function diag_jump(direction)
       return trouble[trouble_method]({ skip_groups = true, jump = true })
     end
   end
-  return vim.diagnostic[vim_method]()
+
+  -- `vim.diagnostic.goto_next`/`goto_prev`, which this used to call, are
+  -- deprecated for removal in 0.13 (runtime/lua/vim/diagnostic.lua:1562).
+  -- Nobody noticed because `g[`/`g]` were not actually mapped between Phase 1
+  -- and the Phase 3 acceptance review (P3), so this line had not run in a
+  -- month.
+  --
+  -- The old pair also defaulted to opening a float on arrival. Not restored:
+  -- Phase 4 made `virtual_lines = { current_line = true }` the way full
+  -- diagnostic text is shown, so the float would render the same message a
+  -- second time on top of it. `jump()`'s `opts.float` is itself deprecated in
+  -- favour of `on_jump`, so if that turns out to be wanted, that is where it
+  -- goes.
+  return vim.diagnostic.jump({ count = count })
 end
 
 function M.diag_next()

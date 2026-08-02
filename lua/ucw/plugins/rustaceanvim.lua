@@ -13,6 +13,21 @@ return {
   'mrcjkb/rustaceanvim',
   cond = require('ucw.targets').is_full_ui,
   ft = { 'rust' },
+  -- Same reason nvim-lspconfig depends on it: `mason.setup()` is what puts
+  -- `<data>/mason/bin` on PATH, and rustaceanvim resolves `rust-analyzer`
+  -- through PATH when it starts the client. Rust is deliberately absent from
+  -- `ucw.lsp.servers`, so opening a .rs file loads no nvim-lspconfig and
+  -- nothing else here would pull mason in.
+  --
+  -- It worked anyway until now, by accident: rustaceanvim happens to
+  -- `require('mason-registry')` while probing for a codelldb DAP adapter
+  -- (config/internal.lua), and lazy.nvim loads mason.nvim off that require.
+  -- Measured - lazy's own record was
+  -- `mason.nvim = { require = "mason-registry", source = ".../rustaceanvim/..." }`.
+  -- Without mason's PATH, rustaceanvim starts *no client at all* and says
+  -- nothing: not in `:messages`, not in `lsp.log` (Phase 3 acceptance review,
+  -- P4). Declaring it costs nothing - mason is `ft`-loaded either way.
+  dependencies = { 'williamboman/mason.nvim' },
   init = function()
     -- rustaceanvim's client is named `rust-analyzer`, with a hyphen. The old
     -- hook filtered on `rust_analyzer` and so never matched it: this keymap

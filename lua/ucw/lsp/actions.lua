@@ -68,6 +68,13 @@ M.actions = {
 
   -- Inlay hints are on by default (see attach.lua); this is the way back off.
   -- Bound provisionally at `<leader>lI` - Phase 9 decides where it really goes.
+  --
+  -- `toggle` resolves the sibling `is_enabled` and passes no filter, so both
+  -- calls talk about the *global* flag. That only works because
+  -- `ucw.lsp.attach` treats that flag as the user preference and mirrors it
+  -- onto each buffer at attach; a toggle that read the global flag while
+  -- attach wrote only the buffer one needed two presses to turn anything off
+  -- (Phase 3 acceptance review, P1).
   toggle_inlay_hint = { desc = 'Toggle inlay hints', lsp = 'inlay_hint.enable', toggle = true },
 }
 

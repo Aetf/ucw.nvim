@@ -6,7 +6,16 @@ record the as-built numbers") against `docs/design/phase3-lsp-redesign.md` (r3)
 and the plan file's Phase 3 section. Phase 4 landed on top of this, so the
 review is against the tree at `a94b9fe`.
 
-**Verdict: do not accept as-is.** Three defects that are live today (P1, P2,
+**Resolved.** P1–P5, P7 and P8 are fixed in the follow-up commit; the design
+document is at revision 4 and carries the outcomes in §6a and §7a. This file is
+left as the point-in-time record of what the review found and how —
+deliberately not rewritten into the past tense. The one finding closed by a
+decision rather than a change is the keymap half of P5: buffer-local `g`
+mappings still outlive their client, accepted because Phase 9 owns bindings (the
+watcher half *was* fixed). Every fix landed with a regression test verified in
+reverse.
+
+**Verdict at the time: do not accept as-is.** Three defects that are live today (P1, P2,
 P3), one latent fragility the phase introduced (P4), a documentation gap the
 phase convention asks for (P6), and a flaky test that makes `just all` an
 unreliable acceptance signal for this phase and every one after it (P7). The

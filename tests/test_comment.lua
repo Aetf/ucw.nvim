@@ -39,6 +39,16 @@ local function open_fixture()
         vim.cmd.edit(path)
         -- the treesitter parser is what makes the injection visible to `gc`
         vim.treesitter.start(0)
+        -- ...but only once the injections have actually been parsed. `start()`
+        -- merely arms the highlighter, which parses on redraw - measured, right
+        -- after it `get_parser(0):children()` is still `{}`, and
+        -- `vim._comment.get_commentstring` walks exactly that table
+        -- (runtime/lua/vim/_comment.lua:54). Every case below was therefore
+        -- racing the redraw: `just all` failed 2 runs in 6 on the visual one
+        -- and passed the rest, which is worse than failing (Phase 3 acceptance
+        -- review, P7). One synchronous full parse removes the race - no sleep,
+        -- no retry loop.
+        vim.treesitter.get_parser(0):parse(true)
     ]], { markdown_fixture })
 end
 
