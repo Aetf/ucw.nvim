@@ -56,6 +56,27 @@ function M.setup()
   end
   did_setup = true
 
+  -- Every client speaks utf-16, so that buffers with more than one client agree
+  -- on what a column is. Left to themselves they do not: basedpyright picks
+  -- utf-16 and ruff picks utf-8, and every Python buffer has both, which
+  -- `:checkhealth vim.lsp` reports as "buffers attached to multiple clients with
+  -- different position encodings" - along with this exact advice (second-round
+  -- review, Q3). Diagnostics measured correct on a CJK line either way, since
+  -- Neovim converts per client, so this closes a hazard rather than a live bug.
+  --
+  -- utf-16 rather than utf-8 because it is the one encoding the LSP spec
+  -- requires every server to support. It is cross-cutting table data at the
+  -- `'*'` layer, which is where the design says such things go, and it runs
+  -- before the first `vim.lsp.enable()`, which is the ordering invariant that
+  -- makes any `'*'` capability take effect at all.
+  vim.lsp.config('*', {
+    capabilities = {
+      general = {
+        positionEncodings = { 'utf-16' },
+      },
+    },
+  })
+
   vim.lsp.enable(M.server_names())
 end
 

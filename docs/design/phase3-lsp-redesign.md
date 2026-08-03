@@ -1,6 +1,6 @@
 # Phase 3 design: LSP subsystem redesign
 
-Status: **revision 4 — implemented, reviewed, findings fixed** (commits "Phase 3:
+Status: **revision 5 — implemented, reviewed twice, findings fixed** (commits "Phase 3:
 replace the LSP hook framework with Neovim's native config layers",
 "Phase 3: pyright -> basedpyright", and the acceptance fixes). Revision 2
 reviewed the design against the original 14 goals; revision 3 folded back what
@@ -8,8 +8,12 @@ building it actually taught, including two claims that only a real TUI could
 falsify. Revision 4 adds §6a — the verification results, which r3 left in the
 commit message where they cannot be revised — and corrects the two places where
 this document still described something the build had deliberately done
-differently. Findings are marked **[r4]**; the review itself is
-`docs/design/phase3-acceptance-review.md`, kept as the point-in-time record.
+differently. Revision 5 folds in the second-round audit of those fixes: four
+findings, marked **[r5]**, of which the two that changed this document are §6a's
+checkhealth note and §7a's postscript. The reviews themselves are
+`docs/design/phase3-acceptance-review.md` and, for the P2 rewrite that came out
+of the second round, `docs/design/phase3-settings-composition.md` — both kept as
+point-in-time records.
 
 Goal 5 of the modernization ("redesign the LSP system"), plus the LSP half of
 goal 1 ("keep the systemd per-context loading idea"). This document records what
@@ -774,6 +778,27 @@ configuration ever sets those filetypes, so the corresponding lazy `ft` trigger
 entries are inert. Recorded so the next reader does not mistake them for a
 regression (review P8).
 
+**[r5] It is four warnings, and the fourth is also expected.** The second-round
+review counted five, and found that the two beyond P8's three were undocumented
+consequences of this phase's own decisions:
+
+* `libuv-watchdirs has known performance issues. Consider installing
+  inotify-tools.` — raised because `after/lsp/basedpyright.lua` turns on
+  `didChangeWatchedFiles.dynamicRegistration`, a deliberate setting (§5) whose
+  cost that file already documents. **Accepted, not fixed**: `inotify-tools` is
+  a system package rather than a config change, and the watching is what makes
+  basedpyright notice edits it did not make.
+* `Found buffers attached to multiple clients with different position
+  encodings` — **fixed.** `basedpyright` chose utf-16 and `ruff` utf-8, and
+  every Python buffer has both. `ucw.lsp.setup()` now pins
+  `capabilities.general.positionEncodings = { 'utf-16' }` at the `'*'` layer,
+  before the first `enable()`, which is what that health report itself advises.
+  Measured before: two encodings and the warning. After:
+  `basedpyright=utf-16, ruff=utf-16`, warning gone, and ruff's diagnostic on a
+  line of CJK still lands on the right byte columns (24..33) — as it did before,
+  since Neovim converts per client either way. So this closes a hazard rather
+  than a live bug (review Q3).
+
 ## 7. Risks
 
 * **`ft`-triggered activation makes the capability-ordering invariant
@@ -831,3 +856,27 @@ because each module's tests only exercise that module. Phase 4 learned "test the
 path that is not the main one" (F5); this phase adds "test the path that belongs
 to nobody". Every fix here landed with a regression test that was checked in
 reverse — revert the fix, exactly that test goes red.
+
+## 7b. [r5] The second round: auditing the fixes
+
+The §7a fixes were audited again on 2026-08-02. The architecture held a second
+time — the P1 toggle verified end to end in a real TUI against basedpyright
+(one press off, survives opening the next file, one press back on), `g[`/`g]`
+verified jumping to a real diagnostic, 92 cases green twice, startup 63 ms, nine
+enabled configs. **What the second round found is that the fix commit fell into
+the class of defect it was fixing**, which is the reusable lesson and the same
+shape as Phase 4's G1:
+
+| # | Finding | Outcome |
+|---|---|---|
+| Q1 | The P5 fix called `vim.lsp.get_buffers_by_client_id()`, deprecated for removal in 0.13 — a deprecation warning on every `:bdelete` of a buffer with a client, in the same commit that fixed P3, which *was* a deprecated call | fixed: `client.attached_buffers`. `tests/test_deprecations.lua` now scans the running Neovim's runtime for every `vim.deprecate`d name and asserts this config calls none of them |
+| Q2 | The P2 fix repaired the end state but left two writers of `client.settings`, an announcement contract to remember, and up to four `didChangeConfiguration` per file opened | rewritten structurally — `docs/design/phase3-settings-composition.md` |
+| Q3 | `:checkhealth vim.lsp` had grown to five warnings, two of them undocumented consequences of this phase | one fixed (position encodings, §6a), one accepted and written down (libuv-watchdirs) |
+| Q4 | `keys/actions.lua`'s `diag_jump` still tried `require('trouble')` first; trouble.nvim is in neither `lua/ucw/plugins/` nor `lazy-lock.json`, so the branch was unreachable | deleted |
+| Q5 | `ucw.lsp.attach.setup()` is not target-gated while every LSP *spec* is, so §3's "the vscode and firenvim contexts never load any of it" overstates it by one autocmd | note, not a defect — §3's [r3] bullet already says the handlers are client-agnostic and belong with the core |
+| Q6 | Creating `.vscode/settings.json` in an already-open project was never picked up: the watcher started on the file, and `uv.fs_event_start` fails silently on a missing path | fixed: watch the workspace root for `.vscode` appearing, and the directory for changes inside it |
+
+Q6 is worth one more line, because it is the counter-example to the paragraph
+above: it was **not** introduced by the fixes — A/B'd against the pre-fix tree,
+where it behaves identically. Not every finding in a second round is a
+regression, and saying which are and which are not is most of the value.

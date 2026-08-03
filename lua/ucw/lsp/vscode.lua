@@ -206,6 +206,66 @@ function M.reload(client)
   return true
 end
 
+---Keep one workspace's settings directory under observation.
+---
+---The obvious thing - watch `<root>/.vscode/settings.json` - is what this used
+---to do, and it silently did nothing whenever the file was not there yet:
+---`uv.fs_event_start` fails on a missing path and `FileWatcher` never retries,
+---so creating a `settings.json` in an already-open project was never picked up
+---until the client restarted (second-round review, Q6; measured identically on
+---the tree before the composition rewrite, so it long predates it).
+---
+---Watching the *directory* is not enough on its own either, because `.vscode/`
+---itself is often the thing that does not exist yet - a vault whose dictionary
+---was written by `_ltex.addToDictionary` gets one only at that moment. So watch
+---the workspace root, which always exists, for `.vscode` appearing, and the
+---directory itself for changes inside it, promoting as soon as it shows up.
+---
+---The root watcher fires for any change to a direct child, which is more often
+---than needed - but `M.reload` re-reads two small files and stays silent unless
+---the result changed, so the cost of a spurious wake-up is bounded and
+---invisible.
+---@param client vim.lsp.Client
+---@param root string
+local function watch_workspace(client, root)
+  local st = state[client.id]
+  local dir = M.workspace_dir(root)
+
+  local function refresh()
+    if client:is_stopped() then
+      M.detach(client.id)
+      return
+    end
+    if M.reload(client) then
+      vim.notify(
+        string.format('Reloaded config:\n%s', dir),
+        vim.log.levels.INFO,
+        { title = string.format('LSP [%s]', client.name) }
+      )
+    end
+  end
+
+  local watching_dir = false
+  local function watch_dir()
+    if watching_dir or (vim.uv.fs_stat(dir) or {}).type ~= 'directory' then
+      return
+    end
+    watching_dir = true
+    local watcher = utils.FileWatcher.new(2000)
+    table.insert(st.watchers, watcher)
+    watcher:start(dir, refresh)
+  end
+
+  local root_watcher = utils.FileWatcher.new(2000)
+  table.insert(st.watchers, root_watcher)
+  root_watcher:start(root, function()
+    watch_dir()
+    refresh()
+  end)
+
+  watch_dir()
+end
+
 ---Called once per client from the LspAttach handler.
 ---@param client vim.lsp.Client
 function M.attach(client)
@@ -218,30 +278,8 @@ function M.attach(client)
   -- the load that never used to happen
   M.reload(client)
 
-  -- Known gap, measured and pre-existing (A/B'd against the tree before this
-  -- rewrite, where it behaves identically): the watcher is started on the
-  -- *file*, so `uv.fs_event_start` fails silently when `settings.json` does not
-  -- exist yet. Creating one in an already-open project is therefore not picked
-  -- up until the client restarts. Fixing it means watching the directory - a
-  -- watcher-lifetime change, not a composition one, so it is deliberately not
-  -- part of this refactor.
   for _, folder in ipairs(client.workspace_folders or {}) do
-    local file = M.workspace_dir(vim.uri_to_fname(folder.uri)) .. '/settings.json'
-    local watcher = utils.FileWatcher.new(2000)
-    table.insert(st.watchers, watcher)
-    watcher:start(file, function()
-      if client:is_stopped() then
-        M.detach(client.id)
-        return
-      end
-      if M.reload(client) then
-        vim.notify(
-          string.format('Reloaded config:\n%s', file),
-          vim.log.levels.INFO,
-          { title = string.format('LSP [%s]', client.name) }
-        )
-      end
-    end)
+    watch_workspace(client, vim.uri_to_fname(folder.uri))
   end
 end
 
@@ -285,9 +323,18 @@ function M.setup()
       -- `client.attached_buffers` (client.lua:1363 runs before :1392), so
       -- "is this the last one" means "is any *other* buffer still attached".
       -- The client stays useful - and its watcher stays up - as long as one is.
-      local still_attached = vim.iter(vim.lsp.get_buffers_by_client_id(client_id)):any(function(buf)
-        return buf ~= args.buf
-      end)
+      --
+      -- `client.attached_buffers` rather than
+      -- `vim.lsp.get_buffers_by_client_id()`, which is deprecated for removal in
+      -- 0.13 (lsp.lua:1076) and is only a `tbl_keys` over this field anyway.
+      -- Using it printed a deprecation warning on every `:bdelete` of a buffer
+      -- with a client - measured in a real TUI, and exactly the class of defect
+      -- the review that introduced this handler had just fixed elsewhere.
+      local client = vim.lsp.get_client_by_id(client_id)
+      local still_attached = client ~= nil
+        and vim.iter(vim.tbl_keys(client.attached_buffers)):any(function(buf)
+          return buf ~= args.buf
+        end)
       if not still_attached then
         M.detach(client_id)
       end

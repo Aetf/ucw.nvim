@@ -59,42 +59,30 @@ function M.bufprev()
   end
 end
 
-local function diag_jump(direction)
-  local trouble_method, count = unpack(({
-    next = { 'next', 1 },
-    prev = { 'previous', -1 },
-  })[direction])
-
-  local ok, trouble = pcall(require, 'trouble')
-  if ok then
-    -- if trouble returns nothing from items, then either trouble view isn't visible, or it's empty
-    local items = trouble.get_items()
-    if not vim.tbl_isempty(items) then
-      return trouble[trouble_method]({ skip_groups = true, jump = true })
-    end
-  end
-
-  -- `vim.diagnostic.goto_next`/`goto_prev`, which this used to call, are
-  -- deprecated for removal in 0.13 (runtime/lua/vim/diagnostic.lua:1562).
-  -- Nobody noticed because `g[`/`g]` were not actually mapped between Phase 1
-  -- and the Phase 3 acceptance review (P3), so this line had not run in a
-  -- month.
-  --
-  -- The old pair also defaulted to opening a float on arrival. Not restored:
-  -- Phase 4 made `virtual_lines = { current_line = true }` the way full
-  -- diagnostic text is shown, so the float would render the same message a
-  -- second time on top of it. `jump()`'s `opts.float` is itself deprecated in
-  -- favour of `on_jump`, so if that turns out to be wanted, that is where it
-  -- goes.
-  return vim.diagnostic.jump({ count = count })
-end
+-- `vim.diagnostic.goto_next`/`goto_prev`, which these used to call, are
+-- deprecated for removal in 0.13 (runtime/lua/vim/diagnostic.lua:1562). Nobody
+-- noticed because `g[`/`g]` were not actually mapped between Phase 1 and the
+-- Phase 3 acceptance review (P3), so the line had not run in a month.
+--
+-- The old pair also defaulted to opening a float on arrival. Not restored:
+-- Phase 4 made `virtual_lines = { current_line = true }` the way full
+-- diagnostic text is shown, so the float would render the same message a second
+-- time on top of it. `jump()`'s `opts.float` is itself deprecated in favour of
+-- `on_jump`, so if that turns out to be wanted, that is where it goes.
+--
+-- What was here until now: a `pcall(require, 'trouble')` branch that preferred
+-- trouble.nvim's own next/previous when its list had items. trouble is not a
+-- spec in `lua/ucw/plugins/` and is not in `lazy-lock.json` - measured, the
+-- `pcall` returns false - so the branch had been unreachable since long before
+-- this config's Phase 0, which was supposed to delete exactly this kind of
+-- thing (second-round review, Q4).
 
 function M.diag_next()
-  return diag_jump('next')
+  return vim.diagnostic.jump({ count = 1 })
 end
 
 function M.diag_prev()
-  return diag_jump('prev')
+  return vim.diagnostic.jump({ count = -1 })
 end
 
 -- Send ipython cell under the current cursor to iron REPL.

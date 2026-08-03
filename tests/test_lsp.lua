@@ -305,6 +305,20 @@ T['capabilities']['basedpyright asks for client-side file watching'] = function(
     )
 end
 
+-- Every client has to agree on what a column is. Offered the choice,
+-- basedpyright takes utf-16 and ruff takes utf-8 - and every Python buffer has
+-- both, which `:checkhealth vim.lsp` flags (second-round review, Q3). Pinning
+-- the one encoding the spec requires every server to support is its own advice.
+T['capabilities']['every server is pinned to one position encoding'] = function()
+    load_lsp()
+    eq(child.lua_get([[vim.lsp.config['*'].capabilities.general.positionEncodings]]), { 'utf-16' })
+    -- and it survives the merge into a server that has its own capabilities
+    eq(
+        child.lua_get([[vim.lsp.config['basedpyright'].capabilities.general.positionEncodings]]),
+        { 'utf-16' }
+    )
+end
+
 T['attach'] = new_set()
 
 local function start_fake(name, capabilities, root_dir, opts)
@@ -550,6 +564,34 @@ T['vscode settings']['a workspace with no .vscode is silent'] = function()
     eq(child.lua_get(([[vim.fn.isdirectory(%q)]]):format(root .. '/.vscode')), 0)
 end
 
+-- Creating a `.vscode/settings.json` in a project that is already open. The
+-- watcher used to be started on the file itself, so `uv.fs_event_start` failed
+-- silently whenever it did not exist yet and nothing was ever picked up until
+-- the client restarted (second-round review, Q6). The root is watched for
+-- `.vscode` appearing now, and the directory for changes inside it.
+T['vscode settings']['a settings.json created after attach is picked up'] = function()
+    local root = child.lua_get([[
+        (function()
+          local dir = vim.fn.tempname()
+          vim.fn.mkdir(dir, 'p')       -- deliberately no .vscode/
+          vim.g.__root = dir
+          return dir
+        end)()
+    ]])
+    local id = start_fake('faketest', '{}', root)
+    eq(child.lua_get(([[vim.lsp.get_client_by_id(%d).settings.probe]]):format(id)), vim.NIL)
+
+    child.lua(([[
+        vim.fn.mkdir(vim.g.__root .. '/.vscode', 'p')
+        vim.fn.writefile({ '{ "probe.value": 7 }' }, vim.g.__root .. '/.vscode/settings.json')
+        _G.picked_up = vim.wait(20000, function()
+          local s = vim.lsp.get_client_by_id(%d).settings
+          return s.probe ~= nil and s.probe.value == 7
+        end, 200)
+    ]]):format(id))
+    eq(child.lua_get([[_G.picked_up]]), true)
+end
+
 -- The base snapshot exists so a key *removed* from settings.json goes away
 -- instead of surviving in the accumulated settings forever. Nothing asserted
 -- that before this rewrite, which made it the likeliest thing to lose.
@@ -697,7 +739,7 @@ T['vscode settings']['the watcher stops when the last buffer detaches'] = functi
 
     -- ...and detaching the last one has to stop it
     child.lua(([[
-        for _, buf in ipairs(vim.lsp.get_buffers_by_client_id(%d)) do
+        for buf in pairs(vim.lsp.get_client_by_id(%d).attached_buffers) do
           vim.lsp.buf_detach_client(buf, %d)
         end
     ]]):format(id, id))
