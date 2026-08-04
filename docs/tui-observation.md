@@ -52,7 +52,7 @@ the child first (the integration harness only starts the `mini-test` target):
 
 ```lua
 child.lua([[nvimctl:start('target.tui')]])
-child.cmd('Telescope find_files')
+child.lua('Snacks.picker.files()')
 vim.loop.sleep(300); child.api.nvim_eval('1')  -- let it open, poke event loop
 ```
 
@@ -69,7 +69,7 @@ session is detached, an agent can drive it and read the screen back without a TT
 scripts/tui-drive.sh start                 # boot the real ~/.config/nvim config
 scripts/tui-drive.sh capture               # dump the current screen (plain text)
 scripts/tui-drive.sh capture-color         # same, with truecolor SGR escapes
-scripts/tui-drive.sh send ':Telescope find_files<CR>'   # Neovim key notation
+scripts/tui-drive.sh send ':lua Snacks.picker.files()<CR>'  # Neovim key notation
 scripts/tui-drive.sh cmd 'edit README.md'  # run an ex command from normal mode
 scripts/tui-drive.sh expr 'v:version'      # eval a Vimscript expression
 scripts/tui-drive.sh lua 'return tostring(vim.version())'

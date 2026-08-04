@@ -4,7 +4,8 @@ return {
   dependencies = { 'nvim-lua/plenary.nvim' },
   config = function()
     require('gitsigns').setup()
-    -- define some functions as vim commands so they can be used with telescope
+    -- define some functions as vim commands so they are reachable from the
+    -- cmdline, and so from command history and completion
     local function cmd(name, fn)
       vim.api.nvim_create_user_command(name, fn, {})
     end

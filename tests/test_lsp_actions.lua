@@ -35,14 +35,21 @@ T['actions']['every vim.lsp entry point still exists'] = function()
     eq(broken, {})
 end
 
-T['actions']['every action is exactly one of lsp/cmd, and describable'] = function()
+-- Three kinds now, since Phase 5 added `picker`. Whether each `picker` name is
+-- a real snacks source cannot be checked here - that needs the plugin loaded -
+-- so tests/test_picker.lua carries that half.
+T['actions']['every action is exactly one of lsp/cmd/picker, and describable'] = function()
     local bad = child.lua_get([[
         (function()
           local A = require('ucw.lsp.actions')
           local bad = {}
           for name, action in pairs(A.actions) do
-            if (action.lsp ~= nil) == (action.cmd ~= nil) then
-              table.insert(bad, name .. ': needs exactly one of lsp/cmd')
+            local kinds = 0
+            for _, k in ipairs({ 'lsp', 'cmd', 'picker' }) do
+              if action[k] ~= nil then kinds = kinds + 1 end
+            end
+            if kinds ~= 1 then
+              table.insert(bad, name .. ': needs exactly one of lsp/cmd/picker, has ' .. kinds)
             end
             if type(action.desc) ~= 'string' or action.desc == '' then
               table.insert(bad, name .. ': missing desc')
@@ -73,7 +80,8 @@ T['actions']['wk() builds a which-key v3 entry and rejects typos'] = function()
         )
     end
     eq(field('e[1]'), '<leader>ld')
-    eq(field('e[2]'), '<cmd>Telescope lsp_definitions<cr>')
+    -- a picker action, so the rhs is a callback rather than an ex-command
+    eq(field('type(e[2])'), 'function')
     eq(field('e.desc'), 'Go to definition')
     eq(field('e.buffer'), 7)
 

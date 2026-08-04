@@ -3,11 +3,14 @@ return {
   cmd = 'Octo',
   dependencies = {
     'nvim-lua/plenary.nvim',
-    'nvim-telescope/telescope.nvim',
+    'folke/snacks.nvim',
     'echasnovski/mini.nvim',
   },
   config = function()
-    require('octo').setup {}
+    -- octo defaults to `telescope`, which Phase 5 removed. The enum is
+    -- validated (`octo/config.lua`, `validate_pickers`), so a stale value here
+    -- would be a startup error rather than a silent fallback.
+    require('octo').setup { picker = 'snacks' }
     local wk = require('which-key')
     wk.register {
       ['<leader>g'] = {

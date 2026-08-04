@@ -29,6 +29,7 @@ local M = {}
 ---@field args? any[] arguments for the `lsp` function
 ---@field toggle? boolean call `lsp` as `enable(not is_enabled())` instead
 ---@field cmd? string ex-command to run instead of an `lsp` call
+---@field picker? string a `snacks.picker` source name, e.g. 'lsp_references'
 ---@field mode? string|string[] defaults to normal mode
 
 ---@type table<string, ucw.lsp.Action>
@@ -55,16 +56,28 @@ M.actions = {
     cmd = 'lua vim.diagnostic.open_float()',
   },
 
-  -- Telescope-backed pickers. Whether these stay on Telescope is Phase 5's
-  -- open question (snacks.picker / fzf-lua); keeping them named here means that
-  -- decision touches one file.
-  definitions = { desc = 'Go to definition', cmd = 'Telescope lsp_definitions' },
-  type_definitions = { desc = 'Go to type definition', cmd = 'Telescope lsp_type_definitions' },
-  implementations = { desc = 'Go to implementation', cmd = 'Telescope lsp_implementations' },
-  references = { desc = 'Find references', cmd = 'Telescope lsp_references' },
-  document_symbols = { desc = 'Symbols in the current buffer', cmd = 'Telescope lsp_document_symbols' },
-  workspace_symbols = { desc = 'Symbols in the current workspace', cmd = 'Telescope lsp_workspace_symbols' },
-  diagnostics = { desc = 'Diagnostics for current buffer', cmd = 'Telescope diagnostics' },
+  -- Picker-backed actions. Phase 5 moved these off Telescope and onto
+  -- `snacks.picker`; naming them here is what kept that to one file, as the
+  -- comment above predicted.
+  --
+  -- `picker` is a source name resolved through `Snacks.picker` at press time,
+  -- for the same reason `lsp` is a path resolved through `vim.lsp`: a source
+  -- renamed upstream then fails by name instead of producing an inert key.
+  -- They cannot stay `cmd` entries - snacks has no ex-commands.
+  definitions = { desc = 'Go to definition', picker = 'lsp_definitions' },
+  type_definitions = { desc = 'Go to type definition', picker = 'lsp_type_definitions' },
+  implementations = { desc = 'Go to implementation', picker = 'lsp_implementations' },
+  references = { desc = 'Find references', picker = 'lsp_references' },
+  -- `lsp_document_symbols` under Telescope, `lsp_symbols` under snacks.
+  document_symbols = { desc = 'Symbols in the current buffer', picker = 'lsp_symbols' },
+  workspace_symbols = { desc = 'Symbols in the current workspace', picker = 'lsp_workspace_symbols' },
+  -- Deliberate behaviour change (Phase 5, D4), not a faithful port: this was
+  -- `Telescope diagnostics`, which with no arguments lists *every* open
+  -- buffer, while the description right here has always said "current
+  -- buffer". snacks splits the two (`diagnostics` vs `diagnostics_buffer`) and
+  -- so forces the choice; it is resolved in favour of the label that has been
+  -- on screen in which-key all along.
+  diagnostics = { desc = 'Diagnostics for current buffer', picker = 'diagnostics_buffer' },
 
   -- Inlay hints are on by default (see attach.lua); this is the way back off.
   -- Bound provisionally at `<leader>lI` - Phase 9 decides where it really goes.
@@ -101,6 +114,19 @@ function M.call(name)
   if not action then
     error(('unknown LSP action %q'):format(name))
   end
+
+  if action.picker then
+    -- Indexing an unknown source on `Snacks.picker` yields nil rather than
+    -- raising (`picker/config/init.lua`'s `wrap(..., { check = true })`), so a
+    -- source that disappears upstream would otherwise be a silently dead key -
+    -- exactly the failure `ucw.lsp.actions` exists to prevent.
+    local fn = require('snacks.picker')[action.picker]
+    if type(fn) ~= 'function' then
+      error(('LSP action %q: snacks.picker.%s is not a source'):format(name, action.picker))
+    end
+    return fn(unpack(action.args or {}))
+  end
+
   local fn = M.resolve(assert(action.lsp, ('LSP action %q has no `lsp` path'):format(name)))
   if type(fn) ~= 'function' then
     error(('LSP action %q: vim.lsp.%s is not a function'):format(name, action.lsp))
@@ -114,7 +140,7 @@ function M.call(name)
 end
 
 ---The right-hand side to bind for an action: an ex-command string for the
----`cmd` kind, a closure for the `lsp` kind.
+---`cmd` kind, a closure for the `lsp` and `picker` kinds.
 ---@param name string
 ---@return string|function
 function M.rhs(name)

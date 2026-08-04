@@ -8,15 +8,33 @@ local function config()
       },
     }
   }
-  -- Open Telescope pickers
+  -- Pickers. Phase 5 moved these from Telescope to snacks.picker; snacks has
+  -- no ex-commands, so the right-hand sides are functions now.
+  --
+  -- `<leader>Tr` (`Telescope reloader`) is gone rather than ported - snacks has
+  -- no equivalent source.
   wk.add {
-    { '<leader>T', group = 'telescope' },
-    { '<leader>Th', [[<cmd>Telescope command_history<cr>]], desc = "Command history" },
-    { '<leader>Tr', [[<cmd>Telescope reloader<cr>]], desc = "Reload modules" },
+    { '<leader>T', group = 'picker' },
+    { '<leader>Th', function() Snacks.picker.command_history() end, desc = "Command history" },
 
-    { '<C-p>', [[<cmd>Telescope find_files<cr>]], desc = "Find File" },
-    { '<M-S-f>', [[<cmd>Telescope live_grep<cr>]], desc = "Find in CWD" },
-    { '<M-f>', [[<cmd>Telescope current_buffer_fuzzy_find<cr>]], desc = "Find in File" },
+    { '<C-p>', function() Snacks.picker.files() end, desc = "Find File" },
+    { '<M-S-f>', function() Snacks.picker.grep() end, desc = "Find in CWD" },
+    -- `lines` is snacks' name for what Telescope called
+    -- `current_buffer_fuzzy_find`.
+    { '<M-f>', function() Snacks.picker.lines() end, desc = "Find in File" },
+  }
+
+  -- Messages and notifications.
+  --
+  -- The pain point this answers: message history used to be effectively
+  -- unreadable. `Snacks.picker.noice` is the superset - noice registers that
+  -- picker source itself when snacks.picker is present, and noice sees *all*
+  -- message traffic, not only `vim.notify()` calls.
+  wk.add {
+    { '<leader>n', group = "notifications" },
+    { '<leader>nn', function() Snacks.picker.noice() end, desc = "Search all messages" },
+    { '<leader>nh', function() Snacks.notifier.show_history() end, desc = "Notification history" },
+    { '<leader>nd', function() require('noice').cmd('dismiss') end, desc = "Dismiss notifications" },
   }
   -- LSP.
   --
@@ -142,13 +160,18 @@ local function config()
     { "<leader>`", "<C-^>", desc = "Go To Alternvative Buffer" },
     { "<leader>b", group = "buffer" },
     { "<leader>bX", "<cmd>lua require('ucw.keys.actions').bufdelete(0, true)<cr>", desc = "Delete current buffer" },
-    { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Go to buffer" },
+    { "<leader>bb", function() Snacks.picker.buffers() end, desc = "Go to buffer" },
     { "<leader>bd", "<cmd>BufferLinePickClose<cr>", desc = "Pick Buffer To Close" },
     { "<leader>bx", "<cmd>lua require('ucw.keys.actions').bufdelete()<cr>", desc = "Delete current buffer" },
+    -- `:Session*` are auto-session's *legacy* command names (kept alive by its
+    -- `legacy_cmds` option, which this config now turns off); the current ones
+    -- are subcommands of `:AutoSession`, and the old spellings notify a
+    -- deprecation warning at press time. `search` is the session picker that
+    -- the deprecated `session-lens` plugin used to provide.
     { "<leader>s", group = "session" },
-    { "<leader>sc", "<cmd>SessionSave<cr>", desc = "Manually save session" },
-    { "<leader>sr", "<cmd>SessionRestore<cr>", desc = "Manually restore session" },
-    { "<leader>ss", "<cmd>Telescope session-lens search_session<cr>", desc = "Open session" },
+    { "<leader>sc", "<cmd>AutoSession save<cr>", desc = "Manually save session" },
+    { "<leader>sr", "<cmd>AutoSession restore<cr>", desc = "Manually restore session" },
+    { "<leader>ss", "<cmd>AutoSession search<cr>", desc = "Open session" },
     { "<leader>t", group = "tab" },
     { "<leader>tc", "<cmd>tabnew<cr>", desc = "Open new tab page" },
     { "<leader>tn", "<cmd>tabnext<cr>", desc = "Go to next tab" },

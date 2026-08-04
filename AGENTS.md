@@ -171,9 +171,10 @@ cursor) — not just logs. Three tiers, detailed in **`docs/tui-observation.md`*
 - **Style**: stylua (`stylua.toml`: 2-space indent, single quotes, `NoSingleTable`).
   Note `lua/**` uses 2-space, but existing files under `tests/` use 4-space — match
   the file you are editing.
-- **Two loggers**: `ucw` uses structlog (`ucw/log.lua`; TRACE → `./test.log`);
-  `nvimd` uses a vlog-derived logger (`nvimd/utils/log.lua`; → `stdpath('data')/nvimd.log`,
-  default level `warn`). Anything in `nvimd.log` is already noteworthy.
+- **No logger**: there used to be two (a structlog-backed `ucw/log.lua`, and `nvimd`'s
+  vlog-derived one). Both are gone — `nvimd` with Phase 1, structlog with Phase 5,
+  which found `ucw.log` had never had a single caller. Use `vim.notify`; everything
+  it emits is retrievable afterwards from `:Noice` / `<leader>nn`.
 - **No CI** yet (the `just ci` recipe exists but nothing runs it).
 - **Fast boot**: startup uses a *compiled* target; `_G.nvimctl` is rebuilt lazily on
   `VimEnter`. If you change unit graphs, a recompile (`nvimctl:sync()` / next boot)

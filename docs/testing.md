@@ -116,6 +116,20 @@ one has already caught something.
 - **Green is not acceptance.** Two Phase 3 bugs and two Phase 4 bugs were found
   only by driving a real TUI (`docs/tui-observation.md`) while the whole suite
   was green. Assert on what is actually on screen or in `:messages`.
+- **Capture the "before" before changing anything.** A regression only looks like
+  one next to a baseline. Phase 5 dropped a session hook on the strength of an
+  upstream option covering it, and the restored layout that came back with an
+  extra window looked perfectly plausible on its own — the pre-change recording
+  of the same save/restore cycle is the only reason it was caught.
+- **An option's default is not a call site.** `close_unsupported_windows`
+  defaults to `true`, which says nothing about *when* it runs — it is invoked
+  from the autosave path only. Reading a config table is the same class of
+  mistake as grepping for a function name; trace it to where it is called.
+- **When a probe reports something startling, suspect the probe.** An RPC
+  `nvim_exec_lua` runs in whatever buffer is current, and a picker that has just
+  closed still is — which made a buffer-local keymap read like a broken global
+  one. Check `maparg().buffer`, and use `bufname('%')`: `bufname(0)` asks for
+  buffer number 0, which does not exist, and answers `''`.
 
 ## Gaps
 

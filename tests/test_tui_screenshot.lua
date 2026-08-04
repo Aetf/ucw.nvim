@@ -54,9 +54,9 @@ T['screenshot']['sees floating window content'] = function()
     --   MiniTest.expect.reference_screenshot(child.get_screenshot())
     -- On first run this writes tests/screenshots/<case-path>; later runs diff it.
     --
-    -- To screenshot a lazily-loaded plugin's UI (telescope, which-key, …), first
+    -- To screenshot a lazily-loaded plugin's UI (neo-tree, which-key, …), first
     -- trigger its lazy.nvim load in the child, e.g.:
-    --   child.cmd('Telescope find_files')
+    --   child.lua('Snacks.picker.files()')
 end
 
 return T

@@ -346,14 +346,20 @@ T['attach']['handlers fire for a client started outside vim.lsp.enable'] = funct
     local id = start_fake('faketest')
     eq(id ~= vim.NIL and id ~= nil, true)
 
+    -- `definitions` became a picker action in Phase 5, so its right-hand side
+    -- is a Lua callback rather than an ex-command string. `maparg().rhs` is
+    -- empty for those, which is indistinguishable from the not-actually-mapped
+    -- state that the Phase 3 acceptance review's P3 turned out to be - hence
+    -- asserting on `callback` rather than on an empty `rhs`.
     local map = child.lua_get([[
         (function()
           local m = vim.fn.maparg('gd', 'n', false, true)
-          return { buffer = m.buffer, rhs = m.rhs }
+          return { buffer = m.buffer, has_callback = m.callback ~= nil, desc = m.desc }
         end)()
     ]])
     eq(map.buffer, 1)
-    eq(map.rhs, '<cmd>Telescope lsp_definitions<cr>')
+    eq(map.has_callback, true)
+    eq(map.desc, 'Go to definition')
 end
 
 -- Regression for a bug this suite did NOT catch until a real TUI was driven:

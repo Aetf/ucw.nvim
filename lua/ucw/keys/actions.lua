@@ -132,16 +132,18 @@ function M.hoverK()
   end
 end
 
--- Like the default Ctrl-L, but also clears nvim-notify
+-- Like the default Ctrl-L, but also dismisses anything noice is showing
 function M.clear()
   vim.cmd [[nohlsearch]]
   vim.cmd [[diffupdate]]
   -- Clear and redraw the screen
   -- See :h mode
   vim.cmd [[mode]]
-  -- call notify in pcall to safely ignore any error
+  -- noice rather than the notifier directly: it dismisses its own views *and*,
+  -- through `SnacksView.dismiss`, calls `Snacks.notifier.hide()`. Kept in a
+  -- pcall to safely ignore any error, as the nvim-notify version was.
   pcall(function()
-    require('notify').dismiss()
+    require('noice').cmd('dismiss')
   end)
 end
 
