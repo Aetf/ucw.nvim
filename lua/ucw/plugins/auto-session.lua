@@ -70,24 +70,35 @@ end
 --   * help - a help buffer *is* backed by a readable file, so upstream
 --     deliberately leaves it open; a restored session turns it into an empty
 --     split.
---   * a normal file buffer whose file does not exist *yet*. Upstream's rule is
---     `filereadable(name) == 0`, which is true of a new file you have not
---     written, so borrowing it wholesale closed that window on every manual
---     save (Phase 5 acceptance review, R2). Upstream can afford this because it
---     only sweeps on the `VimLeavePre` autosave, where nobody is watching; this
---     hook also runs interactively. `mksession` records such a buffer perfectly
---     well (`badd` + `edit <path>`), so the window was carrying restorable
---     state. `buftype == ''` is what keeps this narrow: drawers, tool windows
---     and pickers are all `nofile`/`prompt`, and `acwrite` scheme buffers
+--   * a normal file buffer whose file does not exist *yet*, named or not.
+--     Upstream's rule is `filereadable(name) == 0`, which is true of a new file
+--     you have not written and of every unnamed scratch buffer, so borrowing it
+--     wholesale closed those windows on every manual save (Phase 5 acceptance
+--     review, R2 - and a second pass found R2's own fix only covered the named
+--     half: an `enew` window with typed, unsaved text was still being swept,
+--     which the pre-Phase-5 filetype-list rule never touched either). Upstream
+--     can afford the coarser rule because it only sweeps on the `VimLeavePre`
+--     autosave, where nobody is watching; this hook also runs interactively.
+--     `buftype == ''` is what keeps this narrow: drawers, tool windows and
+--     pickers are all `nofile`/`prompt`, and `acwrite` scheme buffers
 --     (`fugitive://`, `octo://`) stay swept - a session cannot restore those
 --     into anything useful.
+--
+--     What survives across a real quit and restart is the *window*: `mksession`
+--     writes `badd` + `edit <path>` (or, for an unnamed buffer, `enew`, because
+--     `blank` is in `sessionoptions`) - never the unsaved text itself, which
+--     Vim session files do not capture for any buffer. The text only appears to
+--     "survive" when restoring in the same live process, where `bufexists()`
+--     reuses the still-open, still-modified buffer instead of reloading from
+--     disk. Measured (second-round check on R2): quit the process for real and
+--     restore from a fresh one, the window comes back, the text does not.
 local function unsupported_window(win)
   local buf = A.nvim_win_get_buf(win)
   local buftype = vim.bo[buf].buftype
   if buftype == 'help' then
     return true
   end
-  if buftype == '' and A.nvim_buf_get_name(buf) ~= '' then
+  if buftype == '' then
     return false
   end
   return buftype ~= 'terminal' and vim.fn.filereadable(A.nvim_buf_get_name(buf)) == 0

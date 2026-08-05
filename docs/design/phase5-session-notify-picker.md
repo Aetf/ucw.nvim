@@ -25,6 +25,28 @@
 >   row and §3.2's window-sweep rule are annotated below with what they actually
 >   do; §5a's verification results stand as written and are not rewritten — the
 >   review file is the record of what they missed.
+> * **r5** (2026-08-05) — second-round check on R2's own fix, same pattern
+>   again. R2's exemption tested `buftype == '' and name ~= ''`; a completely
+>   unnamed (`[No Name]`) scratch buffer with typed, unsaved text has no name,
+>   so it kept failing that test and was still being swept on every manual
+>   save — a regression the pre-Phase-5 filetype-list rule never had (it only
+>   matched specific filetypes, never touching plain `buftype == ''`).
+>   `sessionoptions` has `blank`, so the window is session-worthy; fixed by
+>   dropping the name condition entirely, `if buftype == '' then return false`.
+>   Also corrected an overclaim in R2's own writeup: "mksession records such a
+>   buffer perfectly well ... so the window was carrying real, restorable
+>   state" was only measured same-process, where restore's `bufexists()`
+>   branch reuses the still-open modified buffer. On a real quit and restart —
+>   the case auto-session exists for — `mksession` never serializes unsaved
+>   text for any buffer; only the window and its file association come back.
+>   Measured directly: save, `:qa!`, fresh headless process, `:AutoSession
+>   restore` — the window returns, the typed text does not. Not a regression
+>   from R2 (the text was never going to survive a real restart, fix or no
+>   fix), but the claim as written overstates what the fix protects. See
+>   `lua/ucw/plugins/auto-session.lua`'s `unsupported_window` comment, which
+>   now says both things precisely. 113 cases, green twice; new test reverse-
+>   verified (revert the one-line fix, exactly `an unnamed buffer with unsaved
+>   text keeps its window` goes red).
 
 Plan file row: *Phase 5 — Tech-island consolidation: session / notify (git and
 picker: no change)*.

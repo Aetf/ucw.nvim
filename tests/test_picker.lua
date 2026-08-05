@@ -167,6 +167,23 @@ T['session hooks']['a not-yet-written file keeps its window'] = function()
     eq(child.lua_get([[vim.api.nvim_win_is_valid(vim.g.ucw_test_newfile)]]), true)
 end
 
+-- Second-round check on R2: its exemption only tested `buftype == '' and name
+-- ~= ''`, so an entirely unnamed (`[No Name]`) scratch buffer with typed,
+-- unsaved content was still being swept - a regression the pre-Phase-5
+-- filetype-list rule never had, since it only matched specific filetypes.
+-- `sessionoptions` includes `blank`, so this window is session-worthy too.
+T['session hooks']['an unnamed buffer with unsaved text keeps its window'] = function()
+    child.lua([[
+        vim.cmd('edit ' .. vim.fn.getcwd() .. '/justfile')
+        vim.cmd('vsplit')
+        vim.cmd('enew')
+        vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'unsaved work' })
+        vim.g.ucw_test_unnamed = vim.api.nvim_get_current_win()
+    ]])
+    run_pre_save()
+    eq(child.lua_get([[vim.api.nvim_win_is_valid(vim.g.ucw_test_unnamed)]]), true)
+end
+
 -- The other side of the same predicate: the sweep still has to fire, or R2's
 -- fix would be a licence to record neo-tree drawers into the session (W1).
 T['session hooks']['a nofile drawer window does not'] = function()
