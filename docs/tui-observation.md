@@ -47,13 +47,15 @@ nvim --headless --clean -u tests/aux/driver_init.lua \
   -c "lua MiniTest.run_file('tests/test_tui_screenshot.lua')" -c "qa!"
 ```
 
-To screenshot a **lazily-loaded** plugin's UI in an integration test, activate it in
-the child first (the integration harness only starts the `mini-test` target):
+The integration harness boots the whole config (`require('ucw').boot()`), so start
+plugins are already up. To screenshot a **lazily-loaded** plugin's UI, fire its lazy
+trigger — or load it explicitly — in the child first:
 
 ```lua
-child.lua([[nvimctl:start('target.tui')]])
+child.lua([[require('lazy').load({ plugins = { 'neo-tree.nvim' } })]])
 child.lua('Snacks.picker.files()')
-vim.loop.sleep(300); child.api.nvim_eval('1')  -- let it open, poke event loop
+-- then wait on the condition, not on a duration: poll until the float exists
+child.lua([[vim.wait(2000, function() return #vim.api.nvim_list_wins() > 1 end)]])
 ```
 
 ---
@@ -96,6 +98,14 @@ Notes / gotchas:
 - **Isolation**: `start` loads the real config by default. To sandbox, pass nvim args,
   e.g. `start --clean -u tests/aux/driver_init.lua`, or set a throwaway
   `NVIM_APPNAME` / `XDG_DATA_HOME` in the environment before `start`.
+- **`stop` overwrites your saved session for the cwd.** The real config means real
+  auto-session: killing the tmux session runs the `VimLeavePre` autosave, so whatever
+  scratch layout the probe left behind becomes the session for that directory. Noticed
+  after driving the Phase 5 acceptance review — `~/.local/share/nvim/sessions/` had a
+  fresh entry for `~/.config/nvim`. Use a throwaway `XDG_DATA_HOME` (above) if the
+  saved session for the directory you are testing in matters. The **test suite is not
+  affected**: the mini.test child already gets its own `XDG_DATA_HOME` (verified — the
+  session file's mtime does not move across a `just` run).
 
 ---
 

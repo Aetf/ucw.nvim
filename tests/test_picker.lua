@@ -82,6 +82,106 @@ T['sources']['the keys bound to pickers all resolve'] = function()
     end
 end
 
+T['buffers picker'] = new_set()
+
+-- The design doc called the buffers picker "the one with real behaviour
+-- attached" and the acceptance review found both halves of that behaviour
+-- missing anyway, because the only thing asserted was that the key opened *a*
+-- picker. Both cases below assert on the picker's own resolved options rather
+-- than on our config table, so a snacks-side rename fails here too.
+
+-- R1: `preview = false` at source level is silently discarded - that field is a
+-- previewer, not a switch, and the resolver is `opts.preview or <default>`. The
+-- switch is `layout.preview`, which snacks rewrites into `layout.hidden`.
+T['buffers picker']['has no preview window'] = function()
+    local hidden = child.lua_get([[
+        (function()
+          local opts = require('snacks.picker.config').get({ source = 'buffers' })
+          local layout = require('snacks.picker.config').layout(opts)
+          return layout.hidden or {}
+        end)()
+    ]])
+    eq(vim.tbl_contains(hidden, 'preview'), true)
+end
+
+-- R4: snacks ships three delete bindings for this source and the port replaced
+-- one. `ucw.utils.bufdelete`'s jumplist preference is a deliberate choice, so a
+-- key that quietly falls back to `Snacks.bufdelete` is the same silent
+-- behaviour change as binding nothing at all.
+T['buffers picker']['every delete key goes through ucw.utils.bufdelete'] = function()
+    local bound = child.lua_get([[
+        (function()
+          local opts = require('snacks.picker.config').get({ source = 'buffers' })
+          -- snacks normalises key names when it merges configs (`fix_keys`), so
+          -- `<c-d>` is stored as `<C-D>`; look it up the same way it was written
+          local function action(win, key)
+            local spec = opts.win[win].keys[Snacks.util.normkey(key)]
+            if type(spec) == 'string' then return spec end
+            return type(spec) == 'table' and spec[1] or nil
+          end
+          return {
+            ['input <c-d>'] = action('input', '<c-d>'),
+            ['input <c-x>'] = action('input', '<c-x>'),
+            ['list dd'] = action('list', 'dd'),
+            has_action = type(opts.actions.ucw_bufdelete) == 'function',
+          }
+        end)()
+    ]])
+    eq(bound, {
+        ['input <c-d>'] = 'ucw_bufdelete',
+        ['input <c-x>'] = 'ucw_bufdelete',
+        ['list dd'] = 'ucw_bufdelete',
+        has_action = true,
+    })
+end
+
+T['session hooks'] = new_set()
+
+-- `close_aux_windows` had no coverage at all, which is how its rule could be
+-- swapped for upstream's (Phase 5, W1) without anyone noticing that upstream's
+-- also closes things ours never did. Driven through auto-session's own resolved
+-- config rather than the spec file's local, so a hook dropped from
+-- `pre_save_cmds` fails here too.
+local function run_pre_save()
+    child.lua([[
+        for _, fn in ipairs(require('auto-session.config').pre_save_cmds) do fn() end
+    ]])
+end
+
+-- R2: `filereadable` is false for a file you have not written yet, so borrowing
+-- upstream's predicate wholesale closed that window on every *manual* save.
+-- `mksession` records such a buffer fine, so the window held restorable state.
+T['session hooks']['a not-yet-written file keeps its window'] = function()
+    child.lua([[
+        -- a second window so the "never close the last one" guard cannot be
+        -- what saves this, and a real file in it so the sweep has a reason to run
+        vim.cmd('edit ' .. vim.fn.getcwd() .. '/justfile')
+        vim.cmd('split ' .. vim.fn.tempname() .. '-ucw-test-never-written.txt')
+        vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'unsaved work' })
+        vim.g.ucw_test_newfile = vim.api.nvim_get_current_win()
+    ]])
+    eq(child.lua_get([[vim.api.nvim_win_is_valid(vim.g.ucw_test_newfile)]]), true)
+
+    run_pre_save()
+
+    eq(child.lua_get([[vim.api.nvim_win_is_valid(vim.g.ucw_test_newfile)]]), true)
+end
+
+-- The other side of the same predicate: the sweep still has to fire, or R2's
+-- fix would be a licence to record neo-tree drawers into the session (W1).
+T['session hooks']['a nofile drawer window does not'] = function()
+    child.lua([[
+        vim.cmd('edit ' .. vim.fn.getcwd() .. '/justfile')
+        vim.cmd('vsplit')
+        vim.cmd('enew')
+        vim.bo.buftype = 'nofile'
+        vim.bo.filetype = 'neo-tree'
+        vim.g.ucw_test_drawer = vim.api.nvim_get_current_win()
+    ]])
+    run_pre_save()
+    eq(child.lua_get([[vim.api.nvim_win_is_valid(vim.g.ucw_test_drawer)]]), false)
+end
+
 T['removed plugins'] = new_set()
 
 -- Phase 5 deleted six plugins. lazy.nvim keeps a spec entry for anything still

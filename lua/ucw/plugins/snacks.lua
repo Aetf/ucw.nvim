@@ -31,6 +31,8 @@ local function bufdelete(picker)
 end
 
 local function config()
+  local winblend = utils.is_gui() and 10 or 0
+
   require('snacks').setup {
     input = { enabled = true },
 
@@ -60,29 +62,45 @@ local function config()
             -- was opened from.
             ['<Esc>'] = { 'cancel', mode = { 'n', 'i' } },
           },
-          wo = {
-            -- GUI-only: Telescope had `winblend = is_gui() and 10 or 0`, and 0
-            -- is snacks' default anyway, so this only ever does anything under
-            -- neovide/nvui - neither of which is installed here, so it is
-            -- carried over rather than verified.
-            winblend = utils.is_gui() and 10 or 0,
-          },
+          -- GUI-only: Telescope had `defaults.winblend = is_gui() and 10 or 0`,
+          -- which applied to its whole picker, and 0 is snacks' default anyway.
+          -- So this only ever does anything under neovide/nvui - neither of
+          -- which is installed here, hence carried over rather than verified.
+          -- All three windows, because Telescope's was not per-window (the
+          -- Phase 5 acceptance review's R6 was this set on `input` alone).
+          wo = { winblend = winblend },
         },
+        list = { wo = { winblend = winblend } },
+        preview = { wo = { winblend = winblend } },
       },
       sources = {
         buffers = {
           -- Telescope had `previewer = false` here: the file is already open,
           -- there is nothing to preview that the buffer list does not say.
-          preview = false,
+          --
+          -- It has to be spelled as a *layout* option. A source-level
+          -- `preview = false` is silently discarded - that field is typed
+          -- "previewer function or preset name", and the resolver is
+          -- `opts.preview or Snacks.picker.preview.file`
+          -- (`snacks/picker/config/init.lua:198`), so `false` falls straight
+          -- through to the default file previewer. `layout.preview = false` is
+          -- the switch, and becomes `layout.hidden = { 'preview' }`.
+          layout = { preview = false },
           actions = { ucw_bufdelete = bufdelete },
           win = {
             input = {
               keys = {
-                -- Shadows snacks' `list_scroll_down` in this picker only,
+                -- All of snacks' delete bindings for this source, not just the
+                -- one Telescope happened to use: `<c-d>` is ours, `<c-x>` and
+                -- the list's `dd` are snacks' defaults and would otherwise
+                -- bypass the jumplist preference above on adjacent keys.
+                -- `<c-d>` shadows `list_scroll_down` in this picker only,
                 -- which is what Telescope's binding did too.
                 ['<c-d>'] = { 'ucw_bufdelete', mode = { 'n', 'i' } },
+                ['<c-x>'] = { 'ucw_bufdelete', mode = { 'n', 'i' } },
               },
             },
+            list = { keys = { ['dd'] = 'ucw_bufdelete' } },
           },
         },
       },

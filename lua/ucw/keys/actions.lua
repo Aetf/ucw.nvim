@@ -132,7 +132,13 @@ function M.hoverK()
   end
 end
 
--- Like the default Ctrl-L, but also dismisses anything noice is showing
+-- Does what the default `<C-l>` does, plus dismisses anything noice is showing.
+--
+-- Bound to **`<Esc>` in normal mode** (`ucw/keys.lua`), not to `<C-l>` - the
+-- old comment said "like the default Ctrl-L" and that reads as *where* it is
+-- bound. It is not; `<C-l>` is still Neovim's own. So this runs on one of the
+-- most-pressed keys there is, and everything in it has to be cheap and safe to
+-- repeat.
 function M.clear()
   vim.cmd [[nohlsearch]]
   vim.cmd [[diffupdate]]
@@ -142,6 +148,13 @@ function M.clear()
   -- noice rather than the notifier directly: it dismisses its own views *and*,
   -- through `SnacksView.dismiss`, calls `Snacks.notifier.hide()`. Kept in a
   -- pcall to safely ignore any error, as the nvim-notify version was.
+  --
+  -- This is wider than the `require('notify').dismiss()` it replaced - it takes
+  -- down every noice view, not just the toasts - which on `<Esc>` is the
+  -- intent, and it is safe to do this often: `Router.dismiss()` starts with
+  -- `Manager.clear()`, but that empties only the *live* set (`_messages`).
+  -- Browsable history lives in `Manager._history`, which nothing here touches.
+  -- Measured, three messages held: `<Esc>` leaves `:Noice`/`<leader>nn` at 3.
   pcall(function()
     require('noice').cmd('dismiss')
   end)

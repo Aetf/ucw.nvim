@@ -10,7 +10,7 @@
 # Quick start:
 #   scripts/tui-drive.sh start            # boot the real config
 #   scripts/tui-drive.sh capture          # dump the current screen (plain text)
-#   scripts/tui-drive.sh send ':Telescope find_files<CR>'
+#   scripts/tui-drive.sh send ':lua Snacks.picker.files()<CR>'
 #   scripts/tui-drive.sh capture
 #   scripts/tui-drive.sh messages         # :messages content
 #   scripts/tui-drive.sh stop

@@ -4,17 +4,17 @@
 -- plan file proposed, and which would have meant porting these hooks verbatim
 -- for no gain) and modernised it in place instead: the `session-lens`
 -- dependency is gone - upstream deprecated it and folded it into auto-session's
--- own `:SessionSearch`, which detects a picker backend by itself - and the
+-- own `:AutoSession search`, which detects a picker backend by itself - and the
 -- option names below are the current ones rather than the pre-2.0 spellings
 -- that the compatibility table in `auto-session/config.lua` was translating
 -- (and that `:checkhealth auto-session` was nagging about).
 --
 -- The hooks are what is *left* after checking each one against what
--- auto-session already does by itself. `close_unsupported_windows` defaults to
--- true, so it has been running all along underneath the old hook: it closes
--- every window whose buffer is not a readable file and is not a terminal,
--- which covers the drawer/tool/float sweep `close_aux_windows` used to do by
--- hand.
+-- auto-session already does by itself - which for the window sweep turned out
+-- to be nothing on the path that matters. See `close_aux_windows` below: the
+-- built-in `close_unsupported_windows` is on, but it only runs on the
+-- `VimLeavePre` autosave, never on a manual save. What this file borrowed from
+-- it is its *rule*, not the work.
 
 local A = vim.api
 
@@ -64,17 +64,31 @@ end
 -- tool windows and floating notification toasts without needing a list of
 -- plugin filetypes to keep up to date.
 --
--- Two things upstream's rule does not cover, and this does:
+-- Three things upstream's rule does not cover, and this does:
 --   * diffview - closing the window would leave diffview's own view registry
 --     pointing at it, so the view has to be taken down through its API first.
 --   * help - a help buffer *is* backed by a readable file, so upstream
 --     deliberately leaves it open; a restored session turns it into an empty
 --     split.
+--   * a normal file buffer whose file does not exist *yet*. Upstream's rule is
+--     `filereadable(name) == 0`, which is true of a new file you have not
+--     written, so borrowing it wholesale closed that window on every manual
+--     save (Phase 5 acceptance review, R2). Upstream can afford this because it
+--     only sweeps on the `VimLeavePre` autosave, where nobody is watching; this
+--     hook also runs interactively. `mksession` records such a buffer perfectly
+--     well (`badd` + `edit <path>`), so the window was carrying restorable
+--     state. `buftype == ''` is what keeps this narrow: drawers, tool windows
+--     and pickers are all `nofile`/`prompt`, and `acwrite` scheme buffers
+--     (`fugitive://`, `octo://`) stay swept - a session cannot restore those
+--     into anything useful.
 local function unsupported_window(win)
   local buf = A.nvim_win_get_buf(win)
   local buftype = vim.bo[buf].buftype
   if buftype == 'help' then
     return true
+  end
+  if buftype == '' and A.nvim_buf_get_name(buf) ~= '' then
+    return false
   end
   return buftype ~= 'terminal' and vim.fn.filereadable(A.nvim_buf_get_name(buf)) == 0
 end

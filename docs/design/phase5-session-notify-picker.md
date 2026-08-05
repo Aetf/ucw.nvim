@@ -17,6 +17,14 @@
 >   `restore_shortmess` turned out not to be a dead workaround but an active
 >   bug. §5's projections are replaced with measured numbers, and §3.2 gained a
 >   third layer of staleness nobody had looked for.
+> * **r4** (2026-08-04) — after the acceptance review
+>   (`docs/design/phase5-acceptance-review.md`, findings R1–R8). Eight findings,
+>   two of them live regressions; all fixed. The pattern, and it is the third
+>   phase running: **the new test guards what was changed on purpose, and the
+>   findings land on what changed as a side effect.** §3.1's `previewer = false`
+>   row and §3.2's window-sweep rule are annotated below with what they actually
+>   do; §5a's verification results stand as written and are not rewritten — the
+>   review file is the record of what they missed.
 
 Plan file row: *Phase 5 — Tech-island consolidation: session / notify (git and
 picker: no change)*.
@@ -226,6 +234,12 @@ Consequences:
 * Three call sites reach around `vim.notify` to nvim-notify directly and would
   break:
   * `lua/ucw/keys/actions.lua:144` — `require('notify').dismiss()` in `M.clear()`
+    — **[r4]** and `M.clear` is what **`<Esc>` in normal mode** runs
+    (`ucw/keys.lua:32`, a bare function reference that no grep for `clear()`
+    finds). Listing it as a "call site" rather than as *what Escape does* is why
+    §5a never presses it. Measured after the fact: the wider
+    `noice.cmd('dismiss')` is safe there — it clears noice's live `_messages`
+    set, not the `_history` the pickers read. Acceptance review, R3.
   * `lua/ucw/plugins/telescope.lua:55` — `pcall(telescope.load_extension, 'notify')`
   * `lua/ucw/plugins/structlog.lua:6,17` — see §1.5
 
@@ -325,6 +339,15 @@ Raised in r1, answered by the user for r2:
 | `winblend = is_gui() and 10 or 0` | `win.input.wo.winblend` / `win.list.wo.winblend` / `win.preview.wo.winblend` |
 | `mappings.i['<esc>'] = actions.close` | `win.input.keys['<esc>'] = { 'close', mode = { 'n', 'i' } }` |
 | `pickers.buffers = { sort_lastused, sort_mru, previewer = false, <c-d> = safe_delete }` | `sources.buffers = { sort_lastused = true (already default), preview = false, win.input.keys['<c-d>'] = <custom action>, win.list.keys` } |
+
+> **[r4, corrected]** Both halves of that last row shipped wrong, and both are
+> in the acceptance review. **`preview = false` is not a switch** — the field is
+> a previewer function or preset name and the resolver is `opts.preview or
+> <default>`, so the buffers picker kept previewing; the switch is
+> `layout = { preview = false }` (R1). And `win.list.keys`, which this very row
+> names, was not carried over: snacks ships `<c-x>` and `dd` as *additional*
+> delete bindings for this source, so two of the three delete keys bypassed the
+> jumplist-aware delete that D5 is entirely about (R4).
 | `extensions.fzf` (telescope-fzf-native) | n/a — snacks' matcher is built in; the `make` build step disappears |
 
 Following the Phase 2 (`blink.cmp`) precedent: **do not restate snacks'
@@ -528,6 +551,14 @@ and neogit; nui by noice.
 
 ## 5a. Verification results (as built)
 
+> **[r4]** Left as written. Everything below re-measured true — but the section
+> is also the evidence for the acceptance review's R8: every item here verifies
+> a *wiring* (does the key open a picker, does the notification reach snacks,
+> does the healthcheck stop nagging), and none verifies a *behaviour carried
+> over* (is the preview off, which delete does `<c-d>` do, what else does the
+> new sweep rule close). §6's risk list named all three. The suite is now 112
+> cases; see the review's §4.
+
 Test suite: **108 cases, green ×2** after the last code change (and ×4 across the
 phase; one run of the four failed on the pre-existing `child stuck in mode "r?"`
 boot-prompt flake recorded in `docs/testing.md`, which is why the rule is to run
@@ -607,6 +638,16 @@ Fixed by keeping the sweep, but replacing the hand-maintained filetype list with
 upstream's own predicate (not a readable file, not a terminal), plus upstream's
 "never close the last window of the last tab" guard. Re-verified: 8 windows
 before save → 4 after → 4 restored, matching baseline exactly.
+
+> **[r4]** And that swap had a second edge nobody looked at. The question asked
+> was "does upstream's rule still close what ours closed"; the question not
+> asked was "**what does upstream's rule close that ours never did**".
+> `filereadable(name) == 0` is true of a **file you have not written yet**, so a
+> new-file window — with unsaved content in it — was closed on every *manual*
+> save, and `mksession` records such a buffer perfectly well. Upstream can
+> afford the coarser rule because it only sweeps on `VimLeavePre`, which is the
+> very asymmetry W1 is about; this hook also runs interactively. Fixed by
+> exempting a named `buftype == ''` buffer. See the acceptance review, R2.
 
 The lesson is the r1 method's, not the row's: *"the option defaults to true"* was
 read off the config table and never traced to a call site. Phase 3's rule — a

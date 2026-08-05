@@ -28,8 +28,10 @@ map('n', '<c-s>', '<cmd>w<cr>')
 map('i', '<c-s>', '<esc><cmd>w<cr>')
 map('v', '<c-s>', '<esc><cmd>w<cr>')
 
--- clear things
-vim.keymap.set('n', '<esc>', actions.clear, { silent = true })
+-- clear things. This is the only binding of `ucw.keys.actions.clear`, and a
+-- grep for `clear()` does not find it - which is how the Phase 5 acceptance
+-- review first concluded the function was dead (R3). Hence the desc.
+vim.keymap.set('n', '<esc>', actions.clear, { silent = true, desc = 'Clear search highlight and notifications' })
 
 -- jk move over visual lines, but over physical lines when used with a count
 vim.keymap.set('n', 'j', function()
