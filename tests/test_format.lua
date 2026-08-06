@@ -227,4 +227,37 @@ T['real CLI formatters']['format_on_save reformats a lua file on disk'] = functi
     vim.fn.delete(path)
 end
 
+-- docs/design/phase6-acceptance-review.md R1: `conform.lua` used to carry
+-- `cond = require('ucw.targets').is_full_ui`, the same gate lspconfig.lua
+-- uses. Unlike `lsp`/`picker` actions (whose backing module - core `vim.lsp`,
+-- or `snacks.nvim`, which has no such gate - stays available either way),
+-- the `fn` action kind `require()`s its target by name and errors on
+-- failure, on purpose (lua/ucw/lsp/actions.lua). With conform gated,
+-- `<leader>lf` under firenvim/vscode-neovim did not just fail to format - it
+-- raised "module 'conform' not found", replacing the graceful "no matching
+-- language servers" `vim.lsp.buf.format()` gave before Phase 6. Reboots the
+-- child with the embedded-context marker set *before* `ucw.boot()` runs,
+-- the same technique tests/test_fold.lua's "embedded contexts" group uses,
+-- since the standard `pre_case` hook has already booted the full-UI config
+-- before any test body runs.
+T['embedded contexts'] = new_set()
+
+T['embedded contexts']['<leader>lf does not hard-error under vscode-neovim'] = function()
+    local xdg = child.env.XDG_DATA_HOME
+    child.restart({})
+    child.env.XDG_DATA_HOME = xdg
+    child.o.rtp = xdg .. ',' .. child.o.rtp
+    child.o.packpath = xdg .. ',' .. child.o.packpath
+    child.o.rtp = vim.fn.getcwd() .. ',' .. child.o.rtp
+    child.g.vscode = true
+    child.lua([[require('ucw').boot()]])
+    child.lua([[require('lazy.manage').install()]])
+
+    child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'lua']])
+    local ok = child.lua_get([[(pcall(function()
+        require('ucw.lsp.actions').call('format')
+    end))]])
+    eq(ok, true)
+end
+
 return T

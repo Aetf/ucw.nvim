@@ -70,6 +70,21 @@
 >   user in real use.
 >
 >   No acceptance review yet - implementation and TUI verification only.
+> * **r5** (2026-08-06) — after the acceptance review
+>   (`docs/design/phase6-acceptance-review.md`, finding R1). One finding, one
+>   fix: `conform.lua` loses `cond = require('ucw.targets').is_full_ui`.
+>   That gate, copied from `lspconfig.lua` without being checked against this
+>   phase's own new `fn` action kind, meant `<leader>lf` under
+>   firenvim/vscode-neovim hard-errored ("module 'conform' not found")
+>   instead of the graceful no-op the other three action kinds get in the
+>   same contexts (`lsp` reaches core `vim.lsp`, which always exists;
+>   `picker` reaches `snacks.nvim`, which has no `cond` at all). §3.1 never
+>   discusses `cond` either way - the `is_full_ui` gate was carried over
+>   silently from `lspconfig.lua`, not a decision this document made and
+>   missed. §3.1's rationale for `lazy = false` (conform measured at ~0.16 ms,
+>   cheap regardless of context) already argued against gating it by cost;
+>   the review closes the correctness gap the same measurement left open.
+>   As built now: `lua/ucw/plugins/conform.lua` has no `cond` at all.
 
 Plan file row: *Phase 6 — Linter/formatter system*, depends on Phase 3.
 

@@ -14,9 +14,19 @@
 -- `ftplugin/<ft>.lua` calling `require('conform')` forces lazy.nvim to load it
 -- immediately regardless of a declared trigger (same mechanism documented in
 -- `lua/ucw/plugins/rustaceanvim.lua`'s `mason-registry` comment).
+--
+-- No `cond = is_full_ui`, unlike lspconfig.lua/mason-lspconfig.lua: conform
+-- has no UI surface of its own to gate (it shells out to CLI formatters or
+-- falls back to whatever LSP client is already attached), so there is
+-- nothing about firenvim/vscode-neovim it needs to avoid. Gating it the same
+-- way as the LSP stack turned `<leader>lf`'s `fn` action kind (which
+-- `require()`s its target by name and errors if that fails, on purpose - see
+-- lua/ucw/lsp/actions.lua) into a hard "module 'conform' not found" crash
+-- under those two targets, in place of the graceful "no formatters
+-- available" conform already gives everywhere else. See
+-- docs/design/phase6-acceptance-review.md R1.
 return {
   'stevearc/conform.nvim',
-  cond = require('ucw.targets').is_full_ui,
   lazy = false,
   opts = {
     -- Conform's own default is `lsp_format = 'never'`: a filetype with no
