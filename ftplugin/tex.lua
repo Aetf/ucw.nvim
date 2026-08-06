@@ -2,6 +2,16 @@
 vim.opt_local.textwidth = 0
 vim.opt_local.wrap = true
 
+-- Block conform's LSP fallback for this filetype: texlab also advertises
+-- `documentFormattingProvider`, and without this, conform.lua's
+-- `default_format_opts.lsp_format = 'fallback'` would reach it on every
+-- `format_on_save` write - texlab already owns build-on-save + chktex, not
+-- reformatting, and this file already hand-rolls the reformatting LaTeX
+-- actually wants (the sentence-per-line `formatexpr` below). No formatter
+-- list, only the override: this entry exists purely to block the fallback.
+-- See docs/design/phase6-format-lint.md §1.5.
+require('conform').formatters_by_ft.tex = { lsp_format = 'never' }
+
 local function contains_latex_comment(line)
   -- backslash literal                             \\
   -- previous atom not match (looking back 1 byte) \@1<!

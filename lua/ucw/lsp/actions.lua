@@ -23,23 +23,32 @@
 
 local M = {}
 
+---@class ucw.lsp.ActionFn
+---@field mod string module to `require`, e.g. 'conform'
+---@field fn string function name on that module, e.g. 'format'
+
 ---@class ucw.lsp.Action
 ---@field desc string
 ---@field lsp? string dotted path under `vim.lsp`, e.g. 'buf.code_action'
----@field args? any[] arguments for the `lsp` function
+---@field args? any[] arguments for the `lsp`/`fn` function
 ---@field toggle? boolean call `lsp` as `enable(not is_enabled())` instead
 ---@field cmd? string ex-command to run instead of an `lsp` call
 ---@field picker? string a `snacks.picker` source name, e.g. 'lsp_references'
+---@field fn? ucw.lsp.ActionFn a `require(mod).fn` entry point outside `vim.lsp`
 ---@field mode? string|string[] defaults to normal mode
 
 ---@type table<string, ucw.lsp.Action>
 M.actions = {
   code_action = { desc = 'Code actions', lsp = 'buf.code_action', mode = { 'n', 'x' } },
   rename = { desc = 'Rename the symbol under cursor', lsp = 'buf.rename' },
+  -- Phase 6: conform.nvim owns formatting, not `vim.lsp.buf.format` directly -
+  -- `default_format_opts`/`formatters_by_ft` (see lua/ucw/plugins/conform.lua
+  -- and the per-filetype ftplugin/*.lua files) decide whether that ends up
+  -- shelling out to a CLI formatter or falling back to the LSP client, and
+  -- duplicating that decision here as `args` would give it two owners.
   format = {
     desc = 'Format the current buffer (or visual selection)',
-    lsp = 'buf.format',
-    args = { { async = false } },
+    fn = { mod = 'conform', fn = 'format' },
     mode = { 'n', 'x' },
   },
   declaration = { desc = 'Go to declaration', lsp = 'buf.declaration' },
@@ -123,6 +132,21 @@ function M.call(name)
     local fn = require('snacks.picker')[action.picker]
     if type(fn) ~= 'function' then
       error(('LSP action %q: snacks.picker.%s is not a source'):format(name, action.picker))
+    end
+    return fn(unpack(action.args or {}))
+  end
+
+  if action.fn then
+    -- Same reasoning as `picker`: resolved by name at press time, not a
+    -- direct reference, so a renamed/removed function fails loudly instead
+    -- of the key going silently inert.
+    local ok, mod = pcall(require, action.fn.mod)
+    if not ok then
+      error(('LSP action %q: require(%q) failed: %s'):format(name, action.fn.mod, mod))
+    end
+    local fn = mod[action.fn.fn]
+    if type(fn) ~= 'function' then
+      error(('LSP action %q: %s.%s is not a function'):format(name, action.fn.mod, action.fn.fn))
     end
     return fn(unpack(action.args or {}))
   end

@@ -35,21 +35,22 @@ T['actions']['every vim.lsp entry point still exists'] = function()
     eq(broken, {})
 end
 
--- Three kinds now, since Phase 5 added `picker`. Whether each `picker` name is
--- a real snacks source cannot be checked here - that needs the plugin loaded -
--- so tests/test_picker.lua carries that half.
-T['actions']['every action is exactly one of lsp/cmd/picker, and describable'] = function()
+-- Four kinds now, since Phase 5 added `picker` and Phase 6 added `fn`.
+-- Whether each `picker`/`fn` entry point is real cannot be checked here -
+-- that needs the plugin loaded - so tests/test_picker.lua and
+-- tests/test_format.lua carry those halves.
+T['actions']['every action is exactly one of lsp/cmd/picker/fn, and describable'] = function()
     local bad = child.lua_get([[
         (function()
           local A = require('ucw.lsp.actions')
           local bad = {}
           for name, action in pairs(A.actions) do
             local kinds = 0
-            for _, k in ipairs({ 'lsp', 'cmd', 'picker' }) do
+            for _, k in ipairs({ 'lsp', 'cmd', 'picker', 'fn' }) do
               if action[k] ~= nil then kinds = kinds + 1 end
             end
             if kinds ~= 1 then
-              table.insert(bad, name .. ': needs exactly one of lsp/cmd/picker, has ' .. kinds)
+              table.insert(bad, name .. ': needs exactly one of lsp/cmd/picker/fn, has ' .. kinds)
             end
             if type(action.desc) ~= 'string' or action.desc == '' then
               table.insert(bad, name .. ': missing desc')
