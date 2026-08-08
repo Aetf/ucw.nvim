@@ -22,9 +22,15 @@
 -- way as the LSP stack turned `<leader>lf`'s `fn` action kind (which
 -- `require()`s its target by name and errors if that fails, on purpose - see
 -- lua/ucw/lsp/actions.lua) into a hard "module 'conform' not found" crash
--- under those two targets, in place of the graceful "no formatters
--- available" conform already gives everywhere else. See
+-- under those two targets - and, one layer down, made every
+-- `ftplugin/<ft>.lua` in this phase throw `E5113` on its first line the
+-- moment such a buffer was opened there. See
 -- docs/design/phase6-acceptance-review.md R1.
+--
+-- What *is* context-dependent is `format_on_save` below, not the module:
+-- being loaded costs 0.16ms and answers a keypress, while a `BufWritePre`
+-- hook rewrites text on its own. Those are two different decisions and the
+-- gate belongs on the second one only.
 return {
   'stevearc/conform.nvim',
   lazy = false,
@@ -49,8 +55,30 @@ return {
     -- decision at once - e.g. `'never'` would also turn off Rust's fallback
     -- to rust-analyzer, which this phase does not want to touch. See
     -- docs/design/phase6-format-lint.md §2 D2.
-    format_on_save = {
-      timeout_ms = 500,
-    },
+    --
+    -- A function rather than a table so the embedded contexts can opt out:
+    -- conform calls it per write and skips formatting entirely when it
+    -- returns nil (`conform/init.lua`'s `BufWritePre` callback). Returning
+    -- the same `{ timeout_ms = 500 }` table everywhere else keeps D2 exactly
+    -- as designed for normal desktop use.
+    --
+    -- Why the embedded contexts opt out: in firenvim, `BufWrite` is not
+    -- "save a file", it is *the* mechanism firenvim uses to push the buffer
+    -- back into the web page it is editing (its own README: "Firenvim simply
+    -- uses the BufWrite event in order to detect when it needs to write
+    -- Neovim's buffers to the page"), and this config's own firenvim spec
+    -- forces `filetype=markdown` on `github.com_*.txt` - so an unconditional
+    -- `format_on_save` puts `prettier` between the user's prose and the
+    -- comment box on every sync. vscode-neovim likewise owns its own save
+    -- pipeline (and its own format-on-save setting). Neither is a place for
+    -- this config to rewrite text unasked; `<leader>lf` still formats there,
+    -- which is the difference between explicit and automatic.
+    -- See docs/design/phase6-format-lint.md r6.
+    format_on_save = function(_bufnr)
+      if not require('ucw.targets').is_full_ui() then
+        return
+      end
+      return { timeout_ms = 500 }
+    end,
   },
 }

@@ -235,29 +235,134 @@ end
 -- failure, on purpose (lua/ucw/lsp/actions.lua). With conform gated,
 -- `<leader>lf` under firenvim/vscode-neovim did not just fail to format - it
 -- raised "module 'conform' not found", replacing the graceful "no matching
--- language servers" `vim.lsp.buf.format()` gave before Phase 6. Reboots the
--- child with the embedded-context marker set *before* `ucw.boot()` runs,
--- the same technique tests/test_fold.lua's "embedded contexts" group uses,
--- since the standard `pre_case` hook has already booted the full-UI config
--- before any test body runs.
+-- language servers" `vim.lsp.buf.format()` gave before Phase 6.
+--
+-- r6 (docs/design/phase6-format-lint.md) grew this group from that one case
+-- to four: the class behind R1, the ftplugin path R1's own writeup got
+-- backwards, and the half of the R1 fix that went the other way - dropping
+-- the `cond` also switched `format_on_save` on in these same contexts.
 T['embedded contexts'] = new_set()
 
-T['embedded contexts']['<leader>lf does not hard-error under vscode-neovim'] = function()
+-- Reboots the child with an embedded-context marker (`vim.g.vscode` /
+-- `vim.g.started_by_firenvim`) set *before* `ucw.boot()` runs, which is the
+-- only moment that matters: lazy.nvim evaluates every `cond` while
+-- `init.lua` is still sourcing. The standard `pre_case` hook has already
+-- booted the full-UI config by the time a test body runs, so there is
+-- nothing to flip afterwards. Reuses the already-populated XDG_DATA_HOME so
+-- the reboot costs a boot, not a download.
+local function boot_embedded(marker)
     local xdg = child.env.XDG_DATA_HOME
     child.restart({})
     child.env.XDG_DATA_HOME = xdg
     child.o.rtp = xdg .. ',' .. child.o.rtp
     child.o.packpath = xdg .. ',' .. child.o.packpath
     child.o.rtp = vim.fn.getcwd() .. ',' .. child.o.rtp
-    child.g.vscode = true
+    child.g[marker] = true
     child.lua([[require('ucw').boot()]])
     child.lua([[require('lazy.manage').install()]])
+    eq(child.lua_get([[require('ucw.targets').is_full_ui()]]), false)
+end
 
+T['embedded contexts']['<leader>lf does not hard-error under vscode-neovim'] = function()
+    boot_embedded('vscode')
     child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'lua']])
     local ok = child.lua_get([[(pcall(function()
         require('ucw.lsp.actions').call('format')
     end))]])
     eq(ok, true)
+end
+
+-- The generalisation of the case above, in the shape Phase 4's G1 asked for:
+-- R1 was not "conform is gated", it was "`fn` is the one action kind that
+-- reaches its target through a bare `require()`, so *any* `fn` action backed
+-- by a `cond`-gated plugin is a crash in the context that gates it".
+-- `format`/`conform` is the only such action today; this is what notices the
+-- second one. `lsp` actions reach core `vim.lsp` and `picker` actions reach
+-- `snacks.nvim` (no `cond` at all), so neither needs the same guard.
+T['embedded contexts']['every fn action can require its module'] = function()
+    boot_embedded('vscode')
+    local unloadable = child.lua_get([[
+        (function()
+          local bad = {}
+          for name, action in pairs(require('ucw.lsp.actions').actions) do
+            if action.fn then
+              local ok, err = pcall(require, action.fn.mod)
+              if not ok then
+                table.insert(bad, ('%s -> %s (%s)'):format(name, action.fn.mod, tostring(err)))
+              end
+            end
+          end
+          table.sort(bad)
+          return table.concat(bad, '; ')
+        end)()
+    ]])
+    eq(unloadable, '')
+end
+
+-- The other half of the same `cond`: with the plugin loading everywhere,
+-- every `ftplugin/<ft>.lua` this phase added `require('conform')` on its
+-- first line, so a gated conform did not merely disable formatting in the
+-- embedded contexts - it threw `E5113` out of the FileType autocmd on the
+-- first `.lua`/`.md`/`.py`/`.toml`/`.tex` buffer opened there, before any
+-- key was pressed. Nothing bound `<leader>lf` to that; opening a file was
+-- enough.
+-- Opens real files rather than setting `vim.bo.filetype` on a scratch
+-- buffer, and the difference is the whole test: an error raised by an
+-- `ftplugin` reaches the caller through `:edit`, but is swallowed when the
+-- FileType autocmd is triggered by an option assignment. Written the second
+-- way first, this case stayed green with the `cond` put back - the reverse
+-- verification Phase 4's F5 rule asks for is what caught that.
+T['embedded contexts']['opening a formatted filetype does not raise'] = function()
+    boot_embedded('started_by_firenvim')
+    local fixtures = {
+        { '.lua', 'lua', 'local x = 1' },
+        { '.md', 'markdown', '# title' },
+        { '.py', 'python', 'x = 1' },
+        { '.toml', 'toml', '[a]' },
+        -- `\documentclass` so this lands on `tex` rather than `plaintex`,
+        -- which has no ftplugin in this config and would quietly not test
+        -- anything.
+        { '.tex', 'tex', '\\documentclass{article}' },
+    }
+    for _, fixture in ipairs(fixtures) do
+        local suffix, want_ft, content = unpack(fixture)
+        local path = vim.fn.tempname() .. suffix
+        vim.fn.writefile({ content }, path)
+        local got = child.lua_get(([[
+            (function()
+              local ok, err = pcall(vim.cmd.edit, %q)
+              return { ok, ok and vim.bo.filetype or tostring(err) }
+            end)()]]):format(path))
+        eq({ suffix, got }, { suffix, { true, want_ft } })
+        vim.fn.delete(path)
+    end
+end
+
+-- docs/design/phase6-format-lint.md r6: dropping the `cond` for R1 also
+-- switched `format_on_save` on in exactly the contexts that own their own
+-- write semantics - in firenvim, `BufWrite` *is* the sync-to-the-webpage
+-- mechanism, and this config's own firenvim spec makes github.com text
+-- boxes `filetype=markdown`. The formatter is deliberately reachable here
+-- (real Mason bin on PATH, the same setup the "real CLI formatters" cases
+-- use) so this asserts the gate, not the accident that firenvim sessions
+-- never get Mason's bin dir on PATH today.
+--
+-- Both halves in one case on purpose: the same buffer, the same formatter,
+-- one path automatic and one explicit. Asserting only the first would pass
+-- just as well if conform had been turned off wholesale, which is the R1
+-- regression coming back.
+T['embedded contexts']['format_on_save is off, <leader>lf still formats'] = function()
+    boot_embedded('started_by_firenvim')
+    use_real_mason_bin()
+    local path = vim.fn.tempname() .. '.lua'
+    child.lua(([[vim.cmd.edit(%q)]]):format(path))
+    set_lines({ 'local x=1' })
+    child.lua('vim.cmd.write()')
+    eq(vim.fn.readfile(path), { 'local x=1' })
+
+    do_format()
+    eq(lines(), { 'local x = 1' })
+    vim.fn.delete(path)
 end
 
 return T

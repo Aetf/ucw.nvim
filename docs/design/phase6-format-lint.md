@@ -85,6 +85,62 @@
 >   cheap regardless of context) already argued against gating it by cost;
 >   the review closes the correctness gap the same measurement left open.
 >   As built now: `lua/ucw/plugins/conform.lua` has no `cond` at all.
+> * **r6** (2026-08-07) — second-round review of r5's own fix (the "audit the
+>   fix commit too" habit from Phases 3-5, which has now produced something
+>   four times running). **The r5 fix answered the question it was asked and
+>   not the neighbouring one**: dropping `cond` was right for "can
+>   `<leader>lf` still `require('conform')` here?", but `cond` was also the
+>   only thing keeping `format_on_save` out of the embedded contexts, and
+>   nothing in r5 weighed *that* half. Measured, `--cmd "lua
+>   vim.g.started_by_firenvim = true"` against the real config: `BufWritePre`
+>   went from **0 autocmds to 1** (`Conform`, pattern `*`) across the r5
+>   commit. That matters more in firenvim than the phrase "format on save"
+>   suggests — firenvim's README describes `BufWrite` as *the* mechanism it
+>   uses to push a buffer back into the web page, and this repo's own
+>   `lua/ucw/plugins/firenvim.lua` forces `filetype=markdown` on
+>   `github.com_*.txt`, so r5 quietly put `prettier` between the user's
+>   prose and every GitHub comment sync. It is inert *today* only by
+>   accident: measured in that same context, `mason` is never loaded (it
+>   only ever loads as a dependency of `cond`-gated specs or via its own
+>   `:Mason*` commands), so Mason's bin dir is not on `PATH` and no
+>   configured formatter resolves — which also makes r5's own aside about
+>   "a real chance at actually formatting ... if mason's bin dir happens to
+>   be on `PATH`" wrong in the one direction that would have been
+>   reassuring. One `cargo install stylua` (that `PATH` already carries
+>   `~/.local/share/cargo/bin`) or a global `prettier` turns it live.
+>   **Fix:** `format_on_save` becomes a function returning `nil` when
+>   `ucw.targets.is_full_ui()` is false (conform supports this per write —
+>   `conform/init.lua`'s `BufWritePre` callback), so the *module* still
+>   loads everywhere (r5's fix intact, `<leader>lf` still formats) while the
+>   *automatic* rewrite stays in the full UI. Explicit versus automatic is
+>   the line, not present versus absent. §3.1's `format_on_save =
+>   { timeout_ms = 500 }` still describes what desktop use gets.
+>
+>   Also found and fixed while re-checking r5: the `cond` had a **second,
+>   worse manifestation nobody had reached** — because every
+>   `ftplugin/<ft>.lua` in this phase opens with `require('conform')`, a
+>   gated conform threw `E5113` out of the FileType autocmd on the first
+>   `.lua`/`.md`/`.py`/`.toml`/`.tex` file *opened* in an embedded context,
+>   no keypress involved. `docs/design/phase6-acceptance-review.md` R1
+>   asserted the opposite ("`formatters_by_ft` entries were never the gated
+>   half of this; only the plugin backing them was"); measured, the ftplugin
+>   half was the louder half. Already fixed by r5's own change — recorded
+>   because the review reasoned about it and got it backwards, and because
+>   nothing tested it.
+>
+>   `tests/test_format.lua`'s `embedded contexts` group grows from one case
+>   to four: R1's original case, the **class** behind it (every `fn`-kind
+>   action can `require` its module in an embedded context — the
+>   generalisation Phase 4's G1 asked for, since `fn` is the one action kind
+>   that reaches its target through a bare `require()`), the ftplugin-open
+>   path, and r6's own regression (real Mason `PATH`, firenvim marker: `:w`
+>   leaves the file untouched *and* `<leader>lf` still formats the same
+>   buffer). All four reverse-verified: putting `cond` back turns all four
+>   red; removing only the `is_full_ui` gate from `format_on_save` turns
+>   exactly the last one red. The ftplugin case **was a dud when first
+>   written** — it triggered FileType via `vim.bo.filetype = ft`, which
+>   swallows an ftplugin error, and stayed green with the `cond` back; it
+>   opens real files now. 125 cases, green ×2.
 
 Plan file row: *Phase 6 — Linter/formatter system*, depends on Phase 3.
 
@@ -365,7 +421,10 @@ Minimal — no `formatters_by_ft` here at all (moved to `ftplugin/`, §3.2):
 - `format_on_save = { timeout_ms = 500 }` — D2 is "on," with **no**
   `lsp_format` override (§2 D2, §1.5): it resolves through the same
   per-filetype rules as manual `<leader>lf`, which is what lets Rust keep
-  its fallback while LaTeX's block (§3.2) still applies.
+  its fallback while LaTeX's block (§3.2) still applies. *(As built since
+  r6: the same table, returned from a function that returns `nil` when
+  `ucw.targets.is_full_ui()` is false — see r6 for why the embedded
+  contexts get the module but not the save hook.)*
 - `<leader>lf` in `which-key.lua` moves from the raw `lsp` action kind to a
   new **fourth `ucw.lsp.actions` kind**, following the precedent Phase 5 set
   when `picker` became the third kind alongside `lsp`/`cmd`: a `fn` kind
