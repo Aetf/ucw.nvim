@@ -1,0 +1,11 @@
+# Commits that only moved whitespace around, and that `git blame` should look
+# straight through. Enable locally with:
+#
+#     git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# (GitHub and other forges read this file by name without being asked.)
+
+# Phase 7 (2/6): stylua over the whole repo, once
+# stylua.toml had been checked in and unenforced for years; this applied it to
+# all 46 files that differed from it in one go. No semantic change.
+22789b522a0ee82888fc01c96d9393cfdd4c1d8c

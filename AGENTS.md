@@ -168,9 +168,11 @@ cursor) — not just logs. Three tiers, detailed in **`docs/tui-observation.md`*
 
 ## Conventions & gotchas
 
-- **Style**: stylua (`stylua.toml`: 2-space indent, single quotes, `NoSingleTable`).
-  Note `lua/**` uses 2-space, but existing files under `tests/` use 4-space — match
-  the file you are editing.
+- **Style**: stylua (`stylua.toml`: 2-space indent, single quotes, `NoSingleTable`),
+  everywhere including `tests/` — Phase 7 applied it to the whole repo in one commit
+  (`.git-blame-ignore-revs`), so there is no per-directory convention to match any
+  more. `just fmt` writes, `just fmt-check` is the gate. If you are editing by hand
+  rather than through Neovim's `format_on_save`, run `just fmt` before committing.
 - **No logger**: there used to be two (a structlog-backed `ucw/log.lua`, and `nvimd`'s
   vlog-derived one). Both are gone — `nvimd` with Phase 1, structlog with Phase 5,
   which found `ucw.log` had never had a single caller. Use `vim.notify`; everything
