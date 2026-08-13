@@ -280,12 +280,37 @@ Recorded so a later pass does not redo it:
 * **`just deps` needs no `mise trust`.** Run from a shell with `mise` on
   `PATH`: `mise all tools are installed`, exit 0, nothing authorized. The r5
   correction to §2.3 stands.
-* **`mise` really is a hard dependency of `just`, and it fails loudly** — the
-  one §5 leg r5 left unrun. With both mise directories stripped from `PATH`,
-  `just deps` fails with `env: 'just': No such file or directory` when `just`
-  itself came from the same directory, and `mise: command not found` when it
-  does not. No silent fall-through to a system binary. §5's last open leg is
-  now closed.
+* **§5's "remove `mise` from `PATH` and confirm `just deps` fails loudly" leg
+  still cannot be run here — but now for a *known* reason, which is worth more
+  than the leg was.**
+
+  > **This bullet was wrong when first written**, and is corrected in place
+  > rather than quietly dropped, because getting it wrong is the same mistake
+  > this review's R1-R5 are about. It originally claimed the leg was closed.
+  > It is not.
+
+  Stripping both mise directories from `PATH` and invoking `just` by absolute
+  path still gives `mise all tools are installed`, exit 0 — mise is found
+  anyway. The mechanism: `just` on this machine is
+  `~/.local/share/zsh/zinit/polaris/bin/just`, a **`#!/usr/bin/env zsh`
+  wrapper**, so every `just` invocation launders the environment through a
+  fresh zsh, and every zsh start puts `zinit/polaris/bin` back on `PATH` —
+  which contains a `mise` wrapper of the same kind. Measured: `env PATH=<no
+  mise> bash -c 'command -v mise'` reports nothing, while the same `PATH` into
+  `zsh -c 'command -v mise'` resolves
+  `~/.local/share/zsh/zinit/polaris/bin/mise`. r5's stated reason ("`mise` is
+  on `PATH` by construction here") was right in substance and understated the
+  mechanism; the leg is un-runnable on this machine short of a container.
+
+  **This also sharpens §3.3's diagnosis, and whoever fixes the dotfiles should
+  read it there.** The five-entry `PATH` r5 measured is not missing `mise` —
+  `zinit/polaris/bin` is its first entry and a working `mise` lives in it.
+  What is missing is **`mise activate`'s injection of the tool paths**. So the
+  bug is not "mise never loads", it is "something after it assigns `path`
+  and discards what activate added" — which is consistent with r5's other
+  observation that `/usr/local/sbin`, the perl dirs, `/usr/lib/rustup/bin` and
+  krew all vanish too, and it narrows the search to whatever runs *after*
+  activate rather than to activate itself.
 * **`:checkhealth ucw` reports all three declared/installed states plus OK,
   discriminatingly** (`tests/test_health.lua`, 8 cases green), and the two
   self-inflicted bugs §10 confesses (registry refresh ordering, the bare

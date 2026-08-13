@@ -67,21 +67,28 @@ return {
   config = function()
     require('nvim-treesitter').setup {}
     -- Only a session someone is actually looking at installs parsers by
-    -- itself. This is the same rule Mason applies to its own automatic
-    -- installs, and tests/test_lsp.lua already leans on Mason's version of it;
-    -- nvim-treesitter has no equivalent, so it is written here. `nvim
-    -- --headless`, a `-c` script and a mini.test child all get a config that
-    -- boots in milliseconds instead of one that downloads and compiles a
-    -- couple of dozen grammars into whatever data directory they happen to
-    -- have. `:TSUpdate` and `:TSInstall` are untouched - only the automatic
-    -- boot-time install is gated.
+    -- itself. Mason's version of this rule is two layers, not one -
+    -- mason-tool-installer/mason-lspconfig carry `cond = is_full_ui`, so they
+    -- never even load under firenvim/vscode-neovim, and only *underneath*
+    -- that does Mason's own "skip when no UI is attached" apply, which is the
+    -- half tests/test_lsp.lua asserts. nvim-treesitter has no spec-level
+    -- `cond` to lean on - it loads everywhere, embedded targets included, so
+    -- both halves have to be checked here: `nvim --headless`, a `-c` script
+    -- and a mini.test child all get a config that boots in milliseconds
+    -- instead of one that downloads and compiles a couple of dozen grammars
+    -- into whatever data directory they happen to have, and so does a real
+    -- firenvim/vscode-neovim session - both attach a UI of their own
+    -- (`nvim_ui_attach`, confirmed against their source) to render into the
+    -- browser tab / VS Code editor, which the first half alone would have
+    -- waved through as "someone is looking".
     --
-    -- Until Phase 6.5 this held by accident: no `tree-sitter` CLI was
-    -- reachable from anywhere, so the branch below never ran. Making the
+    -- Until Phase 6.5 the first half held by accident: no `tree-sitter` CLI
+    -- was reachable from anywhere, so the branch below never ran. Making the
     -- project's own tools resolvable (docs/design/phase6.5-binary-deps.md
     -- §2.3) is what turned that luck into a real code path, and the suite
     -- promptly started compiling parsers per test file.
-    if #vim.api.nvim_list_uis() > 0 then
+    -- docs/design/phase6.5-acceptance-review.md R1.
+    if #vim.api.nvim_list_uis() > 0 and require('ucw.targets').is_full_ui() then
       -- Parser compilation shells out to the `tree-sitter` CLI. Without it
       -- installed, .install() would otherwise retry (and fail, noisily) every
       -- single boot for every not-yet-compiled parser. Check once and skip

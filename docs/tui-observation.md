@@ -125,7 +125,8 @@ scripts/tui-drive.sh screenshot /tmp/ucw-shot.txt   # ~29 KB truecolor dump
 
 ## Worked example: a real startup bug found with these tools
 
-Running the current config through the tmux driver caught a real issue immediately.
+Running the config through the tmux driver caught a real issue immediately. (Kept for
+the method, not the specifics — see the note at the end of this section.)
 
 ```sh
 scripts/tui-drive.sh start
@@ -140,14 +141,22 @@ tree-sitter CLI is needed because `latex` is marked that it needs to be generate
 from the grammar definitions to be compatible with nvim!
 ```
 
-Diagnosis: `latex` is in `ensure_installed` (`lua/ucw/units/thirdparty/treesitter.lua`),
-but nvim-treesitter needs the `tree-sitter` CLI to generate that parser and the CLI is
-not installed (not on `PATH`, not via mise/npm/mason). The error fires during
-`init.lua` on **every** boot, producing a hit-enter prompt (which noice reskins as
-"Press any key to continue").
+Diagnosis: `latex` was in `ensure_installed`, but nvim-treesitter needs the
+`tree-sitter` CLI to generate that parser and no CLI was resolvable. The error fired
+during `init.lua` on **every** boot, producing a hit-enter prompt (which noice reskins
+as "Press any key to continue").
 
-Notably, `nvimd.log` and `stderr` were **empty** — this was only visible by looking at
-the screen / `:messages`, which is the whole point of TUI observation.
+Notably, the engine's own log and `stderr` were **empty** — this was only visible by
+looking at the screen / `:messages`, which is the whole point of TUI observation, and
+the reason this example is kept.
 
-Fix options (not applied here): install the `tree-sitter` CLI, or drop `latex` from
-`ensure_installed`.
+> **This example is history, and every particular in it has since changed.** It
+> predates Phase 1, so the file it named (`lua/ucw/units/thirdparty/treesitter.lua`)
+> and the log it named (`nvimd.log`) were both deleted with the nvimd engine;
+> `ensure_installed` lives in `lua/ucw/plugins/treesitter.lua` now and no longer
+> contains `latex`; the boot-time install is gated on a full-UI session
+> (`design/phase6.5-acceptance-review.md` R1) and warns once instead of erroring; and
+> the "no CLI anywhere" premise is itself wrong — this machine has had `tree-sitter`
+> via mise since 2026-08-04, which nothing in the editor could see
+> (`design/phase6.5-binary-deps.md` §3.3). The **method** is what this section
+> teaches; do not read the specifics as current.

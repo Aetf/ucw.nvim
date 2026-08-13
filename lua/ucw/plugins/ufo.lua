@@ -39,11 +39,18 @@ end
 -- rather than against a list:
 --
 -- 1. A parser must load. Deliberately not "is it listed in treesitter.lua's
---    `ensure_installed`": a parser listed there is not necessarily compiled
---    (this machine has no `tree-sitter` CLI, so only Neovim's bundled parsers
---    exist). Note `language.add` returns `nil, err` instead of raising, so the
---    return value is what has to be tested - a `pcall` around it always
---    succeeds.
+--    `ensure_installed`": that list is a declaration of intent, and a declared
+--    parser is not a compiled one on any machine - the install is asynchronous,
+--    it only runs in a full-UI session at all
+--    (docs/design/phase6.5-acceptance-review.md R1), individual grammars fail
+--    to build, and a `tree-sitter` CLI has to be resolvable before any of it
+--    happens. Asking the running Neovim is the only answer that is true here
+--    and now. (An earlier version of this comment argued the point from "this
+--    machine has no `tree-sitter` CLI", which stopped being true before anyone
+--    noticed - docs/design/phase6.5-binary-deps.md §3.3 is what found that, and
+--    is the reason the durable reason is stated instead.) Note `language.add`
+--    returns `nil, err` instead of raising, so the return value is what has to
+--    be tested - a `pcall` around it always succeeds.
 -- 2. A `folds` query must exist. `ufo/provider/treesitter.lua` raises
 --    UfoFallbackException without one, and that exception has nowhere to go:
 --    ufo consults exactly two providers, and a raise from the *second* one

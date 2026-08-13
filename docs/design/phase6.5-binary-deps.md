@@ -30,6 +30,14 @@
 >   user decision). §10 records what §5 asked for and what it found —
 >   including the one prediction that came back the other way: a broken
 >   binary on `PATH` fails **silently**.
+> * **r6** (2026-08-12) — **accepted after review**, five findings fixed
+>   (`docs/design/phase6.5-acceptance-review.md`, kept as the record of the
+>   time and not rewritten). The one that changes behaviour is **R1**: §2.3b's
+>   UI gate was the wrong half of Mason's rule and let the parser install
+>   through under firenvim and vscode-neovim — corrected in place below,
+>   because as written §2.3b describes a gate this repo no longer has. The
+>   other four were false statements in code comments and contributor docs,
+>   fixed where they lived. §11 records the outcome. 141 cases, green ×2.
 
 ---
 
@@ -300,6 +308,31 @@ precondition: **nothing installs itself in a session with no UI attached.**
 milliseconds again; `:TSUpdate` and `:TSInstall` are untouched, and an
 interactive session behaves exactly as before.
 
+> **r6 correction: that was the wrong half of Mason's rule, and shipping only
+> it was a live regression** (review R1). Mason's protection here is *two*
+> layers: `mason-tool-installer.lua` and `mason-lspconfig.lua` carry
+> `cond = is_full_ui`, so under an embedded target lazy never loads them at
+> all, and Mason's own no-UI check — the half `tests/test_lsp.lua` asserts —
+> only ever applies underneath that. nvim-treesitter has no `cond` (it is
+> `lazy = false` on purpose, the embedded targets want its highlighting), so
+> the inner half alone was not enough: **firenvim and vscode-neovim each
+> attach a UI of their own** (`nvim_ui_attach`, to receive the redraw events
+> they paint into the browser textarea / the VS Code editor), which made
+> `#nvim_list_uis() > 0` true in exactly the two contexts this config keeps
+> automatic installs out of. Measured: a firenvim-marked session with a
+> reachable CLI invoked it 1.9 s after boot returned. The gate is now
+>
+> ```lua
+> if #vim.api.nvim_list_uis() > 0 and require('ucw.targets').is_full_ui() then
+> ```
+>
+> and neither conjunct is redundant — dropping the first re-opens the headless
+> case this section was written for, dropping the second is the bug.
+> **`nvim_list_uis()` answers "a UI is attached", not "a human is present";
+> contexts are what `ucw.targets` is for.** `tests/test_treesitter.lua`'s
+> `embedded contexts` group covers it with a real second Neovim and a
+> genuinely attached UI, plus a full-UI positive control.
+
 Two things worth keeping:
 
 * This is not new fragility, it is old fragility becoming reachable. The suite
@@ -315,6 +348,18 @@ Two things worth keeping:
 child's `PATH`, so the case is discriminating on a machine that has no real
 one; reverse-verified by removing the gate (the boot then emits
 `nvim-treesitter/install/...: Downloading ...`).
+
+> **r6**: that file now also carries the `embedded contexts` group R1 needed,
+> and it is worth knowing why it is built differently. The no-UI case above can
+> assert on the *effect* (no parser directory) because a mini.test child has no
+> UI and therefore nothing to race. The embedded cases cannot: they need a UI
+> genuinely attached, which the mini.test child cannot have, so they drive a
+> second Neovim over RPC — and there the install is asynchronous, so asserting
+> the effect immediately is a dud that passes with the gate removed (it did,
+> once). They watch whether `require('nvim-treesitter').install` is **called**
+> instead, recorded by wrapping the global `require` before `ucw.boot()`; the
+> booting `nvim_exec_lua` is a blocking request and `config()` runs inside it,
+> so the counter is final the moment it returns.
 
 ### 2.4 `:checkhealth ucw`
 
@@ -465,6 +510,24 @@ instead of assuming them.
 > with a measurement attached, rather than a caveat to check. It is also the
 > single highest-value thing anyone could fix next, since it is what stands
 > between this phase's mechanism and its effect.
+>
+> > **r6 sharpening, and the thing to actually go looking for.** That
+> > five-entry `PATH` is **not** missing `mise`: its first entry,
+> > `zinit/polaris/bin`, contains a working `mise` wrapper, and `zsh -c
+> > 'command -v mise'` resolves it (while the same `PATH` into `bash` finds
+> > nothing — the zinit wrappers are zsh scripts, so any zsh start re-derives
+> > them). What is missing is **`mise activate`'s injection of the tool
+> > paths**. So the bug is not "mise never loads", it is "something assigns
+> > `path` *after* activate and discards what it added" — which is the same
+> > shape as `/usr/local/sbin`, the perl dirs, `/usr/lib/rustup/bin` and krew
+> > all vanishing, and it narrows the search to what runs after activate
+> > rather than to activate itself.
+> >
+> > The same wrapper mechanism is why §5's "remove mise from `PATH` and
+> > confirm `just deps` fails loudly" leg is un-runnable here short of a
+> > container: `just` is itself a `#!/usr/bin/env zsh` zinit wrapper, so it
+> > launders the caller's environment through a fresh zsh and gets `mise`
+> > back every time. `phase6.5-acceptance-review.md` §2 has the measurement.
 
 ### 3.4 The name mapping is the registry's, not mason-lspconfig's
 
@@ -737,3 +800,46 @@ to fix — both are the seams these reviews keep finding, not new shapes:**
   written by someone who had just read R1. The fix is the same one: report
   module availability, do not ask `ucw.targets` what context this is — the
   gate has one owner and it is the spec.
+
+---
+
+## 11. Accepted (r6, 2026-08-12)
+
+`docs/design/phase6.5-acceptance-review.md`, five findings, all fixed.
+**141 cases, green ×2.**
+
+The review's own summary of the shape, which is the part worth carrying
+forward: **every finding was downstream of one sentence** — §2.3b's "nothing
+installs itself in a session with no UI attached" — borrowed from Mason
+without checking that Mason's version of the rule has a second layer this one
+did not. R1 is that gap in code; R3 is the document that would have revealed
+it and instead asserted the opposite.
+
+| # | Finding | Fixed in |
+|---|---|---|
+| R1 | the parser install fires under firenvim/vscode-neovim — both attach a UI | `lua/ucw/plugins/treesitter.lua` + 3 cases in `tests/test_treesitter.lua` (§2.3b's r6 note) |
+| R2 | `docs/testing.md` documents the test command without `mise exec --` — 7 red of 15 if followed | `docs/testing.md` |
+| R3 | `docs/testing.md`: the mini.test child "has a real UI attached, which is what makes screenshots possible" — false on both halves | `docs/testing.md` |
+| R4 | `ufo.lua` argues from "this machine has no `tree-sitter` CLI", which §3.3 disproved | `lua/ucw/plugins/ufo.lua` |
+| R5 | `tui-observation.md`'s worked example: Phase-1-deleted file, Phase-1-deleted log, a parser no longer declared, and "not via mise" | `docs/tui-observation.md` |
+
+Two things the review settled that this document had left open:
+
+* **§5's last unrun leg is not closed, and now cannot be here.** `just` is a
+  `#!/usr/bin/env zsh` zinit wrapper, so it re-derives a `mise`-bearing `PATH`
+  no matter what the caller passes. Worth more than the leg: the same probe
+  showed the five-entry `PATH` of §3.3 *does* contain a working `mise`, so the
+  dotfiles bug is specifically that **`mise activate`'s tool paths get
+  discarded**, not that mise never loads. See §3.3's r6 sharpening.
+* **The r5 "as built" claims re-verified**, including the ones r5 was
+  correcting r4 about: the rustup component is installed and current
+  (`rust-analyzer 1.89.0`, binary dated 2026-08-09 21:55), `just deps` needs
+  no `mise trust`, and `just fmt-check`/`just lint` are red for the documented
+  Phase 7 reasons only.
+
+**Still open, and now with one more reason to care.** §3.3's shell `PATH` bug
+remains the single highest-value thing to fix next. R1 adds a wrinkle for
+whoever does: making `tree-sitter` reachable is also the moment §9's
+carried-forward item — what an *interactive* session does the first time it
+can compile — stops being hypothetical, and it will now happen only in a
+full-UI session, which is the intended place for it to happen.
