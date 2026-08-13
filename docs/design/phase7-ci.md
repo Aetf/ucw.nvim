@@ -2,6 +2,17 @@
 
 > Revision history
 >
+> * **r6** (2026-08-13) — **as built.** §3.5's six steps landed as seven commits
+>   (`2529804`..`52dc6a5`); §8 is the new as-built section and is the only part
+>   of this document written after the code. Everything above it is left as the
+>   record of what was believed before. Four of its statements turned out to be
+>   wrong, and each was caught by a guard rather than by a red CI run, which is
+>   the outcome §5 was asking for: `$VIMRUNTIME` cannot be captured the way §1.5b
+>   says; `pathStrict` is not the variable §1.5b thought it was; §1.5
+>   misidentified one of the two gitsigns deprecations; and `mise-action` is on
+>   `@v4`, not r5's `@v2`. One gap: §3.2's `lint` job has no way to get the
+>   plugin library it depends on, the same shape as the `nvim` hazard that
+>   section already named.
 > * **r5** (2026-08-13) — two follow-ups to r4's own open items, both closed
 >   empirically rather than left for implementation time. D2's "check at
 >   implementation time" is answered: `stable` on `neovim/neovim` is a
@@ -1018,3 +1029,157 @@ knowledge leaking out of the repo:
   §1.5) — new members of the §7 annotation list above, same reasoning:
   `vim.rpcrequest`'s inferred return type is looser than what the three
   cases using it assert.
+* **(r6) `gitsigns.toggle_deleted`.** Deprecated in favour of
+  `preview_hunk_inline()`, and left alone rather than replaced: the two are
+  different features (a persistent `show_deleted` toggle versus a one-shot
+  inline preview of the hunk under the cursor), so swapping them changes what
+  `:GitsignsToggleDeleted` does. That is a behaviour decision, not a lint fix.
+  §1.5 had this finding recorded as `preview_hunk`, which is not deprecated at
+  all — see §8.1.
+
+## 8. (r6) As built
+
+Seven commits, in §3.5's order. `2529804` `just deps` pin (and this document);
+`22789b5` the reformat; `645857d` `.git-blame-ignore-revs`; `0c6ff07` the lint
+gate; `0bcf3a5` the absent-formatter cases; `9b7a623` the workflow; `52dc6a5`
+the docs. 145 cases green twice, `just lint` and `just fmt-check` both green.
+
+### 8.1 Four statements above are wrong
+
+Each was caught by something that refused to proceed, not by a red run on
+GitHub — which is what §5's mitigation ("check the gate against a known
+finding, never against *it ran and exited 0*") is for.
+
+**`$VIMRUNTIME` cannot be captured with `:echo`** (§1.5b, §3.3). Headless
+`:echo` writes to **stderr**, so `VIMRUNTIME="$(nvim --headless --clean -c
+'echo $VIMRUNTIME' -c qa)"` — the exact line §3.3 proposes — assigns the empty
+string. An unset library entry is silently ignored (§1.5a measured that and
+called it a feature), so this would have produced a lint job that ran, exited
+0 on a good day, and checked the repo with none of Neovim's annotations: **36
+problems instead of 22, and fewer of them real.** The recipe uses `-c 'lua
+io.write(vim.env.VIMRUNTIME or "")'`, and refuses to run when the result is
+empty or has no `lua/` under it. It refused on the first invocation, which is
+the only reason this is a footnote rather than §9.
+
+**`pathStrict` is not the variable §1.5b thought it was.** Measured across the
+matrix (configuration B, `VIMRUNTIME` set, only `runtime` varying):
+
+| `runtime.path` | `pathStrict` | result |
+|---|---|---|
+| lua_ls default (key absent) | absent | 22 |
+| lua_ls default | `false` | 22 |
+| lua_ls default | `true` | 22 |
+| `["lua/?.lua", …, "?.lua", …]` (as built) | `true` | 22 |
+| `["lua/?.lua", …, "?.lua", …]` (as built) | `false` | 22 |
+| `["?.lua", …, "lua/?.lua", …]` (§3.3's order) | `true` | 22 |
+| `["?.lua", …, "lua/?.lua", …]` (§3.3's order) | `false` | **20 + 1 false positive** |
+
+So the self-shadowing §1.5b describes is real, and it needs **both** an
+explicit `runtime.path` carrying `lua/?.lua` *and* `pathStrict` off. Neither
+alone does anything. §1.5b measured its "off" column with half of D11's own fix
+already applied and attributed the whole effect to the other half.
+
+The conclusion D11 reached is unchanged and is now better founded: **the two
+halves are not independent, and `runtime.path` without `pathStrict` is worse
+than neither.** That is a sharper claim than "turn `pathStrict` on", and it is
+the one `tests/test_luarc.lua` asserts. The built order puts `lua/?.lua` first
+(matching `after/lsp/lua_ls.lua`, so the two files read the same), which
+happens to be immune even without `pathStrict` — kept on regardless, because
+"immune today" is not "equivalent", the same argument §1.5b used for adding
+`runtime.path` in the first place.
+
+**§1.5 misidentified the second gitsigns deprecation.** It is not
+`preview_hunk` — that one is fine — but `toggle_deleted`, whose
+`@deprecated` annotation sits directly above it in `gitsigns/actions.lua:231`
+and points at `preview_hunk_inline()`. That matters for D5's triage, not just
+for accuracy: `undo_stage_hunk → stage_hunk` really is mechanical (upstream
+unified the two operations; same surface, same intent), but `toggle_deleted →
+preview_hunk_inline` is **not** — one flips a persistent per-buffer config, the
+other previews a single hunk once. Swapping them is a behaviour decision, so it
+is suppressed and carried in §7 rather than "fixed". D5's fixable list is
+therefore three items, not four.
+
+**`jdx/mise-action` is on `@v4`.** D13 pins the action's `version:` input and
+r5 wrote `@v2` for the action itself, which is three majors stale. All four
+actions were checked against the API before the file was written:
+`actions/checkout` v7.0.1, `rhysd/action-setup-vim` v1.6.1,
+`extractions/setup-just` v4, `jdx/mise-action` v4.2.5. D2's `stable` question
+is closed at the commit level rather than by release title: `stable` is a
+lightweight tag on `68ea43cd`, and the annotated `v0.12.4` tag dereferences to
+the same commit.
+
+### 8.2 The gap: the `lint` job had no plugins
+
+§3.2's `lint` job is `checkout, setup-just, setup-neovim, mise-action, just
+lint`. Nothing there installs the plugins, and §1.5a already measured what a
+missing plugin library costs: 16 findings instead of 22, silently. This is
+exactly the hazard §3.2 names one paragraph earlier for `nvim` — *"the recipe
+does not fail, it produces the weaker check, in CI only, where nobody would see
+the difference"* — applied to the other half of the same config and missed.
+
+Built: a `just plugins` recipe (`nvim --headless '+Lazy! install' +qa`; `install`
+rather than `restore`, so running a linter never drags an already-installed
+plugin back to the lockfile), `lint` depends on it, and
+`scripts/luarc-lint-config.lua` exits 1 with the recipe name when the plugin
+root is absent or has no `lua/` directories. Both refusal paths verified.
+
+### 8.3 What was verified, and one verification that was a dud
+
+Per §4, every gate was broken on purpose:
+
+* `just deps` — fresh clone lands on the pin (4.5 s); an existing checkout at a
+  different commit converges by single-SHA fetch (0.9 s, no unshallow); a
+  lockfile with the entry removed exits 1 rather than cloning `origin/main`.
+* `just lint` — dropping the `t` import makes it red for exactly those two
+  lines and exit 1; green is exit 0. `VIMRUNTIME` unset: 22 → 36. `pathStrict`
+  dropped from §3.3's path order: `octo.lua:15`, `snacks.lua:88` and
+  `lsp_progress.lua:32` disappear and `snacks.lua:36` appears.
+* `.luarc.json` **in the editor**, which is D9's entire justification and is
+  not observable from the CLI: in a real TUI, `tests/test_luarc.lua` reports
+  zero diagnostics with the file present and `Undefined global MiniTest` twice
+  with it moved aside. `MiniTest` is in `.luarc.json`'s globals and not in
+  `after/lsp/lua_ls.lua`'s, which is what makes the probe discriminate.
+* `tests/test_luarc.lua` — each case red for its own reason when the setting it
+  guards is removed.
+* The absent-formatter cases — red for the *notification* (not the buffer) with
+  `notify_no_formatters = false` and the formatter still genuinely absent.
+* Bare-runner shape — lazy bootstraps itself and installs 46 plugins into an
+  empty data dir in 9.6 s, the generator finds 41 plugin `lua/` dirs, the check
+  is green, and `lazy-lock.json` does not move (which also de-risks D6).
+
+**The dud is worth more than any of them.** The first bare-runner simulation
+was `XDG_DATA_HOME=/tmp/scratch just lint`. It printed a plausible number of
+library entries and a green check in 30 s, and it was a completely ordinary run
+against `~/.local/share/nvim`: **`just` here is a zinit wrapper with a
+`#!/usr/bin/env zsh` shebang, and zsh's own startup reassigns `XDG_*` on the way
+through.** `XDG_DATA_HOME=/tmp/PROBE zsh -c 'echo $XDG_DATA_HOME'` prints
+`/home/aetf/.local/share`. Same family as the standing rule that `zsh -lic` lies
+about `PATH`; now in `AGENTS.md` and `docs/testing.md` with the spelling that
+does work.
+
+### 8.4 Smaller notes
+
+* **`.git-blame-ignore-revs` cannot be in the reformat commit** (§3.5 step 2
+  asks for it): a commit cannot contain its own hash. Split into `22789b5` +
+  `645857d`. Verified on a line the reformat actually moved — the first line
+  tried was a comment it had not touched, which looks identical either way.
+* **`collapse_simple_statement`**, measured because the reformat is mostly
+  one-line closures being expanded and that invites second-guessing:
+  `"FunctionOnly"` would keep them but touches *more* of the repo (55 files vs
+  46), since it also collapses functions currently written across lines. D4's
+  "leave `stylua.toml` alone" is the smaller change as well as the decided one.
+* **`.luarc.json` carries no comments** — JSON, and `vim.json.decode` reads it
+  in `tests/test_luarc.lua`. The reasoning for every line in it lives in that
+  test file and in the `justfile`'s `lint` recipe, both of which name it.
+* **`tests/` grew to 18 unformatted files** exactly as §1.4 predicted it would
+  keep doing; the reformat covered 46 files in total (26 `lua/`, 2 `ftplugin/`,
+  18 `tests/`), matching §1.4's r4 count.
+
+### 8.5 Still open
+
+* **The first real run's timings**, and therefore the caching decision (§1.3,
+  §4, §7). Nothing has run on a runner yet — the branch is not pushed.
+* **D1: push and PR.** The one irreversible step, held for explicit
+  confirmation.
+* Everything in §7 stands as written, plus the `gitsigns.toggle_deleted`
+  entry §8.1 adds to it.
