@@ -11,7 +11,9 @@ local ensure_installed = {
   'bash',
   'beancount',
   'bibtex',
-  'c', 'c_sharp', 'cmake',
+  'c',
+  'c_sharp',
+  'cmake',
   'comment', -- for todo, fixme, etc
   'cpp',
   'css',
@@ -111,9 +113,9 @@ return {
       callback = function()
         require('nvim-treesitter.parsers').openscad = {
           install_info = {
-            url = "https://github.com/bollian/tree-sitter-openscad",
-            files = { "src/parser.c" },
-            branch = "master",
+            url = 'https://github.com/bollian/tree-sitter-openscad',
+            files = { 'src/parser.c' },
+            branch = 'master',
           },
         }
       end,

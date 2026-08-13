@@ -74,7 +74,7 @@ local function config()
     hi.NeoTreeDimText = 'Whitespace'
   end
 
-  vim.cmd [[colorscheme base16-eighties]]
+  vim.cmd([[colorscheme base16-eighties]])
 end
 
 return {

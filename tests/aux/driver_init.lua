@@ -12,12 +12,10 @@ end
 -- from the runtime mini.nvim plugin that lazy.nvim installs/manages on its
 -- own for actual editing features (see lua/ucw/plugins/mini.lua) - the two
 -- are not meant to share a copy.
-vim.opt.rtp:append{ vim.fn.getcwd() .. '/deps/mini.nvim' }
+vim.opt.rtp:append { vim.fn.getcwd() .. '/deps/mini.nvim' }
 
 -- Locate test helper rtp
-vim.opt.rtp:append{ vim.fn.getcwd() .. '/tests/aux' }
-
+vim.opt.rtp:append { vim.fn.getcwd() .. '/tests/aux' }
 
 -- Set up 'mini.test'
 require('mini.test').setup()
-

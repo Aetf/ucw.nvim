@@ -4,7 +4,6 @@
 local utils = require('ucw.utils')
 local t = utils.t
 
-
 _G.UCW = {}
 local M = {}
 local H = {}
@@ -21,7 +20,9 @@ H.echo = function(msg, is_important)
     local new_ch = { vim.fn.strcharpart(ch[1], 0, max_width - tot_width), ch[2] }
     table.insert(chunks, new_ch)
     tot_width = tot_width + vim.fn.strdisplaywidth(new_ch[1])
-    if tot_width >= max_width then break end
+    if tot_width >= max_width then
+      break
+    end
   end
 
   -- Echo. Force redraw to ensure that it is effective (`:h echo-redraw`)
@@ -30,32 +31,38 @@ H.echo = function(msg, is_important)
 end
 
 H.unecho = function()
-  if H.cache.msg_shown then vim.cmd([[echo '' | redraw]]) end
+  if H.cache.msg_shown then
+    vim.cmd([[echo '' | redraw]])
+  end
 end
 
-H.message = function(msg) H.echo(msg, true) end
+H.message = function(msg)
+  H.echo(msg, true)
+end
 
-H.error = function(msg) error(string.format('(ucw.keys.actions) %s', msg), 0) end
+H.error = function(msg)
+  error(string.format('(ucw.keys.actions) %s', msg), 0)
+end
 
 function M.bufdelete(bufnr, force)
-  return utils.bufdelete( bufnr, force)
+  return utils.bufdelete(bufnr, force)
 end
 
 function M.bufwipeout(bufnr, force)
-  return utils.bufwipeout( bufnr, force)
+  return utils.bufwipeout(bufnr, force)
 end
 
 function M.bufnext()
   local ok = pcall(vim.cmd, 'BufferLineCycleNext')
   if not ok then
-    vim.cmd [[bnext]]
+    vim.cmd([[bnext]])
   end
 end
 
 function M.bufprev()
   local ok = pcall(vim.cmd, 'BufferLineCyclePrev')
   if not ok then
-    vim.cmd [[bprev]]
+    vim.cmd([[bprev]])
   end
 end
 
@@ -78,11 +85,11 @@ end
 -- thing (second-round review, Q4).
 
 function M.diag_next()
-  return vim.diagnostic.jump({ count = 1 })
+  return vim.diagnostic.jump { count = 1 }
 end
 
 function M.diag_prev()
-  return vim.diagnostic.jump({ count = -1 })
+  return vim.diagnostic.jump { count = -1 }
 end
 
 -- Send ipython cell under the current cursor to iron REPL.
@@ -90,20 +97,20 @@ end
 function M.iron_send_block(opts)
   opts = opts or { next = false }
   -- TODO: figure out a way to directly call iron api
-  vim.api.nvim_feedkeys(t'<leader>efih', 'mx', false)
+  vim.api.nvim_feedkeys(t('<leader>efih'), 'mx', false)
   if opts.next then
-    vim.cmd [[normal ]h]]
+    vim.cmd([[normal ]h]])
   end
 end
 
 -- Go to start obj mark, can be used as opfunc for textobj
 function M.opfunc_textobj_go_start()
-  vim.cmd 'normal! `['
+  vim.cmd('normal! `[')
 end
 
 -- Go to end obj mark, can be used as opfunc for textobj
 function M.opfunc_textobj_go_end()
-  vim.cmd 'normal! `]'
+  vim.cmd('normal! `]')
 end
 
 -- Toggle full diagnostic text rendered below the line, between "current line
@@ -140,11 +147,11 @@ end
 -- most-pressed keys there is, and everything in it has to be cheap and safe to
 -- repeat.
 function M.clear()
-  vim.cmd [[nohlsearch]]
-  vim.cmd [[diffupdate]]
+  vim.cmd([[nohlsearch]])
+  vim.cmd([[diffupdate]])
   -- Clear and redraw the screen
   -- See :h mode
-  vim.cmd [[mode]]
+  vim.cmd([[mode]])
   -- noice rather than the notifier directly: it dismisses its own views *and*,
   -- through `SnacksView.dismiss`, calls `Snacks.notifier.hide()`. Kept in a
   -- pcall to safely ignore any error, as the nvim-notify version was.
@@ -165,7 +172,9 @@ function H.user_textobject_id(ai_type)
   -- Get from user single character textobject identifier
   local needs_help_msg = true
   vim.defer_fn(function()
-    if not needs_help_msg then return end
+    if not needs_help_msg then
+      return
+    end
 
     local msg = string.format('Enter `%s` textobject identifier (single character) ', ai_type)
     H.echo(msg)
@@ -176,7 +185,9 @@ function H.user_textobject_id(ai_type)
   H.unecho()
 
   -- Terminate if couldn't get input (like with <C-c>) or it is `<Esc>`
-  if not ok or char == '\27' then return nil end
+  if not ok or char == '\27' then
+    return nil
+  end
 
   if char:find('^[%w%p%s]$') == nil then
     H.error('Input must be single character: alphanumeric, punctuation, or space.')
@@ -194,7 +205,9 @@ function M.jump_textobject(prev_next, left_right, ai_type)
   end
   -- Get user input
   local tobj_id = H.user_textobject_id('a')
-  if tobj_id == nil then return end
+  if tobj_id == nil then
+    return
+  end
 
   -- Jump!
   ai.move_cursor(left_right, ai_type, tobj_id, { n_times = vim.v.count1, search_method = prev_next })

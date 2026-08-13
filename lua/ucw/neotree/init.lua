@@ -7,7 +7,7 @@ end
 function M.config()
   local helpers = require('ucw.neotree.helpers')
 
-  require("neo-tree").setup({
+  require('neo-tree').setup {
     close_if_last_window = true,
     hide_root_node = true,
     -- use vim.ui.input for inputs, which will be dressed up by dressing.vim
@@ -21,8 +21,8 @@ function M.config()
           vim.opt_local.number = true
           vim.opt_local.relativenumber = true
           vim.opt_local.foldcolumn = '0'
-        end
-      }
+        end,
+      },
     },
     default_component_configs = {
       indent = {
@@ -45,13 +45,13 @@ function M.config()
         width = helpers.width_fit_content,
 
         mappings = {
-          ["O"] = 'system_open',
-          ["o"] = 'none',
-          ["oh"] = "open_vsplit",
-          ["ov"] = "open_split",
+          ['O'] = 'system_open',
+          ['o'] = 'none',
+          ['oh'] = 'open_vsplit',
+          ['ov'] = 'open_split',
           -- Move to first/last sibling
-          ["J"] = 'first_sibling',
-          ["K"] = 'last_sibling',
+          ['J'] = 'first_sibling',
+          ['K'] = 'last_sibling',
           -- Horizontal moves control dir open/close
           ['h'] = 'move_out',
           ['l'] = 'move_in',
@@ -59,28 +59,32 @@ function M.config()
           -- Enable lightspeed movement
           -- 'm' flag tells vim to remap keys
           -- 'x!' flag tells vim not to automatically append <esc> to end the mode so this actually works
-          ["S"] = function(state) vim.api.nvim_feedkeys(t([[<Plug>Lightspeed_S]]), 'mx!', true) end,
-          ["s"] = function(state) vim.api.nvim_feedkeys(t([[<Plug>Lightspeed_omni_s]]), 'mx!', true) end,
+          ['S'] = function(state)
+            vim.api.nvim_feedkeys(t([[<Plug>Lightspeed_S]]), 'mx!', true)
+          end,
+          ['s'] = function(state)
+            vim.api.nvim_feedkeys(t([[<Plug>Lightspeed_omni_s]]), 'mx!', true)
+          end,
           -- Emulating Vim's fold commands
-          ["z"] = "none",
+          ['z'] = 'none',
 
-          ["zo"] = 'neotree_zo',
-          ["zO"] = 'neotree_zO',
-          ["zc"] = 'neotree_zc',
-          ["zC"] = 'neotree_zC',
-          ["za"] = 'neotree_za',
-          ["zA"] = 'neotree_zA',
-          ["zx"] = 'neotree_zx',
-          ["zX"] = 'neotree_zX',
-          ["zm"] = 'neotree_zm',
-          ["zM"] = 'neotree_zM',
-          ["zr"] = 'neotree_zr',
-          ["zR"] = 'neotree_zR',
+          ['zo'] = 'neotree_zo',
+          ['zO'] = 'neotree_zO',
+          ['zc'] = 'neotree_zc',
+          ['zC'] = 'neotree_zC',
+          ['za'] = 'neotree_za',
+          ['zA'] = 'neotree_zA',
+          ['zx'] = 'neotree_zx',
+          ['zX'] = 'neotree_zX',
+          ['zm'] = 'neotree_zm',
+          ['zM'] = 'neotree_zM',
+          ['zr'] = 'neotree_zr',
+          ['zR'] = 'neotree_zR',
         },
       },
       commands = helpers.commands,
     },
-  })
+  }
 
   vim.keymap.set('n', '|', [[<cmd>Neotree action=focus toggle=true reveal=true<cr>]], {
     desc = 'Toggle file tree (focus)',

@@ -22,7 +22,7 @@ local utils = require('ucw.utils')
 -- the same.
 local function bufdelete(picker)
   picker.preview:reset()
-  for _, item in ipairs(picker:selected({ fallback = true })) do
+  for _, item in ipairs(picker:selected { fallback = true }) do
     if item.buf then
       utils.bufdelete(item.buf)
     end

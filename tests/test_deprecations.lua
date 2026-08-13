@@ -53,13 +53,13 @@ local INSTALL_SCANNER = [[
 
 local child
 local T
-T, child = H.new_unit_test({
+T, child = H.new_unit_test {
   hooks = {
     pre_case = function()
       child.lua(INSTALL_SCANNER)
     end,
   },
-})
+}
 
 T['deprecated APIs'] = new_set()
 

@@ -39,70 +39,70 @@
 local cmd = vim.api.nvim_command
 
 local function autocmd(this, event, spec)
-    local is_table = type(spec) == 'table'
-    -- pattern can be a table or a string
-    local pattern = is_table and spec[1] or '*'
-    pattern = type(pattern) == 'table' and table.concat(pattern, ',') or pattern
+  local is_table = type(spec) == 'table'
+  -- pattern can be a table or a string
+  local pattern = is_table and spec[1] or '*'
+  pattern = type(pattern) == 'table' and table.concat(pattern, ',') or pattern
 
-    -- once if present, translates to ++once
-    local once = is_table and spec.once or false
+  -- once if present, translates to ++once
+  local once = is_table and spec.once or false
 
-    -- nested if present, translates to ++nested
-    local nested = is_table and spec.nested or false
+  -- nested if present, translates to ++nested
+  local nested = is_table and spec.nested or false
 
-    -- action can be a function or string
-    local action = is_table and spec[2] or spec
-    if type(action) == 'function' then
-        action = this.set(action, once)
-    end
+  -- action can be a function or string
+  local action = is_table and spec[2] or spec
+  if type(action) == 'function' then
+    action = this.set(action, once)
+  end
 
-    -- event can be a table or string
-    local e = type(event) == 'table' and table.concat(event, ',') or event
+  -- event can be a table or string
+  local e = type(event) == 'table' and table.concat(event, ',') or event
 
-    once = once and '++once' or ''
-    nested = nested and '++nested' or ''
-    cmd(table.concat({'autocmd', e, pattern, once, nested, action}, ' '))
+  once = once and '++once' or ''
+  nested = nested and '++nested' or ''
+  cmd(table.concat({ 'autocmd', e, pattern, once, nested, action }, ' '))
 end
 
 local S = {
-    __au = {},
+  __au = {},
 }
 
 local X = setmetatable({}, {
-    __index = S,
-    __newindex = autocmd,
-    __call = autocmd,
+  __index = S,
+  __newindex = autocmd,
+  __call = autocmd,
 })
 
 ---@param id string
 ---@param once boolean
 function S.exec(id, once)
-    S.__au[id]()
-    if once then
-        S.__au[id] = nil
-    end
+  S.__au[id]()
+  if once then
+    S.__au[id] = nil
+  end
 end
 
 ---@param fn fun()
 ---@param once boolean
 function S.set(fn, once)
-    local id = string.format('%p', fn)
-    S.__au[id] = fn
-    return string.format('lua require("au").exec("%s", %s)', id, once)
+  local id = string.format('%p', fn)
+  S.__au[id] = fn
+  return string.format('lua require("au").exec("%s", %s)', id, once)
 end
 
 function S.group(grp, cmds)
-    cmd('augroup ' .. grp)
-    cmd('autocmd!')
-    if type(cmds) == 'function' then
-        cmds(X)
-    else
-        for _, au in ipairs(cmds) do
-            local evt = table.remove(au, 1)
-            autocmd(S, evt, au)
-        end
+  cmd('augroup ' .. grp)
+  cmd('autocmd!')
+  if type(cmds) == 'function' then
+    cmds(X)
+  else
+    for _, au in ipairs(cmds) do
+      local evt = table.remove(au, 1)
+      autocmd(S, evt, au)
     end
-    cmd('augroup END')
+  end
+  cmd('augroup END')
 end
 
 return X

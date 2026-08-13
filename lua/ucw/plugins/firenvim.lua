@@ -7,8 +7,8 @@ local function config()
       ['<C-n>'] = 'default',
       ['<C-t>'] = 'default',
       ignoreKeys = {
-        all = { '<C-TAB>', '<C-S-TAB>', },
-      }
+        all = { '<C-TAB>', '<C-S-TAB>' },
+      },
     },
     localSettings = {
       ['teams.microsoft.com'] = {
@@ -55,7 +55,9 @@ local function config()
   -- set filetype for specific textareas
   au.BufEnter = {
     'github.com_*.txt',
-    function() vim.opt_local.filetype = 'markdown' end
+    function()
+      vim.opt_local.filetype = 'markdown'
+    end,
   }
 
   -- default to soft wrap and no hard wrap when editing on websites
@@ -68,7 +70,7 @@ local function config()
   map('n', '<cr><cr>', [[<cmd>lua vim.opt.lines = math.max(vim.opt.lines:get(), 25) vim.opt.laststatus=2<cr>]])
 
   -- light theme + minimal chrome, tuned for embedding in a browser textarea
-  vim.cmd [[colorscheme base16-one-light]]
+  vim.cmd([[colorscheme base16-one-light]])
   vim.opt.laststatus = 0
   au.UIEnter = function()
     vim.defer_fn(function()

@@ -1,7 +1,7 @@
 local map = require('ucw.utils').map
 local actions = require('ucw.keys.actions')
 
-vim.g.mapleader = " "
+vim.g.mapleader = ' '
 
 local opts = { noremap = true, silent = true }
 
@@ -46,7 +46,7 @@ map('n', 'gS', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_
 map('n', 'gE', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_go_end<cr>g@]], opts)
 
 -- folding and lsp
-vim.keymap.set('n', 'K', actions.hoverK, { desc = "Hover over symbol", silent = true })
+vim.keymap.set('n', 'K', actions.hoverK, { desc = 'Hover over symbol', silent = true })
 
 -- Commenting is Neovim's own since 0.10: `gc` (operator + textobject) and `gcc`
 -- (line, honours a count), with 'commentstring' resolved through treesitter
@@ -65,8 +65,8 @@ vim.keymap.set('n', ']q', [[<cmd>cnext<cr>]])
 vim.keymap.set('n', '[q', [[<cmd>cprevious<cr>]])
 
 -- For mouse
-map({'n', 'i', 'v'}, '<X2Mouse>', '<c-i>', opts)
-map({'n', 'i', 'v'}, '<X1Mouse>', '<c-o>', opts)
+map({ 'n', 'i', 'v' }, '<X2Mouse>', '<c-i>', opts)
+map({ 'n', 'i', 'v' }, '<X1Mouse>', '<c-o>', opts)
 
 -- term navigation
 map('t', '<esc><esc>', [[<c-\><c-n>]], opts)

@@ -6,7 +6,7 @@ local function config()
         operators = false,
         motions = false,
       },
-    }
+    },
   }
   -- Pickers. Phase 5 moved these from Telescope to snacks.picker; snacks has
   -- no ex-commands, so the right-hand sides are functions now.
@@ -15,13 +15,37 @@ local function config()
   -- no equivalent source.
   wk.add {
     { '<leader>T', group = 'picker' },
-    { '<leader>Th', function() Snacks.picker.command_history() end, desc = "Command history" },
+    {
+      '<leader>Th',
+      function()
+        Snacks.picker.command_history()
+      end,
+      desc = 'Command history',
+    },
 
-    { '<C-p>', function() Snacks.picker.files() end, desc = "Find File" },
-    { '<M-S-f>', function() Snacks.picker.grep() end, desc = "Find in CWD" },
+    {
+      '<C-p>',
+      function()
+        Snacks.picker.files()
+      end,
+      desc = 'Find File',
+    },
+    {
+      '<M-S-f>',
+      function()
+        Snacks.picker.grep()
+      end,
+      desc = 'Find in CWD',
+    },
     -- `lines` is snacks' name for what Telescope called
     -- `current_buffer_fuzzy_find`.
-    { '<M-f>', function() Snacks.picker.lines() end, desc = "Find in File" },
+    {
+      '<M-f>',
+      function()
+        Snacks.picker.lines()
+      end,
+      desc = 'Find in File',
+    },
   }
 
   -- Messages and notifications.
@@ -31,10 +55,28 @@ local function config()
   -- picker source itself when snacks.picker is present, and noice sees *all*
   -- message traffic, not only `vim.notify()` calls.
   wk.add {
-    { '<leader>n', group = "notifications" },
-    { '<leader>nn', function() Snacks.picker.noice() end, desc = "Search all messages" },
-    { '<leader>nh', function() Snacks.notifier.show_history() end, desc = "Notification history" },
-    { '<leader>nd', function() require('noice').cmd('dismiss') end, desc = "Dismiss notifications" },
+    { '<leader>n', group = 'notifications' },
+    {
+      '<leader>nn',
+      function()
+        Snacks.picker.noice()
+      end,
+      desc = 'Search all messages',
+    },
+    {
+      '<leader>nh',
+      function()
+        Snacks.notifier.show_history()
+      end,
+      desc = 'Notification history',
+    },
+    {
+      '<leader>nd',
+      function()
+        require('noice').cmd('dismiss')
+      end,
+      desc = 'Dismiss notifications',
+    },
   }
   -- LSP.
   --
@@ -112,85 +154,91 @@ local function config()
 
   -- Git
   wk.add {
-    { "<leader>g", group = "git" },
-    { "<leader>gg", "<cmd>Neogit<cr>", desc = "Neogit" },
-    { "[c", "&diff ? ']c' : '<cmd>Gitsigns prev_hunk<CR>'", desc = "Prev hunk", expr = true, replace_keycodes = false },
-    { "]c", "&diff ? ']c' : '<cmd>Gitsigns next_hunk<CR>'", desc = "Next hunk", expr = true, replace_keycodes = false },
+    { '<leader>g', group = 'git' },
+    { '<leader>gg', '<cmd>Neogit<cr>', desc = 'Neogit' },
+    { '[c', "&diff ? ']c' : '<cmd>Gitsigns prev_hunk<CR>'", desc = 'Prev hunk', expr = true, replace_keycodes = false },
+    { ']c', "&diff ? ']c' : '<cmd>Gitsigns next_hunk<CR>'", desc = 'Next hunk', expr = true, replace_keycodes = false },
   }
 
   -- gitsigns
   wk.add {
-    { "<leader>gR", "<cmd>Gitsigns reset_buffer<CR>", desc = "Reset buffer" },
-    { "<leader>gS", "<cmd>Gitsigns stage_buffer<CR>", desc = "Stage buffer" },
-    { "<leader>gb", '<cmd>lua require"gitsigns".blame_line{full=true}<CR>', desc = "Blame line" },
-    { "<leader>gd", "<cmd>Gitsigns diffthis<CR>", desc = "Diff with index" },
-    { "<leader>gh", "<cmd>DiffviewFileHistory<CR>", desc = "History for current buffer" },
-    { "<leader>gp", "<cmd>Gitsigns preview_hunk<CR>", desc = "Preview hunk" },
-    { "<leader>gr", "<cmd>Gitsigns reset_hunk<CR>", desc = "Reset hunk" },
-    { "<leader>gs", "<cmd>Gitsigns stage_hunk<CR>", desc = "Stage hunk" },
-    { "<leader>gt", group = "toggles" },
-    { "<leader>gtb", "<cmd>Gitsigns toggle_current_line_blame<CR>", desc = "Toggle current line blame" },
-    { "<leader>gtd", "<cmd>Gitsigns toggle_deleted<CR>", desc = "Toggle deleted" },
-    { "<leader>gu", "<cmd>Gitsigns undo_stage_hunk<CR>", desc = "Undo stage hunk" },
+    { '<leader>gR', '<cmd>Gitsigns reset_buffer<CR>', desc = 'Reset buffer' },
+    { '<leader>gS', '<cmd>Gitsigns stage_buffer<CR>', desc = 'Stage buffer' },
+    { '<leader>gb', '<cmd>lua require"gitsigns".blame_line{full=true}<CR>', desc = 'Blame line' },
+    { '<leader>gd', '<cmd>Gitsigns diffthis<CR>', desc = 'Diff with index' },
+    { '<leader>gh', '<cmd>DiffviewFileHistory<CR>', desc = 'History for current buffer' },
+    { '<leader>gp', '<cmd>Gitsigns preview_hunk<CR>', desc = 'Preview hunk' },
+    { '<leader>gr', '<cmd>Gitsigns reset_hunk<CR>', desc = 'Reset hunk' },
+    { '<leader>gs', '<cmd>Gitsigns stage_hunk<CR>', desc = 'Stage hunk' },
+    { '<leader>gt', group = 'toggles' },
+    { '<leader>gtb', '<cmd>Gitsigns toggle_current_line_blame<CR>', desc = 'Toggle current line blame' },
+    { '<leader>gtd', '<cmd>Gitsigns toggle_deleted<CR>', desc = 'Toggle deleted' },
+    { '<leader>gu', '<cmd>Gitsigns undo_stage_hunk<CR>', desc = 'Undo stage hunk' },
   }
   wk.add {
-    { "<leader>gr", ":Gitsigns reset_hunk<CR>", desc = "Reset hunk", mode = "v" },
-    { "<leader>gs", ":Gitsigns stage_hunk<CR>", desc = "Stage hunk", mode = "v" },
+    { '<leader>gr', ':Gitsigns reset_hunk<CR>', desc = 'Reset hunk', mode = 'v' },
+    { '<leader>gs', ':Gitsigns stage_hunk<CR>', desc = 'Stage hunk', mode = 'v' },
   }
   -- text object
   wk.add {
-    { "ic", ":<C-U>Gitsigns select_hunk<CR>", desc = "Select hunk (change) ", mode = "x" },
-    { "ic", ":<C-U>Gitsigns select_hunk<CR>", desc = "Select hunk (change) ", mode = "o" },
+    { 'ic', ':<C-U>Gitsigns select_hunk<CR>', desc = 'Select hunk (change) ', mode = 'x' },
+    { 'ic', ':<C-U>Gitsigns select_hunk<CR>', desc = 'Select hunk (change) ', mode = 'o' },
   }
 
   -- Window and Buffer
   wk.add {
-    { "<C-PageDown>", "<cmd>BufferLineCycleNext<cr>", desc = "Go To Next Buffer" },
-    { "<C-PageUp>", "<cmd>BufferLineCyclePrev<cr>", desc = "Go To Previous Buffer" },
-    { "<M-Bar>", "<cmd>lua require('Navigator').tablast()<cr>", desc = "Go to last tab" },
-    { "<M-Bslash>", "<cmd>lua require('Navigator').previous()<cr>", desc = "Go to last window" },
-    { "<M-h>", "<cmd>lua require('Navigator').left()<cr>", desc = "Go to left window" },
-    { "<M-j>", "<cmd>lua require('Navigator').down()<cr>", desc = "Go to down window" },
-    { "<M-k>", "<cmd>lua require('Navigator').up()<cr>", desc = "Go to up window" },
-    { "<M-l>", "<cmd>lua require('Navigator').right()<cr>", desc = "Go to right window" },
-    { "<M-n>", "<cmd>lua require('Navigator').tabnext()<cr>", desc = "Go to next tab" },
-    { "<M-p>", "<cmd>lua require('Navigator').tabprev()<cr>", desc = "Go to previous tab" },
-    { "<S-Tab>", "<cmd>lua require('ucw.keys.actions').bufprev()<cr>", desc = "Go to previous buffer" },
-    { "<Tab>", "<cmd>lua require('ucw.keys.actions').bufnext()<cr>", desc = "Go to next buffer" },
-    { "<leader>`", "<C-^>", desc = "Go To Alternvative Buffer" },
-    { "<leader>b", group = "buffer" },
-    { "<leader>bX", "<cmd>lua require('ucw.keys.actions').bufdelete(0, true)<cr>", desc = "Delete current buffer" },
-    { "<leader>bb", function() Snacks.picker.buffers() end, desc = "Go to buffer" },
-    { "<leader>bd", "<cmd>BufferLinePickClose<cr>", desc = "Pick Buffer To Close" },
-    { "<leader>bx", "<cmd>lua require('ucw.keys.actions').bufdelete()<cr>", desc = "Delete current buffer" },
+    { '<C-PageDown>', '<cmd>BufferLineCycleNext<cr>', desc = 'Go To Next Buffer' },
+    { '<C-PageUp>', '<cmd>BufferLineCyclePrev<cr>', desc = 'Go To Previous Buffer' },
+    { '<M-Bar>', "<cmd>lua require('Navigator').tablast()<cr>", desc = 'Go to last tab' },
+    { '<M-Bslash>', "<cmd>lua require('Navigator').previous()<cr>", desc = 'Go to last window' },
+    { '<M-h>', "<cmd>lua require('Navigator').left()<cr>", desc = 'Go to left window' },
+    { '<M-j>', "<cmd>lua require('Navigator').down()<cr>", desc = 'Go to down window' },
+    { '<M-k>', "<cmd>lua require('Navigator').up()<cr>", desc = 'Go to up window' },
+    { '<M-l>', "<cmd>lua require('Navigator').right()<cr>", desc = 'Go to right window' },
+    { '<M-n>', "<cmd>lua require('Navigator').tabnext()<cr>", desc = 'Go to next tab' },
+    { '<M-p>', "<cmd>lua require('Navigator').tabprev()<cr>", desc = 'Go to previous tab' },
+    { '<S-Tab>', "<cmd>lua require('ucw.keys.actions').bufprev()<cr>", desc = 'Go to previous buffer' },
+    { '<Tab>', "<cmd>lua require('ucw.keys.actions').bufnext()<cr>", desc = 'Go to next buffer' },
+    { '<leader>`', '<C-^>', desc = 'Go To Alternvative Buffer' },
+    { '<leader>b', group = 'buffer' },
+    { '<leader>bX', "<cmd>lua require('ucw.keys.actions').bufdelete(0, true)<cr>", desc = 'Delete current buffer' },
+    {
+      '<leader>bb',
+      function()
+        Snacks.picker.buffers()
+      end,
+      desc = 'Go to buffer',
+    },
+    { '<leader>bd', '<cmd>BufferLinePickClose<cr>', desc = 'Pick Buffer To Close' },
+    { '<leader>bx', "<cmd>lua require('ucw.keys.actions').bufdelete()<cr>", desc = 'Delete current buffer' },
     -- `:Session*` are auto-session's *legacy* command names (kept alive by its
     -- `legacy_cmds` option, which this config now turns off); the current ones
     -- are subcommands of `:AutoSession`, and the old spellings notify a
     -- deprecation warning at press time. `search` is the session picker that
     -- the deprecated `session-lens` plugin used to provide.
-    { "<leader>s", group = "session" },
-    { "<leader>sc", "<cmd>AutoSession save<cr>", desc = "Manually save session" },
-    { "<leader>sr", "<cmd>AutoSession restore<cr>", desc = "Manually restore session" },
-    { "<leader>ss", "<cmd>AutoSession search<cr>", desc = "Open session" },
-    { "<leader>t", group = "tab" },
-    { "<leader>tc", "<cmd>tabnew<cr>", desc = "Open new tab page" },
-    { "<leader>tn", "<cmd>tabnext<cr>", desc = "Go to next tab" },
-    { "<leader>to", "<cmd>tabonly<cr>", desc = "Close other tabs" },
-    { "<leader>tp", "<cmd>tabprev<cr>", desc = "Go to previous tab" },
-    { "<leader>tx", "<cmd>tabclose<cr>", desc = "Close current tab" },
-    { "<leader>w", group = "window" },
-    { "<leader>wh", "<cmd>vsplit<cr>", desc = "Create new window horizontally" },
-    { "<leader>wv", "<cmd>split<cr>", desc = "Create new window vertically" },
-    { "<leader>wx", "<C-w>c", desc = "Close current window" },
+    { '<leader>s', group = 'session' },
+    { '<leader>sc', '<cmd>AutoSession save<cr>', desc = 'Manually save session' },
+    { '<leader>sr', '<cmd>AutoSession restore<cr>', desc = 'Manually restore session' },
+    { '<leader>ss', '<cmd>AutoSession search<cr>', desc = 'Open session' },
+    { '<leader>t', group = 'tab' },
+    { '<leader>tc', '<cmd>tabnew<cr>', desc = 'Open new tab page' },
+    { '<leader>tn', '<cmd>tabnext<cr>', desc = 'Go to next tab' },
+    { '<leader>to', '<cmd>tabonly<cr>', desc = 'Close other tabs' },
+    { '<leader>tp', '<cmd>tabprev<cr>', desc = 'Go to previous tab' },
+    { '<leader>tx', '<cmd>tabclose<cr>', desc = 'Close current tab' },
+    { '<leader>w', group = 'window' },
+    { '<leader>wh', '<cmd>vsplit<cr>', desc = 'Create new window horizontally' },
+    { '<leader>wv', '<cmd>split<cr>', desc = 'Create new window vertically' },
+    { '<leader>wx', '<C-w>c', desc = 'Close current window' },
   }
   wk.add {
     {
-      mode = { "t" },
-      { "<M-Bslash>", "<cmd>lua require('Navigator').previous()<cr>", desc = "Go to last window" },
-      { "<M-h>", "<cmd>lua require('Navigator').left()<cr>", desc = "Go to left window" },
-      { "<M-j>", "<cmd>lua require('Navigator').down()<cr>", desc = "Go to down window" },
-      { "<M-k>", "<cmd>lua require('Navigator').up()<cr>", desc = "Go to up window" },
-      { "<M-l>", "<cmd>lua require('Navigator').right()<cr>", desc = "Go to right window" },
+      mode = { 't' },
+      { '<M-Bslash>', "<cmd>lua require('Navigator').previous()<cr>", desc = 'Go to last window' },
+      { '<M-h>', "<cmd>lua require('Navigator').left()<cr>", desc = 'Go to left window' },
+      { '<M-j>', "<cmd>lua require('Navigator').down()<cr>", desc = 'Go to down window' },
+      { '<M-k>', "<cmd>lua require('Navigator').up()<cr>", desc = 'Go to up window' },
+      { '<M-l>', "<cmd>lua require('Navigator').right()<cr>", desc = 'Go to right window' },
     },
   }
 end

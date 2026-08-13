@@ -38,8 +38,8 @@ local T, child = H.new_integration_test()
 -- Note `nvim_replace_termcodes` is *not* used - with `from_part = true` it
 -- mangles plain text - so special keys must be written as raw control chars.
 local function feed(keys)
-    child.lua([[vim.api.nvim_feedkeys(..., 'nt', false)]], { keys })
-    child.api.nvim_eval('1')
+  child.lua([[vim.api.nvim_feedkeys(..., 'nt', false)]], { keys })
+  child.api.nvim_eval('1')
 end
 
 -- blink drops its very first completion request after startup while its fuzzy
@@ -51,7 +51,7 @@ end
 -- source wired up and does it return items", not about blink's auto-trigger
 -- heuristics, which are upstream's concern.
 local function show_and_wait()
-    return child.lua_get([[
+  return child.lua_get([[
         (function()
           local blink = require('blink.cmp')
           for _ = 1, 10 do
@@ -64,7 +64,7 @@ local function show_and_wait()
 end
 
 local function menu_labels()
-    return child.lua_get([[
+  return child.lua_get([[
         (function()
           local ok, list = pcall(function()
             return require('blink.cmp.completion.list').items or {}
@@ -78,35 +78,34 @@ local function menu_labels()
 end
 
 local function contains(haystack, needle)
-    for _, v in ipairs(haystack) do
-        if tostring(v):find(needle, 1, true) then return true end
+  for _, v in ipairs(haystack) do
+    if tostring(v):find(needle, 1, true) then
+      return true
     end
-    return false
+  end
+  return false
 end
 
 T['plugins'] = new_set()
 
 T['plugins']['blink.cmp replaced the whole nvim-cmp cluster'] = function()
-    eq(child.lua_get([[require('lazy.core.config').plugins['blink.cmp'] ~= nil]]), true)
-    for _, gone in ipairs({ 'nvim-cmp', 'LuaSnip', 'cmp-nvim-lsp', 'cmp-nvim-lsp-signature-help' }) do
-        eq(
-            { gone, child.lua_get(([[require('lazy.core.config').plugins[%q] ~= nil]]):format(gone)) },
-            { gone, false }
-        )
-    end
+  eq(child.lua_get([[require('lazy.core.config').plugins['blink.cmp'] ~= nil]]), true)
+  for _, gone in ipairs { 'nvim-cmp', 'LuaSnip', 'cmp-nvim-lsp', 'cmp-nvim-lsp-signature-help' } do
+    eq({ gone, child.lua_get(([[require('lazy.core.config').plugins[%q] ~= nil]]):format(gone)) }, { gone, false })
+  end
 end
 
 T['plugins']['autopairs stands on its own, not as a cmp dependency'] = function()
-    eq(child.lua_get([[require('lazy.core.config').plugins['nvim-autopairs'] ~= nil]]), true)
+  eq(child.lua_get([[require('lazy.core.config').plugins['nvim-autopairs'] ~= nil]]), true)
 end
 
 T['snippets'] = new_set()
 
 T['snippets']['run on native vim.snippet, with no snippet engine plugin'] = function()
-    eq(child.lua_get([[require('blink.cmp.config').snippets.preset]]), 'default')
-    eq(child.lua_get([[package.loaded['luasnip'] ~= nil]]), false)
-    -- friendly-snippets is kept purely as a data dependency
-    eq(child.lua_get([[require('lazy.core.config').plugins['friendly-snippets'] ~= nil]]), true)
+  eq(child.lua_get([[require('blink.cmp.config').snippets.preset]]), 'default')
+  eq(child.lua_get([[package.loaded['luasnip'] ~= nil]]), false)
+  -- friendly-snippets is kept purely as a data dependency
+  eq(child.lua_get([[require('lazy.core.config').plugins['friendly-snippets'] ~= nil]]), true)
 end
 
 T['sources'] = new_set()
@@ -116,31 +115,31 @@ T['sources'] = new_set()
 -- the point is that the behaviour the old cmp cluster provided is still there
 -- either way.
 T['sources']['configured source set matches the replaced cmp sources'] = function()
-    eq(child.lua_get([[require('blink.cmp.config').sources.default]]), { 'lsp', 'path', 'snippets', 'buffer' })
-    -- carried over from cmp-buffer's `keyword_length = 6`
-    eq(child.lua_get([[require('blink.cmp.config').sources.providers.buffer.min_keyword_length]]), 6)
-    -- replaces cmp-nvim-lsp-signature-help
-    eq(child.lua_get([[require('blink.cmp.config').signature.enabled]]), true)
-    -- replaces cmp-cmdline
-    eq(child.lua_get([[require('blink.cmp.config').cmdline.enabled]]), true)
+  eq(child.lua_get([[require('blink.cmp.config').sources.default]]), { 'lsp', 'path', 'snippets', 'buffer' })
+  -- carried over from cmp-buffer's `keyword_length = 6`
+  eq(child.lua_get([[require('blink.cmp.config').sources.providers.buffer.min_keyword_length]]), 6)
+  -- replaces cmp-nvim-lsp-signature-help
+  eq(child.lua_get([[require('blink.cmp.config').signature.enabled]]), true)
+  -- replaces cmp-cmdline
+  eq(child.lua_get([[require('blink.cmp.config').cmdline.enabled]]), true)
 end
 
 -- End-to-end through the real menu. The path source is used because it is fully
 -- local and deterministic: no language server, no network, and the fixture is
 -- this repository itself.
 T['sources']['path source produces real entries in the menu'] = function()
-    child.lua([[vim.cmd('enew!')]])
-    -- Seeded through the API so no quote character has to survive the
-    -- keystream; only the trailing slash that triggers the source is typed.
-    -- The path is wrapped in `"` because blink deliberately ignores a bare
-    -- leading `/` (it reads that as a comment or URL slash).
-    child.lua([[vim.api.nvim_buf_set_lines(0, 0, -1, true, { 'p = "' .. vim.fn.getcwd() })]])
-    feed('A/')
+  child.lua([[vim.cmd('enew!')]])
+  -- Seeded through the API so no quote character has to survive the
+  -- keystream; only the trailing slash that triggers the source is typed.
+  -- The path is wrapped in `"` because blink deliberately ignores a bare
+  -- leading `/` (it reads that as a comment or URL slash).
+  child.lua([[vim.api.nvim_buf_set_lines(0, 0, -1, true, { 'p = "' .. vim.fn.getcwd() })]])
+  feed('A/')
 
-    eq(show_and_wait(), true)
-    local labels = menu_labels()
-    eq({ 'has lua/', contains(labels, 'lua') }, { 'has lua/', true })
-    eq({ 'has tests/', contains(labels, 'tests') }, { 'has tests/', true })
+  eq(show_and_wait(), true)
+  local labels = menu_labels()
+  eq({ 'has lua/', contains(labels, 'lua') }, { 'has lua/', true })
+  eq({ 'has tests/', contains(labels, 'tests') }, { 'has tests/', true })
 end
 
 T['lsp'] = new_set()
@@ -152,15 +151,15 @@ T['lsp'] = new_set()
 -- never goes through that path - so the hook fired zero times and the merge had
 -- silently stopped happening. blink registers on `vim.lsp.config('*')` instead.
 T['lsp']['completion capabilities are advertised to every server'] = function()
-    local caps = child.lua_get([[vim.lsp.config['*'].capabilities]])
-    eq(caps.textDocument.completion.completionItem.snippetSupport, true)
-    eq(caps.textDocument.completion.completionItem.labelDetailsSupport, true)
-    eq(caps.textDocument.completion.completionItem.resolveSupport ~= nil, true)
-    -- include_nvim_defaults=true must be passed, otherwise blink returns only
-    -- its own completion capabilities and everything Neovim advertises by
-    -- default (signatureHelp, hover, ...) is dropped on the floor
-    eq({ 'signatureHelp', caps.textDocument.signatureHelp ~= nil }, { 'signatureHelp', true })
-    eq({ 'hover', caps.textDocument.hover ~= nil }, { 'hover', true })
+  local caps = child.lua_get([[vim.lsp.config['*'].capabilities]])
+  eq(caps.textDocument.completion.completionItem.snippetSupport, true)
+  eq(caps.textDocument.completion.completionItem.labelDetailsSupport, true)
+  eq(caps.textDocument.completion.completionItem.resolveSupport ~= nil, true)
+  -- include_nvim_defaults=true must be passed, otherwise blink returns only
+  -- its own completion capabilities and everything Neovim advertises by
+  -- default (signatureHelp, hover, ...) is dropped on the floor
+  eq({ 'signatureHelp', caps.textDocument.signatureHelp ~= nil }, { 'signatureHelp', true })
+  eq({ 'hover', caps.textDocument.hover ~= nil }, { 'hover', true })
 end
 
 return T

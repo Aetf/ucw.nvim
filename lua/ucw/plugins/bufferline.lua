@@ -16,8 +16,8 @@ return {
           tab_selected = {
             guifg = { highlight = 'Normal', attribute = 'fg' },
             guibg = { highlight = 'Normal', attribute = 'bg' },
-            gui = "bold,italic",
-          }
+            gui = 'bold,italic',
+          },
         },
         sort_by = 'directory',
         -- do not draw over file tree
@@ -25,7 +25,7 @@ return {
           {
             filetype = 'neo-tree',
             text = 'Files',
-            text_align = "left",
+            text_align = 'left',
           },
         },
         -- handle buf delete while preserving window layout

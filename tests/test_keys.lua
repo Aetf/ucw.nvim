@@ -23,25 +23,23 @@ T['diagnostic navigation'] = new_set()
 
 -- The regression itself.
 T['diagnostic navigation']['g[ and g] are really mapped'] = function()
-    for _, lhs in ipairs({ 'g[', 'g]' }) do
-        local map = child.lua_get(
-            ([[
+  for _, lhs in ipairs { 'g[', 'g]' } do
+    local map = child.lua_get(([[
             (function()
               local m = vim.fn.maparg(%q, 'n', false, true)
               return { has = not vim.tbl_isempty(m), callable = type(m.callback) == 'function', desc = m.desc }
             end)()
-        ]]):format(lhs)
-        )
-        eq({ lhs, map.has }, { lhs, true })
-        eq({ lhs, map.callable }, { lhs, true })
-        -- a description that still looks like a right-hand side is the exact
-        -- shape of the original bug
-        eq({ lhs, vim.startswith(map.desc or '', '<cmd>') }, { lhs, false })
-    end
+        ]]):format(lhs))
+    eq({ lhs, map.has }, { lhs, true })
+    eq({ lhs, map.callable }, { lhs, true })
+    -- a description that still looks like a right-hand side is the exact
+    -- shape of the original bug
+    eq({ lhs, vim.startswith(map.desc or '', '<cmd>') }, { lhs, false })
+  end
 end
 
 T['diagnostic navigation']['they jump to the next/previous diagnostic'] = function()
-    child.lua([[
+  child.lua([[
         vim.cmd('enew!')
         vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'one', 'two', 'three', 'four', 'five' })
         local ns = vim.api.nvim_create_namespace('ucw_test_diag')
@@ -52,20 +50,20 @@ T['diagnostic navigation']['they jump to the next/previous diagnostic'] = functi
         vim.api.nvim_win_set_cursor(0, { 1, 0 })
     ]])
 
-    local function line()
-        -- `[==[` rather than `[[`: the `[1]` index would otherwise close the
-        -- long string one bracket early
-        return child.lua_get([==[vim.api.nvim_win_get_cursor(0)[1]]==])
-    end
+  local function line()
+    -- `[==[` rather than `[[`: the `[1]` index would otherwise close the
+    -- long string one bracket early
+    return child.lua_get([==[vim.api.nvim_win_get_cursor(0)[1]]==])
+  end
 
-    -- `:normal` without `!` goes through mappings, so this exercises the real
-    -- binding rather than calling ucw.keys.actions directly
-    child.cmd('normal g]')
-    eq(line(), 2)
-    child.cmd('normal g]')
-    eq(line(), 4)
-    child.cmd('normal g[')
-    eq(line(), 2)
+  -- `:normal` without `!` goes through mappings, so this exercises the real
+  -- binding rather than calling ucw.keys.actions directly
+  child.cmd('normal g]')
+  eq(line(), 2)
+  child.cmd('normal g]')
+  eq(line(), 4)
+  child.cmd('normal g[')
+  eq(line(), 2)
 end
 
 T['which-key spec'] = new_set()
@@ -80,7 +78,7 @@ T['which-key spec'] = new_set()
 -- own presets document ~150 built-in keys (`zc`, `ap`, `<c-w>h`, ...) that
 -- have no mapping by design, and they share `Config.mappings` with ours.
 T['which-key spec']['no entry carries a right-hand side in its description'] = function()
-    local bad = child.lua_get([[
+  local bad = child.lua_get([[
         (function()
           local Config = require('which-key.config')
           local bad = {}
@@ -94,7 +92,7 @@ T['which-key spec']['no entry carries a right-hand side in its description'] = f
           return bad
         end)()
     ]])
-    eq(bad, {})
+  eq(bad, {})
 end
 
 return T

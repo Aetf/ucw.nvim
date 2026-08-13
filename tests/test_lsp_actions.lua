@@ -19,7 +19,7 @@ T['actions'] = new_set()
 
 -- The regression that motivated the whole table.
 T['actions']['every vim.lsp entry point still exists'] = function()
-    local broken = child.lua_get([[
+  local broken = child.lua_get([[
         (function()
           local A = require('ucw.lsp.actions')
           local bad = {}
@@ -32,7 +32,7 @@ T['actions']['every vim.lsp entry point still exists'] = function()
           return bad
         end)()
     ]])
-    eq(broken, {})
+  eq(broken, {})
 end
 
 -- Four kinds now, since Phase 5 added `picker` and Phase 6 added `fn`.
@@ -40,7 +40,7 @@ end
 -- that needs the plugin loaded - so tests/test_picker.lua and
 -- tests/test_format.lua carry those halves.
 T['actions']['every action is exactly one of lsp/cmd/picker/fn, and describable'] = function()
-    local bad = child.lua_get([[
+  local bad = child.lua_get([[
         (function()
           local A = require('ucw.lsp.actions')
           local bad = {}
@@ -60,44 +60,44 @@ T['actions']['every action is exactly one of lsp/cmd/picker/fn, and describable'
           return bad
         end)()
     ]])
-    eq(bad, {})
+  eq(bad, {})
 end
 
 -- `resolve` walking a missing path must return nil rather than throw, or the
 -- test above would blow up instead of reporting which action is broken.
 T['actions']['resolve tolerates missing paths'] = function()
-    eq(child.lua_get([[require('ucw.lsp.actions').resolve('buf.no_such_function') == nil]]), true)
-    eq(child.lua_get([[require('ucw.lsp.actions').resolve('no.such.path.at.all') == nil]]), true)
+  eq(child.lua_get([[require('ucw.lsp.actions').resolve('buf.no_such_function') == nil]]), true)
+  eq(child.lua_get([[require('ucw.lsp.actions').resolve('no.such.path.at.all') == nil]]), true)
 end
 
 T['actions']['wk() builds a which-key v3 entry and rejects typos'] = function()
-    -- queried field by field: a which-key entry mixes an array part (lhs, rhs)
-    -- with a hash part, which the RPC bridge to the child cannot marshal whole
-    local function field(expr)
-        return child.lua_get(
-            ([[(function() local e = require('ucw.lsp.actions').wk('<leader>ld', 'definitions', { buffer = 7 }) return %s end)()]]):format(
-                expr
-            )
-        )
-    end
-    eq(field('e[1]'), '<leader>ld')
-    -- a picker action, so the rhs is a callback rather than an ex-command
-    eq(field('type(e[2])'), 'function')
-    eq(field('e.desc'), 'Go to definition')
-    eq(field('e.buffer'), 7)
+  -- queried field by field: a which-key entry mixes an array part (lhs, rhs)
+  -- with a hash part, which the RPC bridge to the child cannot marshal whole
+  local function field(expr)
+    return child.lua_get(
+      ([[(function() local e = require('ucw.lsp.actions').wk('<leader>ld', 'definitions', { buffer = 7 }) return %s end)()]]):format(
+        expr
+      )
+    )
+  end
+  eq(field('e[1]'), '<leader>ld')
+  -- a picker action, so the rhs is a callback rather than an ex-command
+  eq(field('type(e[2])'), 'function')
+  eq(field('e.desc'), 'Go to definition')
+  eq(field('e.buffer'), 7)
 
-    -- code_action is n+x; the mode has to survive into the spec or visual-mode
-    -- code actions silently stop working (this is what replaced the removed
-    -- range_code_action binding)
-    eq(child.lua_get([[require('ucw.lsp.actions').wk('<leader>la', 'code_action').mode]]), { 'n', 'x' })
+  -- code_action is n+x; the mode has to survive into the spec or visual-mode
+  -- code actions silently stop working (this is what replaced the removed
+  -- range_code_action binding)
+  eq(child.lua_get([[require('ucw.lsp.actions').wk('<leader>la', 'code_action').mode]]), { 'n', 'x' })
 
-    eq(child.lua_get([[pcall(require('ucw.lsp.actions').wk, 'x', 'nope')]]), false)
+  eq(child.lua_get([[pcall(require('ucw.lsp.actions').wk, 'x', 'nope')]]), false)
 end
 
 T['servers'] = new_set()
 
 T['servers']['each entry is a non-empty list of filetype strings'] = function()
-    local bad = child.lua_get([[
+  local bad = child.lua_get([[
         (function()
           local bad = {}
           for name, fts in pairs(require('ucw.lsp.servers')) do
@@ -113,39 +113,39 @@ T['servers']['each entry is a non-empty list of filetype strings'] = function()
           return bad
         end)()
     ]])
-    eq(bad, {})
+  eq(bad, {})
 end
 
 -- The duplicate-client bug in one assertion: rustaceanvim owns rust-analyzer,
 -- so enabling it here too is what attached two clients to every Rust buffer and
 -- rendered every inlay hint twice.
 T['servers']['rust is left to rustaceanvim'] = function()
-    eq(child.lua_get([[require('ucw.lsp.servers').rust_analyzer == nil]]), true)
-    eq(child.lua_get([[vim.tbl_contains(require('ucw.lsp').server_names(), 'rust_analyzer')]]), false)
+  eq(child.lua_get([[require('ucw.lsp.servers').rust_analyzer == nil]]), true)
+  eq(child.lua_get([[vim.tbl_contains(require('ucw.lsp').server_names(), 'rust_analyzer')]]), false)
 end
 
 T['servers']['filetypes() is the sorted, deduplicated union'] = function()
-    -- basedpyright and ruff both claim `python`; it must appear once
-    local fts = child.lua_get([[require('ucw.lsp').filetypes()]])
-    local seen = {}
-    for _, ft in ipairs(fts) do
-        eq({ ft, seen[ft] }, { ft, nil })
-        seen[ft] = true
-    end
-    eq(seen['python'] ~= nil, true)
-    eq(seen['lua'] ~= nil, true)
+  -- basedpyright and ruff both claim `python`; it must appear once
+  local fts = child.lua_get([[require('ucw.lsp').filetypes()]])
+  local seen = {}
+  for _, ft in ipairs(fts) do
+    eq({ ft, seen[ft] }, { ft, nil })
+    seen[ft] = true
+  end
+  eq(seen['python'] ~= nil, true)
+  eq(seen['lua'] ~= nil, true)
 
-    local sorted = vim.deepcopy(fts)
-    table.sort(sorted)
-    eq(fts, sorted)
+  local sorted = vim.deepcopy(fts)
+  table.sort(sorted)
+  eq(fts, sorted)
 end
 
 T['servers']['server_names() is sorted and matches the table'] = function()
-    local names = child.lua_get([[require('ucw.lsp').server_names()]])
-    local sorted = vim.deepcopy(names)
-    table.sort(sorted)
-    eq(names, sorted)
-    eq(#names, child.lua_get([[vim.tbl_count(require('ucw.lsp.servers'))]]))
+  local names = child.lua_get([[require('ucw.lsp').server_names()]])
+  local sorted = vim.deepcopy(names)
+  table.sort(sorted)
+  eq(names, sorted)
+  eq(#names, child.lua_get([[vim.tbl_count(require('ucw.lsp.servers'))]]))
 end
 
 return T

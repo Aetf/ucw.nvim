@@ -4,12 +4,14 @@ local M = {}
 local function bootstrap_lazy()
   local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
   if not (vim.uv or vim.loop).fs_stat(lazypath) then
-    vim.fn.system({
-      'git', 'clone', '--filter=blob:none',
+    vim.fn.system {
+      'git',
+      'clone',
+      '--filter=blob:none',
       'https://github.com/folke/lazy.nvim.git',
       '--branch=stable',
       lazypath,
-    })
+    }
   end
   vim.opt.rtp:prepend(lazypath)
 end
@@ -39,14 +41,14 @@ function M.boot()
   require('ucw.lsp.attach').setup()
 
   bootstrap_lazy()
-  require('lazy').setup({
+  require('lazy').setup {
     spec = {
       { import = 'ucw.plugins' },
       { import = 'ucw.plugins.user' },
     },
     install = { colorscheme = { 'base16-eighties' } },
     change_detection = { notify = false },
-  })
+  }
 
   if targets.is_gui() then
     require('ucw.gui').setup()

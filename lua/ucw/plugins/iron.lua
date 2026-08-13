@@ -29,17 +29,20 @@ return {
         interrupt = '<leader>ec',
         exit = '<leader>eq',
         clear = '<leader>el',
-      }
+      },
     }
 
     local wk = require('which-key')
     wk.add {
       {
         mode = { 'n', 'v', 'i' },
-        { "<C-Enter>", "<cmd>lua require('ucw.keys.actions').iron_send_block()<cr>')", desc = "Send block to REPL" },
-        { "<S-Enter>", "<cmd>lua require('ucw.keys.actions').iron_send_block({next=true})<cr>')",
-          desc = "Send block to REPL and move to next" },
-      }
+        { '<C-Enter>', "<cmd>lua require('ucw.keys.actions').iron_send_block()<cr>')", desc = 'Send block to REPL' },
+        {
+          '<S-Enter>',
+          "<cmd>lua require('ucw.keys.actions').iron_send_block({next=true})<cr>')",
+          desc = 'Send block to REPL and move to next',
+        },
+      },
     }
   end,
 }

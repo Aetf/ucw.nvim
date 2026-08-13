@@ -18,7 +18,7 @@ return {
       mappings = {
         -- for the status buffer
         status = {
-          ["<ESC>"] = "Close",
+          ['<ESC>'] = 'Close',
         },
       },
     }

@@ -42,19 +42,19 @@ local T, child = H.new_integration_test()
 -- buffer came back unchanged" would otherwise be indistinguishable from
 -- "stylua formatted it", which is not what those cases are about.
 local function no_formatters_on_path()
-    child.lua([[vim.env.PATH = vim.fn.tempname()]])
+  child.lua([[vim.env.PATH = vim.fn.tempname()]])
 end
 
 local function lines()
-    return child.api.nvim_buf_get_lines(0, 0, -1, false)
+  return child.api.nvim_buf_get_lines(0, 0, -1, false)
 end
 
 local function set_lines(ls)
-    child.api.nvim_buf_set_lines(0, 0, -1, false, ls)
+  child.api.nvim_buf_set_lines(0, 0, -1, false, ls)
 end
 
 local function do_format()
-    child.lua([[require('ucw.lsp.actions').call('format')]])
+  child.lua([[require('ucw.lsp.actions').call('format')]])
 end
 
 T['shape'] = new_set()
@@ -65,10 +65,10 @@ T['shape'] = new_set()
 -- which the RPC bridge to the child cannot marshal whole - `child.lua_get`
 -- on `formatters_by_ft.lua` errors with "Cannot convert given Lua table".
 T['shape']['formatters_by_ft has exactly the five filetypes this phase configures'] = function()
-    for _, ft in ipairs({ 'lua', 'python', 'toml', 'markdown', 'tex' }) do
-        child.lua(([[vim.cmd('enew!'); vim.bo.filetype = %q]]):format(ft))
-    end
-    local keys = child.lua_get([[
+  for _, ft in ipairs { 'lua', 'python', 'toml', 'markdown', 'tex' } do
+    child.lua(([[vim.cmd('enew!'); vim.bo.filetype = %q]]):format(ft))
+  end
+  local keys = child.lua_get([[
         (function()
           local k = {}
           for name, _ in pairs(require('conform').formatters_by_ft) do table.insert(k, name) end
@@ -76,21 +76,21 @@ T['shape']['formatters_by_ft has exactly the five filetypes this phase configure
           return k
         end)()
     ]])
-    eq(keys, { 'lua', 'markdown', 'python', 'tex', 'toml' })
+  eq(keys, { 'lua', 'markdown', 'python', 'tex', 'toml' })
 
-    local function field(ft, expr)
-        return child.lua_get(("require('conform').formatters_by_ft[%q]%s"):format(ft, expr))
-    end
+  local function field(ft, expr)
+    return child.lua_get(("require('conform').formatters_by_ft[%q]%s"):format(ft, expr))
+  end
 
-    eq(field('lua', '[1]'), 'stylua')
-    eq(field('lua', '.lsp_format'), 'never')
-    eq(field('python', '[1]'), 'ruff_format')
-    eq(field('python', '.lsp_format'), vim.NIL)
-    eq(field('toml', '[1]'), 'taplo')
-    eq(field('markdown', '[1]'), 'prettier')
-    -- no formatter list for tex, only the override - see the fallback test below
-    eq(field('tex', '[1]'), vim.NIL)
-    eq(field('tex', '.lsp_format'), 'never')
+  eq(field('lua', '[1]'), 'stylua')
+  eq(field('lua', '.lsp_format'), 'never')
+  eq(field('python', '[1]'), 'ruff_format')
+  eq(field('python', '.lsp_format'), vim.NIL)
+  eq(field('toml', '[1]'), 'taplo')
+  eq(field('markdown', '[1]'), 'prettier')
+  -- no formatter list for tex, only the override - see the fallback test below
+  eq(field('tex', '[1]'), vim.NIL)
+  eq(field('tex', '.lsp_format'), 'never')
 end
 
 -- A language server that lives entirely inside the test child, offering
@@ -132,9 +132,8 @@ local FAKE_FORMAT_SERVER = [[
 -- buffer whose filetype is `filetype`. If the fallback reaches it, the buffer
 -- ends up containing exactly `marker`.
 local function start_fake_formatter(name, filetype, marker)
-    child.lua(FAKE_FORMAT_SERVER)
-    return child.lua_get(
-        ([[
+  child.lua(FAKE_FORMAT_SERVER)
+  return child.lua_get(([[
         (function()
           vim.cmd('enew!')
           vim.bo.filetype = %q
@@ -144,8 +143,7 @@ local function start_fake_formatter(name, filetype, marker)
             root_dir = vim.fn.getcwd(),
           })
         end)()
-    ]]):format(filetype, name, marker)
-    )
+    ]]):format(filetype, name, marker))
 end
 
 T['lsp_format blocking'] = new_set()
@@ -157,12 +155,12 @@ T['lsp_format blocking'] = new_set()
 -- client's edit never gets applied. The buffer stays exactly what it started
 -- as, not "formatted, just by the wrong tool."
 T['lsp_format blocking']['lua stays unformatted rather than falling back to a formatting-capable client'] = function()
-    no_formatters_on_path()
-    local id = start_fake_formatter('lua_ls', 'lua', 'FORMATTED_BY_FAKE')
-    eq(id ~= vim.NIL and id ~= nil, true)
-    set_lines({ 'local x=1' })
-    do_format()
-    eq(lines(), { 'local x=1' })
+  no_formatters_on_path()
+  local id = start_fake_formatter('lua_ls', 'lua', 'FORMATTED_BY_FAKE')
+  eq(id ~= vim.NIL and id ~= nil, true)
+  set_lines { 'local x=1' }
+  do_format()
+  eq(lines(), { 'local x=1' })
 end
 
 -- The same buffer with `stylua` reachable, which is the case that actually
@@ -171,21 +169,21 @@ end
 -- the case above honest - on its own it passes whether `lsp_format = 'never'`
 -- works or merely nothing was installed.
 T['lsp_format blocking']['lua formats with stylua, not with the formatting-capable client'] = function()
-    local id = start_fake_formatter('lua_ls', 'lua', 'FORMATTED_BY_FAKE')
-    eq(id ~= vim.NIL and id ~= nil, true)
-    set_lines({ 'local x=1' })
-    do_format()
-    eq(lines(), { 'local x = 1' })
+  local id = start_fake_formatter('lua_ls', 'lua', 'FORMATTED_BY_FAKE')
+  eq(id ~= vim.NIL and id ~= nil, true)
+  set_lines { 'local x=1' }
+  do_format()
+  eq(lines(), { 'local x = 1' })
 end
 
 -- docs/design/phase6-format-lint.md §1.5: texlab advertises formatting too,
 -- and blocking it is the actual fix for the bug this phase almost shipped.
 T['lsp_format blocking']['tex stays unformatted rather than falling back to texlab'] = function()
-    local id = start_fake_formatter('texlab', 'tex', 'FORMATTED_BY_FAKE')
-    eq(id ~= vim.NIL and id ~= nil, true)
-    set_lines({ '\\documentclass{article}' })
-    do_format()
-    eq(lines(), { '\\documentclass{article}' })
+  local id = start_fake_formatter('texlab', 'tex', 'FORMATTED_BY_FAKE')
+  eq(id ~= vim.NIL and id ~= nil, true)
+  set_lines { '\\documentclass{article}' }
+  do_format()
+  eq(lines(), { '\\documentclass{article}' })
 end
 
 -- The positive control: an *unlisted* filetype (no `ftplugin/rust.lua`, no
@@ -197,48 +195,48 @@ end
 -- `format_on_save` its own `lsp_format` would have overridden this exact
 -- fallback for every filetype at once (§2 D2, §5).
 T['lsp_format blocking']['an unlisted filetype (rust) still reaches its LSP fallback on save'] = function()
-    local id = start_fake_formatter('rust-analyzer', 'rust', 'FORMATTED_BY_FAKE')
-    eq(id ~= vim.NIL and id ~= nil, true)
-    local path = vim.fn.tempname() .. '.rs'
-    set_lines({ 'fn main() {}' })
-    child.lua(([[vim.cmd.write(%q)]]):format(path))
-    eq(vim.fn.readfile(path), { 'FORMATTED_BY_FAKE' })
-    vim.fn.delete(path)
+  local id = start_fake_formatter('rust-analyzer', 'rust', 'FORMATTED_BY_FAKE')
+  eq(id ~= vim.NIL and id ~= nil, true)
+  local path = vim.fn.tempname() .. '.rs'
+  set_lines { 'fn main() {}' }
+  child.lua(([[vim.cmd.write(%q)]]):format(path))
+  eq(vim.fn.readfile(path), { 'FORMATTED_BY_FAKE' })
+  vim.fn.delete(path)
 end
 
 T['real CLI formatters'] = new_set()
 
 T['real CLI formatters']['stylua formats a lua buffer via <leader>lf'] = function()
-    child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'lua']])
-    set_lines({ 'local x=1' })
-    do_format()
-    eq(lines(), { 'local x = 1' })
+  child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'lua']])
+  set_lines { 'local x=1' }
+  do_format()
+  eq(lines(), { 'local x = 1' })
 end
 
 T['real CLI formatters']['ruff_format formats a python buffer via <leader>lf'] = function()
-    child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'python']])
-    set_lines({ 'x=1' })
-    do_format()
-    eq(lines(), { 'x = 1' })
+  child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'python']])
+  set_lines { 'x=1' }
+  do_format()
+  eq(lines(), { 'x = 1' })
 end
 
 T['real CLI formatters']['taplo formats a toml buffer via <leader>lf'] = function()
-    child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'toml']])
-    set_lines({ '[a]', 'x=1' })
-    do_format()
-    eq(lines(), { '[a]', 'x = 1' })
+  child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'toml']])
+  set_lines { '[a]', 'x=1' }
+  do_format()
+  eq(lines(), { '[a]', 'x = 1' })
 end
 
 -- `format_on_save` writing the *on-disk* content, not just the in-buffer one
 -- - it is a `BufWritePre` hook, and the two can diverge if the autocmd
 -- priority/timing is wrong, which a buffer-only assertion would miss.
 T['real CLI formatters']['format_on_save reformats a lua file on disk'] = function()
-    local path = vim.fn.tempname() .. '.lua'
-    child.lua(([[vim.cmd.edit(%q)]]):format(path))
-    set_lines({ 'local x=1' })
-    child.lua('vim.cmd.write()')
-    eq(vim.fn.readfile(path), { 'local x = 1' })
-    vim.fn.delete(path)
+  local path = vim.fn.tempname() .. '.lua'
+  child.lua(([[vim.cmd.edit(%q)]]):format(path))
+  set_lines { 'local x=1' }
+  child.lua('vim.cmd.write()')
+  eq(vim.fn.readfile(path), { 'local x = 1' })
+  vim.fn.delete(path)
 end
 
 T['PATH order'] = new_set()
@@ -256,24 +254,24 @@ T['PATH order'] = new_set()
 -- would pass under `prepend` too, on any machine where Mason has no `stylua`
 -- installed - which is every test child.
 T['PATH order']['a stylua ahead of Mason on PATH is the one conform runs'] = function()
-    local dir = vim.fn.tempname()
-    vim.fn.mkdir(dir, 'p')
-    vim.fn.writefile({ '#!/bin/sh', 'cat > /dev/null', 'echo AHEAD_OF_MASON' }, dir .. '/stylua')
-    vim.fn.setfperm(dir .. '/stylua', 'rwxr-xr-x')
+  local dir = vim.fn.tempname()
+  vim.fn.mkdir(dir, 'p')
+  vim.fn.writefile({ '#!/bin/sh', 'cat > /dev/null', 'echo AHEAD_OF_MASON' }, dir .. '/stylua')
+  vim.fn.setfperm(dir .. '/stylua', 'rwxr-xr-x')
 
-    local inherited = child.lua_get([[vim.env.PATH]])
-    child.lua(([[vim.env.PATH = %q .. ':' .. vim.env.PATH]]):format(dir))
-    child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'lua']])
-    set_lines({ 'local x=1' })
-    do_format()
-    eq(lines(), { 'AHEAD_OF_MASON' })
+  local inherited = child.lua_get([[vim.env.PATH]])
+  child.lua(([[vim.env.PATH = %q .. ':' .. vim.env.PATH]]):format(dir))
+  child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'lua']])
+  set_lines { 'local x=1' }
+  do_format()
+  eq(lines(), { 'AHEAD_OF_MASON' })
 
-    child.lua(([[vim.env.PATH = %q]]):format(inherited))
-    set_lines({ 'local x=1' })
-    do_format()
-    eq(lines(), { 'local x = 1' })
+  child.lua(([[vim.env.PATH = %q]]):format(inherited))
+  set_lines { 'local x=1' }
+  do_format()
+  eq(lines(), { 'local x = 1' })
 
-    vim.fn.delete(dir, 'rf')
+  vim.fn.delete(dir, 'rf')
 end
 
 -- The structural half, and the one that fails the moment someone restores the
@@ -281,10 +279,10 @@ end
 -- for the binaries that exist today; this answers for the ones that do not
 -- exist yet, which is most of the value of doing it with `PATH` at all.
 T['PATH order']['Mason appends its bin directory rather than prepending it'] = function()
-    child.lua([[require('lazy').load { plugins = { 'mason.nvim' } }]])
-    local entries = child.lua_get([[vim.split(vim.env.PATH, ':', { plain = true })]])
-    local mason_bin = child.lua_get([[require('mason-core.installer.InstallLocation').global():bin()]])
-    eq(entries[#entries], mason_bin)
+  child.lua([[require('lazy').load { plugins = { 'mason.nvim' } }]])
+  local entries = child.lua_get([[vim.split(vim.env.PATH, ':', { plain = true })]])
+  local mason_bin = child.lua_get([[require('mason-core.installer.InstallLocation').global():bin()]])
+  eq(entries[#entries], mason_bin)
 end
 
 -- docs/design/phase6-acceptance-review.md R1: `conform.lua` used to carry
@@ -308,16 +306,16 @@ T['embedded contexts'] = new_set()
 -- tests/aux/lua/helpers.lua. It lives there rather than here because
 -- tests/test_health.lua needs the same thing for the same reason.
 local function boot_embedded(marker)
-    H.boot_embedded(child, marker)
+  H.boot_embedded(child, marker)
 end
 
 T['embedded contexts']['<leader>lf does not hard-error under vscode-neovim'] = function()
-    boot_embedded('vscode')
-    child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'lua']])
-    local ok = child.lua_get([[(pcall(function()
+  boot_embedded('vscode')
+  child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'lua']])
+  local ok = child.lua_get([[(pcall(function()
         require('ucw.lsp.actions').call('format')
     end))]])
-    eq(ok, true)
+  eq(ok, true)
 end
 
 -- The generalisation of the case above, in the shape Phase 4's G1 asked for:
@@ -328,8 +326,8 @@ end
 -- second one. `lsp` actions reach core `vim.lsp` and `picker` actions reach
 -- `snacks.nvim` (no `cond` at all), so neither needs the same guard.
 T['embedded contexts']['every fn action can require its module'] = function()
-    boot_embedded('vscode')
-    local unloadable = child.lua_get([[
+  boot_embedded('vscode')
+  local unloadable = child.lua_get([[
         (function()
           local bad = {}
           for name, action in pairs(require('ucw.lsp.actions').actions) do
@@ -344,7 +342,7 @@ T['embedded contexts']['every fn action can require its module'] = function()
           return table.concat(bad, '; ')
         end)()
     ]])
-    eq(unloadable, '')
+  eq(unloadable, '')
 end
 
 -- The other half of the same `cond`: with the plugin loading everywhere,
@@ -361,29 +359,29 @@ end
 -- way first, this case stayed green with the `cond` put back - the reverse
 -- verification Phase 4's F5 rule asks for is what caught that.
 T['embedded contexts']['opening a formatted filetype does not raise'] = function()
-    boot_embedded('started_by_firenvim')
-    local fixtures = {
-        { '.lua', 'lua', 'local x = 1' },
-        { '.md', 'markdown', '# title' },
-        { '.py', 'python', 'x = 1' },
-        { '.toml', 'toml', '[a]' },
-        -- `\documentclass` so this lands on `tex` rather than `plaintex`,
-        -- which has no ftplugin in this config and would quietly not test
-        -- anything.
-        { '.tex', 'tex', '\\documentclass{article}' },
-    }
-    for _, fixture in ipairs(fixtures) do
-        local suffix, want_ft, content = unpack(fixture)
-        local path = vim.fn.tempname() .. suffix
-        vim.fn.writefile({ content }, path)
-        local got = child.lua_get(([[
+  boot_embedded('started_by_firenvim')
+  local fixtures = {
+    { '.lua', 'lua', 'local x = 1' },
+    { '.md', 'markdown', '# title' },
+    { '.py', 'python', 'x = 1' },
+    { '.toml', 'toml', '[a]' },
+    -- `\documentclass` so this lands on `tex` rather than `plaintex`,
+    -- which has no ftplugin in this config and would quietly not test
+    -- anything.
+    { '.tex', 'tex', '\\documentclass{article}' },
+  }
+  for _, fixture in ipairs(fixtures) do
+    local suffix, want_ft, content = unpack(fixture)
+    local path = vim.fn.tempname() .. suffix
+    vim.fn.writefile({ content }, path)
+    local got = child.lua_get(([[
             (function()
               local ok, err = pcall(vim.cmd.edit, %q)
               return { ok, ok and vim.bo.filetype or tostring(err) }
             end)()]]):format(path))
-        eq({ suffix, got }, { suffix, { true, want_ft } })
-        vim.fn.delete(path)
-    end
+    eq({ suffix, got }, { suffix, { true, want_ft } })
+    vim.fn.delete(path)
+  end
 end
 
 -- docs/design/phase6-format-lint.md r6: dropping the `cond` for R1 also
@@ -400,16 +398,16 @@ end
 -- just as well if conform had been turned off wholesale, which is the R1
 -- regression coming back.
 T['embedded contexts']['format_on_save is off, <leader>lf still formats'] = function()
-    boot_embedded('started_by_firenvim')
-    local path = vim.fn.tempname() .. '.lua'
-    child.lua(([[vim.cmd.edit(%q)]]):format(path))
-    set_lines({ 'local x=1' })
-    child.lua('vim.cmd.write()')
-    eq(vim.fn.readfile(path), { 'local x=1' })
+  boot_embedded('started_by_firenvim')
+  local path = vim.fn.tempname() .. '.lua'
+  child.lua(([[vim.cmd.edit(%q)]]):format(path))
+  set_lines { 'local x=1' }
+  child.lua('vim.cmd.write()')
+  eq(vim.fn.readfile(path), { 'local x=1' })
 
-    do_format()
-    eq(lines(), { 'local x = 1' })
-    vim.fn.delete(path)
+  do_format()
+  eq(lines(), { 'local x = 1' })
+  vim.fn.delete(path)
 end
 
 return T

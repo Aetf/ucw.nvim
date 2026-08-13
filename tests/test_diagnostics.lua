@@ -21,52 +21,55 @@ local T, child = H.new_integration_test()
 T['virtual_lines'] = new_set()
 
 T['virtual_lines']['is on for the current line in the full UI'] = function()
-    eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), { current_line = true })
+  eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), { current_line = true })
 end
 
 T['virtual_lines']['is rendered by Neovim, not by a plugin'] = function()
-    -- lsp_lines.setup() used to overwrite this handler; if anything ever does
-    -- again, `current_line` stops meaning what ucw.options says it means.
-    eq(child.lua_get([[
+  -- lsp_lines.setup() used to overwrite this handler; if anything ever does
+  -- again, `current_line` stops meaning what ucw.options says it means.
+  eq(
+    child.lua_get([[
         (function()
           local info = debug.getinfo(vim.diagnostic.handlers.virtual_lines.show, 'S')
           return info.short_src:find('runtime/lua/vim/diagnostic%.lua') ~= nil
-        end)()]]), true)
+        end)()]]),
+    true
+  )
 end
 
 T['virtual_lines']['is off in the embedded contexts'] = function()
-    -- Same technique as tests/test_fold.lua: the helper's `pre_case` boots the
-    -- config before any test code runs, so the target is already decided by
-    -- then. Boot only `ucw.options`, with the firenvim marker set.
-    child.restart({})
-    child.o.rtp = vim.fn.getcwd() .. ',' .. child.o.rtp
-    child.g.started_by_firenvim = true
-    child.lua([[require('ucw.options')]])
+  -- Same technique as tests/test_fold.lua: the helper's `pre_case` boots the
+  -- config before any test code runs, so the target is already decided by
+  -- then. Boot only `ucw.options`, with the firenvim marker set.
+  child.restart {}
+  child.o.rtp = vim.fn.getcwd() .. ',' .. child.o.rtp
+  child.g.started_by_firenvim = true
+  child.lua([[require('ucw.options')]])
 
-    eq(child.lua_get([[require('ucw.targets').is_full_ui()]]), false)
-    -- A browser textarea cannot spare two or three lines under the cursor.
-    -- lsp_lines was `cond = is_full_ui`; this is where that condition went.
-    eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), false)
+  eq(child.lua_get([[require('ucw.targets').is_full_ui()]]), false)
+  -- A browser textarea cannot spare two or three lines under the cursor.
+  -- lsp_lines was `cond = is_full_ui`; this is where that condition went.
+  eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), false)
 end
 
 T['<leader>lp'] = new_set()
 
 T['<leader>lp']['toggles the rendering off and back on'] = function()
-    child.lua([[require('ucw.keys.actions').toggle_virtual_lines()]])
-    eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), false)
+  child.lua([[require('ucw.keys.actions').toggle_virtual_lines()]])
+  eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), false)
 
-    child.lua([[require('ucw.keys.actions').toggle_virtual_lines()]])
-    -- Spelled `current_line`, not lsp_lines' `only_current_line`, which core
-    -- accepts and ignores.
-    eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), { current_line = true })
+  child.lua([[require('ucw.keys.actions').toggle_virtual_lines()]])
+  -- Spelled `current_line`, not lsp_lines' `only_current_line`, which core
+  -- accepts and ignores.
+  eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), { current_line = true })
 end
 
 T['<leader>lp']['is bound in normal and visual mode'] = function()
-    -- lsp_lines bound it with mode '' (normal + visual/select + operator
-    -- pending); which-key defaults to normal only, which silently dropped the
-    -- others when the binding moved.
-    eq(child.lua_get([[vim.fn.maparg(' lp', 'n') ~= '']]), true)
-    eq(child.lua_get([[vim.fn.maparg(' lp', 'v') ~= '']]), true)
+  -- lsp_lines bound it with mode '' (normal + visual/select + operator
+  -- pending); which-key defaults to normal only, which silently dropped the
+  -- others when the binding moved.
+  eq(child.lua_get([[vim.fn.maparg(' lp', 'n') ~= '']]), true)
+  eq(child.lua_get([[vim.fn.maparg(' lp', 'v') ~= '']]), true)
 end
 
 return T

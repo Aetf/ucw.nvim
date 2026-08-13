@@ -6,15 +6,21 @@ local au = require('au')
 local M = {}
 
 M.opt = function(o, v, scopes)
-  scopes = scopes or {o_s}
-  for _, s in ipairs(scopes) do s[o] = v end
+  scopes = scopes or { o_s }
+  for _, s in ipairs(scopes) do
+    s[o] = v
+  end
 end
 
 M.map = function(modes, lhs, rhs, opts)
   opts = opts or {}
   opts.noremap = opts.noremap == nil and true or opts.noremap
-  if type(modes) == 'string' then modes = {modes} end
-  for _, mode in ipairs(modes) do map_key(mode, lhs, rhs, opts) end
+  if type(modes) == 'string' then
+    modes = { modes }
+  end
+  for _, mode in ipairs(modes) do
+    map_key(mode, lhs, rhs, opts)
+  end
 end
 
 M.is_gui = function()
@@ -37,7 +43,6 @@ function M.is_dir(path)
   return stats and stats.type == 'directory'
 end
 
-
 -- 1-based wraping
 local function wrap(num, total)
   return (num - 1) % total + 1
@@ -45,7 +50,7 @@ end
 
 -- if the buffer is a normal text file based buffer
 local function is_normal_buffer(buf)
-  return vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buflisted and vim.bo[buf].buftype == ""
+  return vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buflisted and vim.bo[buf].buftype == ''
 end
 
 -- find backward in jumplist until the buf is different
@@ -69,8 +74,8 @@ local function win_backward_buf(win, current_buf)
   local target_buf = current_buf
 
   while j > 1 and (current_buf == target_buf or not is_normal_buffer(target_buf)) do
-      j = j - 1
-      target_buf = jumplist[j].bufnr
+    j = j - 1
+    target_buf = jumplist[j].bufnr
   end
   if target_buf ~= current_buf and is_normal_buffer(target_buf) then
     return target_buf
@@ -123,10 +128,9 @@ local function buf_kill(kill_cmd, bufnr, force)
   end
 
   -- get list of windows with the buffer to close
-  local windows = vim.tbl_filter(
-    function(win) return vim.api.nvim_win_get_buf(win) == bufnr end,
-    vim.api.nvim_list_wins()
-  )
+  local windows = vim.tbl_filter(function(win)
+    return vim.api.nvim_win_get_buf(win) == bufnr
+  end, vim.api.nvim_list_wins())
 
   if #windows > 0 then
     -- get list of active buffers
@@ -143,7 +147,9 @@ local function buf_kill(kill_cmd, bufnr, force)
 
       -- try to use the window's alternate buffer first
       if next_buffer == nil then
-        local alt_buf = vim.api.nvim_win_call(win, function() vim.fn.bufnr('#') end)
+        local alt_buf = vim.api.nvim_win_call(win, function()
+          vim.fn.bufnr('#')
+        end)
         if alt_buf and is_normal_buffer(alt_buf) then
           next_buffer = alt_buf
         end
@@ -176,7 +182,7 @@ end
 ---Get the property `prop` specified as dot separated path from `obj`, creating empty table for
 ---all levels if not exists
 function M.prop_get_table(obj, prop)
-  for key in prop:gmatch "[^.]+" do
+  for key in prop:gmatch('[^.]+') do
     if obj[key] == nil then
       obj[key] = {}
     end
@@ -190,7 +196,7 @@ end
 ---level, which is set to val
 function M.prop_set(obj, prop, val)
   -- get the parent level as table
-  local parent, key = string.match(prop, "(.+)%.([^%.]+)")
+  local parent, key = string.match(prop, '(.+)%.([^%.]+)')
   if not parent or not key then
     -- assume prop is the key directly
     obj[prop] = val
@@ -209,8 +215,8 @@ end
 -- The function is called `t` for `termcodes`.
 -- You don't have to call it that, but I find the terseness convenient
 function M.t(str)
-    -- Adjust boolean arguments as needed
-    return vim.api.nvim_replace_termcodes(str, true, true, true)
+  -- Adjust boolean arguments as needed
+  return vim.api.nvim_replace_termcodes(str, true, true, true)
 end
 
 -- This is a bit of syntactic sugar for creating highlight groups over vim.api.nvim_set_hl.
@@ -231,13 +237,13 @@ end
 -- vim.api.nvim_set_hl(0, 'LspDiagnosticsDefaultError', { link='DiagnosticError'})
 M.highlight = setmetatable({}, {
   __newindex = function(_, hlgroup, args)
-    if ('string' == type(args)) then
+    if 'string' == type(args) then
       vim.api.nvim_set_hl(0, hlgroup, { link = args })
       return
     else
       vim.api.nvim_set_hl(0, hlgroup, args)
     end
-  end
+  end,
 })
 
 M.FileWatcher = {}
@@ -253,7 +259,7 @@ function M.FileWatcher.new(debounce_time)
     wrapped_cb = nil,
   }, { __index = M.FileWatcher })
 
-  local weak_this = setmetatable({this = this}, { __mode = 'v' })
+  local weak_this = setmetatable({ this = this }, { __mode = 'v' })
 
   this.wrapped_cb = function(err, filename, events)
     -- take the weak ref and save to local so we don't lose it
@@ -265,7 +271,7 @@ function M.FileWatcher.new(debounce_time)
     if err ~= nil then
       vim.schedule(function()
         vim.notify(
-          string.format("Watching:\n%s\nError:\n%s", that.path, err),
+          string.format('Watching:\n%s\nError:\n%s', that.path, err),
           vim.log.levels.ERROR,
           { title = '[ucw.utils] Error in libuv watcher' }
         )
@@ -279,7 +285,9 @@ function M.FileWatcher.new(debounce_time)
       return
     end
     that.debouncing = true
-    that.timer:start(debounce_time, 0,
+    that.timer:start(
+      debounce_time,
+      0,
       vim.schedule_wrap(function()
         if that.callback ~= nil then
           that.callback(err, filename, events)
@@ -325,7 +333,13 @@ local function setup()
     return
   end
   au.group('Stdin', {
-    { 'StdinReadPre', '*', function() pager_mode = true end }
+    {
+      'StdinReadPre',
+      '*',
+      function()
+        pager_mode = true
+      end,
+    },
   })
   setup_done = true
 end

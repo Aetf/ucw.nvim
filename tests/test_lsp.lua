@@ -62,7 +62,7 @@ local FAKE_SERVER = [[
 -- called. That is deterministic in a way that opening a .lua file is not (that
 -- would also try to spawn a lua-language-server the child does not have).
 local function load_lsp()
-    child.lua([[require('lazy').load({ plugins = { 'nvim-lspconfig' } })]])
+  child.lua([[require('lazy').load({ plugins = { 'nvim-lspconfig' } })]])
 end
 
 T['activation'] = new_set()
@@ -72,12 +72,12 @@ T['activation'] = new_set()
 -- trigger is ~3 ms; the two expensive plugins are deliberately elsewhere -
 -- mason-lspconfig on VeryLazy, lsp-progress on LspAttach.
 T['activation']['the LSP hot path is not loaded at startup'] = function()
-    for _, name in ipairs({ 'nvim-lspconfig', 'rustaceanvim', 'clangd_extensions.nvim', 'lsp-progress.nvim' }) do
-        eq(
-            { name, child.lua_get(([[require('lazy.core.config').plugins[%q]._.loaded ~= nil]]):format(name)) },
-            { name, false }
-        )
-    end
+  for _, name in ipairs { 'nvim-lspconfig', 'rustaceanvim', 'clangd_extensions.nvim', 'lsp-progress.nvim' } do
+    eq(
+      { name, child.lua_get(([[require('lazy.core.config').plugins[%q]._.loaded ~= nil]]):format(name)) },
+      { name, false }
+    )
+  end
 end
 
 -- mason-lspconfig *is* expected to come up on VeryLazy - it only exists to run
@@ -86,24 +86,24 @@ end
 -- none. If that ever changes, the suite would start downloading nine language
 -- servers per run, so assert the precondition rather than trusting it.
 T['activation']['ensure_installed cannot fire inside the test child'] = function()
-    eq(child.lua_get([[#vim.api.nvim_list_uis()]]), 0)
-    eq(child.lua_get([[vim.fn.glob(vim.fn.stdpath('data') .. '/mason/packages/*', false, true)]]), {})
+  eq(child.lua_get([[#vim.api.nvim_list_uis()]]), 0)
+  eq(child.lua_get([[vim.fn.glob(vim.fn.stdpath('data') .. '/mason/packages/*', false, true)]]), {})
 end
 
 T['activation']['the ft trigger is exactly ucw.lsp.filetypes()'] = function()
-    -- If these drift, opening a supported file stops bringing LSP up at all -
-    -- silently, because there is nothing left to error.
-    eq(
-        child.lua_get([[require('lazy.core.config').plugins['nvim-lspconfig'].ft]]),
-        child.lua_get([[require('ucw.lsp').filetypes()]])
-    )
+  -- If these drift, opening a supported file stops bringing LSP up at all -
+  -- silently, because there is nothing left to error.
+  eq(
+    child.lua_get([[require('lazy.core.config').plugins['nvim-lspconfig'].ft]]),
+    child.lua_get([[require('ucw.lsp').filetypes()]])
+  )
 end
 
 T['activation']['enabling happens against the explicit server list'] = function()
-    eq(child.lua_get([[next(vim.lsp._enabled_configs) == nil]]), true)
-    load_lsp()
+  eq(child.lua_get([[next(vim.lsp._enabled_configs) == nil]]), true)
+  load_lsp()
 
-    local enabled = child.lua_get([[
+  local enabled = child.lua_get([[
         (function()
           -- `vim.lsp.is_enabled` is the public query; the table is how to get
           -- the whole set, which is the point here - "no surprise auto-enables"
@@ -112,7 +112,7 @@ T['activation']['enabling happens against the explicit server list'] = function(
           return names
         end)()
     ]])
-    eq(enabled, child.lua_get([[require('ucw.lsp').server_names()]]))
+  eq(enabled, child.lua_get([[require('ucw.lsp').server_names()]]))
 end
 
 -- The duplicate rust-analyzer, at its cause. mason-lspconfig's
@@ -120,9 +120,9 @@ end
 -- second `rust_analyzer` next to the one rustaceanvim owns; both advertised
 -- inlayHintProvider, so every hint rendered twice.
 T['activation']['mason-lspconfig does not auto-enable anything'] = function()
-    eq(child.lua_get([[require('lazy.core.config').plugins['mason-lspconfig.nvim'].opts.automatic_enable]]), false)
-    load_lsp()
-    eq(child.lua_get([[vim.lsp.is_enabled('rust_analyzer')]]), false)
+  eq(child.lua_get([[require('lazy.core.config').plugins['mason-lspconfig.nvim'].opts.automatic_enable]]), false)
+  load_lsp()
+  eq(child.lua_get([[vim.lsp.is_enabled('rust_analyzer')]]), false)
 end
 
 -- `mason.setup()` is what puts `<data>/mason/bin` on PATH, and every server
@@ -132,7 +132,7 @@ end
 -- `require('mason-registry')` while probing for codelldb (acceptance review
 -- P4). Without the PATH edit it starts no client and says nothing.
 T['activation']['every spec that starts a server depends on mason'] = function()
-    local missing = child.lua_get([[
+  local missing = child.lua_get([[
         (function()
           local plugins = require('lazy.core.config').plugins
           local bad = {}
@@ -146,14 +146,14 @@ T['activation']['every spec that starts a server depends on mason'] = function()
           return bad
         end)()
     ]])
-    eq(missing, {})
+  eq(missing, {})
 end
 
 T['activation']['ensure_installed tracks the server list'] = function()
-    eq(
-        child.lua_get([[require('lazy.core.config').plugins['mason-lspconfig.nvim'].opts.ensure_installed]]),
-        child.lua_get([[require('ucw.lsp').server_names()]])
-    )
+  eq(
+    child.lua_get([[require('lazy.core.config').plugins['mason-lspconfig.nvim'].opts.ensure_installed]]),
+    child.lua_get([[require('ucw.lsp').server_names()]])
+  )
 end
 
 T['config layering'] = new_set()
@@ -162,37 +162,37 @@ T['config layering'] = new_set()
 -- `~/.config/nvim/after` sorts last in the runtimepath. If that ever stops
 -- being true, every per-server setting below silently reverts to upstream's.
 T['config layering']['our settings merge over nvim-lspconfig, keeping its cmd'] = function()
-    load_lsp()
-    eq(child.lua_get([[vim.lsp.config['lua_ls'].cmd]]), { 'lua-language-server' })
-    eq(child.lua_get([[vim.lsp.config['lua_ls'].settings.Lua.runtime.version]]), 'LuaJIT')
-    eq(child.lua_get([[vim.lsp.config['lua_ls'].settings.Lua.diagnostics.globals]]), { 'vim', 'MiniIcons' })
-    -- inherited, not restated
-    eq(child.lua_get([[vim.lsp.config['lua_ls'].filetypes]]), { 'lua' })
+  load_lsp()
+  eq(child.lua_get([[vim.lsp.config['lua_ls'].cmd]]), { 'lua-language-server' })
+  eq(child.lua_get([[vim.lsp.config['lua_ls'].settings.Lua.runtime.version]]), 'LuaJIT')
+  eq(child.lua_get([[vim.lsp.config['lua_ls'].settings.Lua.diagnostics.globals]]), { 'vim', 'MiniIcons' })
+  -- inherited, not restated
+  eq(child.lua_get([[vim.lsp.config['lua_ls'].filetypes]]), { 'lua' })
 end
 
 -- List-valued fields are replaced wholesale rather than appended to, so an
 -- `after/lsp/` file that sets `root_markers` has to repeat everything it still
 -- wants. Getting this wrong is invisible: markers just stop matching.
 T['config layering']['marksman finds Obsidian vaults and still finds git repos'] = function()
-    load_lsp()
-    eq(child.lua_get([[vim.lsp.config['marksman'].root_markers]]), { { '.marksman.toml', '.obsidian' }, '.git' })
+  load_lsp()
+  eq(child.lua_get([[vim.lsp.config['marksman'].root_markers]]), { { '.marksman.toml', '.obsidian' }, '.git' })
 end
 
 -- Function fields do NOT compose: the highest layer that defines one wins and
 -- upstream's is dropped. Everything in after/lsp/ is therefore tables only -
 -- and these two are what would break first if that slipped.
 T['config layering']['upstream function fields survive our overrides'] = function()
-    load_lsp()
-    -- ltex maps bib -> bibtex, tex -> latex; losing it checks LaTeX as prose
-    eq(child.lua_get([[type(vim.lsp.config['ltex_plus'].get_language_id)]]), 'function')
-    -- clangd's on_attach/on_init carry switch_source_header and encoding setup
-    eq(child.lua_get([[type(vim.lsp.config['clangd'].on_attach)]]), 'function')
-    eq(child.lua_get([[type(vim.lsp.config['clangd'].on_init)]]), 'function')
-    eq(child.lua_get([[type(vim.lsp.config['texlab'].on_attach)]]), 'function')
+  load_lsp()
+  -- ltex maps bib -> bibtex, tex -> latex; losing it checks LaTeX as prose
+  eq(child.lua_get([[type(vim.lsp.config['ltex_plus'].get_language_id)]]), 'function')
+  -- clangd's on_attach/on_init carry switch_source_header and encoding setup
+  eq(child.lua_get([[type(vim.lsp.config['clangd'].on_attach)]]), 'function')
+  eq(child.lua_get([[type(vim.lsp.config['clangd'].on_init)]]), 'function')
+  eq(child.lua_get([[type(vim.lsp.config['texlab'].on_attach)]]), 'function')
 end
 
 T['config layering']['no after/lsp/ file defines a function field'] = function()
-    local offenders = child.lua_get([[
+  local offenders = child.lua_get([[
         (function()
           local dir = vim.fn.stdpath('config') .. '/after/lsp'
           local bad = {}
@@ -208,11 +208,11 @@ T['config layering']['no after/lsp/ file defines a function field'] = function()
           return bad
         end)()
     ]])
-    eq(offenders, {})
+  eq(offenders, {})
 end
 
 T['config layering']['every after/lsp/ file names a server we run'] = function()
-    local unknown = child.lua_get([[
+  local unknown = child.lua_get([[
         (function()
           local servers = require('ucw.lsp.servers')
           local bad = {}
@@ -224,7 +224,7 @@ T['config layering']['every after/lsp/ file names a server we run'] = function()
           return bad
         end)()
     ]])
-    eq(unknown, {})
+  eq(unknown, {})
 end
 
 -- `~/.config/nvim/after` beats every plugin's `lsp/`, but NOT a plugin's own
@@ -233,8 +233,8 @@ end
 -- today. If a plugin ever ships a file for a server we configure, our settings
 -- lose and nothing says so.
 T['config layering']['no plugin shadows our after/lsp/ files'] = function()
-    load_lsp()
-    local shadowed = child.lua_get([[
+  load_lsp()
+  local shadowed = child.lua_get([[
         (function()
           local servers = require('ucw.lsp.servers')
           local ours = vim.fn.stdpath('config')
@@ -249,7 +249,7 @@ T['config layering']['no plugin shadows our after/lsp/ files'] = function()
           return bad
         end)()
     ]])
-    eq(shadowed, {})
+  eq(shadowed, {})
 end
 
 -- servers.lua is duplicated information by construction: lazy.nvim needs the
@@ -257,8 +257,8 @@ end
 -- derived from it. This is the assertion that keeps the duplication honest -
 -- and it is exactly the kind of drift an upstream release introduces.
 T['config layering']['servers.lua filetypes match the resolved configs'] = function()
-    load_lsp()
-    local mismatches = child.lua_get([[
+  load_lsp()
+  local mismatches = child.lua_get([[
         (function()
           local bad = {}
           for name, fts in pairs(require('ucw.lsp.servers')) do
@@ -273,7 +273,7 @@ T['config layering']['servers.lua filetypes match the resolved configs'] = funct
           return bad
         end)()
     ]])
-    eq(mismatches, {})
+  eq(mismatches, {})
 end
 
 T['capabilities'] = new_set()
@@ -284,25 +284,25 @@ T['capabilities'] = new_set()
 -- gone missing before - that is the bug Phase 2 found and the one ufo still
 -- had.
 T['capabilities']['blink and ufo both reach every server'] = function()
-    load_lsp()
-    local caps = child.lua_get([[vim.lsp.config['*'].capabilities]])
-    -- nvim-ufo
-    eq(caps.textDocument.foldingRange.lineFoldingOnly, true)
-    -- blink.cmp
-    eq(caps.textDocument.completion.completionItem.snippetSupport, true)
-    -- Neovim's own defaults, which blink drops unless include_nvim_defaults=true
-    eq(caps.textDocument.signatureHelp ~= nil, true)
+  load_lsp()
+  local caps = child.lua_get([[vim.lsp.config['*'].capabilities]])
+  -- nvim-ufo
+  eq(caps.textDocument.foldingRange.lineFoldingOnly, true)
+  -- blink.cmp
+  eq(caps.textDocument.completion.completionItem.snippetSupport, true)
+  -- Neovim's own defaults, which blink drops unless include_nvim_defaults=true
+  eq(caps.textDocument.signatureHelp ~= nil, true)
 end
 
 T['capabilities']['basedpyright asks for client-side file watching'] = function()
-    load_lsp()
-    -- measured: the global default is `false`, so this is a real change and not
-    -- a restatement of what Neovim already advertises
-    eq(child.lua_get([[vim.lsp.config['*'].capabilities.workspace.didChangeWatchedFiles.dynamicRegistration]]), false)
-    eq(
-        child.lua_get([[vim.lsp.config['basedpyright'].capabilities.workspace.didChangeWatchedFiles.dynamicRegistration]]),
-        true
-    )
+  load_lsp()
+  -- measured: the global default is `false`, so this is a real change and not
+  -- a restatement of what Neovim already advertises
+  eq(child.lua_get([[vim.lsp.config['*'].capabilities.workspace.didChangeWatchedFiles.dynamicRegistration]]), false)
+  eq(
+    child.lua_get([[vim.lsp.config['basedpyright'].capabilities.workspace.didChangeWatchedFiles.dynamicRegistration]]),
+    true
+  )
 end
 
 -- Every client has to agree on what a column is. Offered the choice,
@@ -310,24 +310,20 @@ end
 -- both, which `:checkhealth vim.lsp` flags (second-round review, Q3). Pinning
 -- the one encoding the spec requires every server to support is its own advice.
 T['capabilities']['every server is pinned to one position encoding'] = function()
-    load_lsp()
-    eq(child.lua_get([[vim.lsp.config['*'].capabilities.general.positionEncodings]]), { 'utf-16' })
-    -- and it survives the merge into a server that has its own capabilities
-    eq(
-        child.lua_get([[vim.lsp.config['basedpyright'].capabilities.general.positionEncodings]]),
-        { 'utf-16' }
-    )
+  load_lsp()
+  eq(child.lua_get([[vim.lsp.config['*'].capabilities.general.positionEncodings]]), { 'utf-16' })
+  -- and it survives the merge into a server that has its own capabilities
+  eq(child.lua_get([[vim.lsp.config['basedpyright'].capabilities.general.positionEncodings]]), { 'utf-16' })
 end
 
 T['attach'] = new_set()
 
 local function start_fake(name, capabilities, root_dir, opts)
-    if not (opts and opts.no_lspconfig) then
-        load_lsp()
-    end
-    child.lua(FAKE_SERVER)
-    return child.lua_get(
-        ([[
+  if not (opts and opts.no_lspconfig) then
+    load_lsp()
+  end
+  child.lua(FAKE_SERVER)
+  return child.lua_get(([[
         (function()
           vim.cmd('enew!')
           return vim.lsp.start({
@@ -336,30 +332,29 @@ local function start_fake(name, capabilities, root_dir, opts)
             root_dir = %s,
           })
         end)()
-    ]]):format(name, capabilities or '{}', root_dir and ('%q'):format(root_dir) or 'nil')
-    )
+    ]]):format(name, capabilities or '{}', root_dir and ('%q'):format(root_dir) or 'nil'))
 end
 
 -- The claim the whole "rustaceanvim is not a special case" argument rests on:
 -- attach behaviour reaches a client that never went through `vim.lsp.enable()`.
 T['attach']['handlers fire for a client started outside vim.lsp.enable'] = function()
-    local id = start_fake('faketest')
-    eq(id ~= vim.NIL and id ~= nil, true)
+  local id = start_fake('faketest')
+  eq(id ~= vim.NIL and id ~= nil, true)
 
-    -- `definitions` became a picker action in Phase 5, so its right-hand side
-    -- is a Lua callback rather than an ex-command string. `maparg().rhs` is
-    -- empty for those, which is indistinguishable from the not-actually-mapped
-    -- state that the Phase 3 acceptance review's P3 turned out to be - hence
-    -- asserting on `callback` rather than on an empty `rhs`.
-    local map = child.lua_get([[
+  -- `definitions` became a picker action in Phase 5, so its right-hand side
+  -- is a Lua callback rather than an ex-command string. `maparg().rhs` is
+  -- empty for those, which is indistinguishable from the not-actually-mapped
+  -- state that the Phase 3 acceptance review's P3 turned out to be - hence
+  -- asserting on `callback` rather than on an empty `rhs`.
+  local map = child.lua_get([[
         (function()
           local m = vim.fn.maparg('gd', 'n', false, true)
           return { buffer = m.buffer, has_callback = m.callback ~= nil, desc = m.desc }
         end)()
     ]])
-    eq(map.buffer, 1)
-    eq(map.has_callback, true)
-    eq(map.desc, 'Go to definition')
+  eq(map.buffer, 1)
+  eq(map.has_callback, true)
+  eq(map.desc, 'Go to definition')
 end
 
 -- Regression for a bug this suite did NOT catch until a real TUI was driven:
@@ -369,12 +364,12 @@ end
 -- and no .vscode settings. Every other test here force-loads nvim-lspconfig
 -- first and so could not see it. This one must not.
 T['attach']['handlers work without nvim-lspconfig ever loading'] = function()
-    start_fake('rust-analyzer', '{ inlayHintProvider = true }', nil, { no_lspconfig = true })
+  start_fake('rust-analyzer', '{ inlayHintProvider = true }', nil, { no_lspconfig = true })
 
-    eq(child.lua_get([[require('lazy.core.config').plugins['nvim-lspconfig']._.loaded ~= nil]]), false)
-    eq(child.lua_get([[vim.fn.maparg('gd', 'n', false, true).buffer]]), 1)
-    eq(child.lua_get([[vim.fn.maparg(' a', 'n', false, true).buffer]]), 1)
-    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
+  eq(child.lua_get([[require('lazy.core.config').plugins['nvim-lspconfig']._.loaded ~= nil]]), false)
+  eq(child.lua_get([[vim.fn.maparg('gd', 'n', false, true).buffer]]), 1)
+  eq(child.lua_get([[vim.fn.maparg(' a', 'n', false, true).buffer]]), 1)
+  eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
 end
 
 -- `<leader>a` (rust-analyzer's grouped code actions) only ever worked because
@@ -383,19 +378,19 @@ end
 -- the duplicate without fixing the filter would have removed the keymap and
 -- nothing would have said so.
 T['attach']['rustaceanvim keymap matches the hyphenated client name'] = function()
-    start_fake('rust-analyzer')
-    eq(child.lua_get([[vim.fn.maparg(' a', 'n', false, true).buffer]]), 1)
+  start_fake('rust-analyzer')
+  eq(child.lua_get([[vim.fn.maparg(' a', 'n', false, true).buffer]]), 1)
 end
 
 T['attach']['a differently named client does not get the rust keymap'] = function()
-    start_fake('not-rust')
-    eq(child.lua_get([[vim.tbl_isempty(vim.fn.maparg(' a', 'n', false, true))]]), true)
+  start_fake('not-rust')
+  eq(child.lua_get([[vim.tbl_isempty(vim.fn.maparg(' a', 'n', false, true))]]), true)
 end
 
 T['attach']['inlay hints and codelens are enabled per buffer'] = function()
-    start_fake('faketest', '{ inlayHintProvider = true, codeLensProvider = { resolveProvider = false } }')
-    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
-    eq(child.lua_get([[vim.lsp.codelens.is_enabled({ bufnr = 0 })]]), true)
+  start_fake('faketest', '{ inlayHintProvider = true, codeLensProvider = { resolveProvider = false } }')
+  eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
+  eq(child.lua_get([[vim.lsp.codelens.is_enabled({ bufnr = 0 })]]), true)
 end
 
 T['inlay hint toggle'] = new_set()
@@ -407,31 +402,31 @@ T['inlay hint toggle'] = new_set()
 -- P1). The fix is that the global flag *is* the preference and attach mirrors
 -- it, so assert both halves.
 T['inlay hint toggle']['the preference is on by default'] = function()
-    start_fake('faketest', '{ inlayHintProvider = true }')
-    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled()]]), true)
-    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
+  start_fake('faketest', '{ inlayHintProvider = true }')
+  eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled()]]), true)
+  eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
 end
 
 T['inlay hint toggle']['one press turns hints off, the next turns them back on'] = function()
-    start_fake('faketest', '{ inlayHintProvider = true }')
+  start_fake('faketest', '{ inlayHintProvider = true }')
 
-    child.lua([[require('ucw.lsp.actions').call('toggle_inlay_hint')]])
-    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), false)
-    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled()]]), false)
+  child.lua([[require('ucw.lsp.actions').call('toggle_inlay_hint')]])
+  eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), false)
+  eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled()]]), false)
 
-    child.lua([[require('ucw.lsp.actions').call('toggle_inlay_hint')]])
-    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
+  child.lua([[require('ucw.lsp.actions').call('toggle_inlay_hint')]])
+  eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
 end
 
 -- The second half of P1: turning them off has to survive opening the next file.
 -- Attach fires again there, and a literal `true` would quietly undo the toggle.
 T['inlay hint toggle']['a buffer attached after the toggle respects it'] = function()
-    start_fake('faketest', '{ inlayHintProvider = true }')
-    child.lua([[require('ucw.lsp.actions').call('toggle_inlay_hint')]])
+  start_fake('faketest', '{ inlayHintProvider = true }')
+  child.lua([[require('ucw.lsp.actions').call('toggle_inlay_hint')]])
 
-    -- same client, new buffer - i.e. what `:edit <another .lua>` does
-    start_fake('faketest', '{ inlayHintProvider = true }')
-    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), false)
+  -- same client, new buffer - i.e. what `:edit <another .lua>` does
+  start_fake('faketest', '{ inlayHintProvider = true }')
+  eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), false)
 end
 
 -- And the reason attach still writes the buffer flag rather than leaning on
@@ -440,12 +435,12 @@ end
 -- global flag is true. Without the re-assert, a :LspRestart would leave hints
 -- off in that buffer forever.
 T['inlay hint toggle']['hints come back after a detach/reattach cycle'] = function()
-    local id = start_fake('faketest', '{ inlayHintProvider = true }')
-    child.lua(([[vim.lsp.buf_detach_client(0, %d)]]):format(id))
-    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), false)
+  local id = start_fake('faketest', '{ inlayHintProvider = true }')
+  child.lua(([[vim.lsp.buf_detach_client(0, %d)]]):format(id))
+  eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), false)
 
-    child.lua(([[vim.lsp.buf_attach_client(0, %d)]]):format(id))
-    eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
+  child.lua(([[vim.lsp.buf_attach_client(0, %d)]]):format(id))
+  eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
 end
 
 T['vscode settings'] = new_set()
@@ -455,7 +450,7 @@ T['vscode settings'] = new_set()
 -- the live-reload watcher survived, so settings applied *only* if the file was
 -- edited after the server was already up.
 T['vscode settings']['are loaded and pushed when a client attaches'] = function()
-    local root = child.lua_get([[
+  local root = child.lua_get([[
         (function()
           local dir = vim.fn.tempname()
           vim.fn.mkdir(dir .. '/.vscode', 'p')
@@ -465,15 +460,12 @@ T['vscode settings']['are loaded and pushed when a client attaches'] = function(
         end)()
     ]])
 
-    start_fake('faketest', '{}', root)
+  start_fake('faketest', '{}', root)
 
-    eq(
-        child.lua_get([[vim.lsp.get_client_by_id(1).settings.python.analysis.typeCheckingMode]]),
-        'strict'
-    )
-    -- and the server was actually told about it
-    eq(
-        child.lua_get([[
+  eq(child.lua_get([[vim.lsp.get_client_by_id(1).settings.python.analysis.typeCheckingMode]]), 'strict')
+  -- and the server was actually told about it
+  eq(
+    child.lua_get([[
             (function()
               for _, n in ipairs(_G.fake_notifications) do
                 if n.method == 'workspace/didChangeConfiguration' then return true end
@@ -481,14 +473,14 @@ T['vscode settings']['are loaded and pushed when a client attaches'] = function(
               return false
             end)()
         ]]),
-        true
-    )
+    true
+  )
 end
 
 T['vscode settings']['single-file clients are left alone'] = function()
-    start_fake('faketest')
-    eq(
-        child.lua_get([[
+  start_fake('faketest')
+  eq(
+    child.lua_get([[
             (function()
               for _, n in ipairs(_G.fake_notifications) do
                 if n.method == 'workspace/didChangeConfiguration' then return true end
@@ -496,8 +488,8 @@ T['vscode settings']['single-file clients are left alone'] = function()
               return false
             end)()
         ]]),
-        false
-    )
+    false
+  )
 end
 
 -- The number of `didChangeConfiguration` notifications is part of the contract,
@@ -506,7 +498,7 @@ end
 -- this replaced sent up to four of them to open one file (measured - see
 -- docs/design/phase3-settings-composition.md §1).
 T['vscode settings']['each change is pushed exactly once'] = function()
-    local root = child.lua_get([[
+  local root = child.lua_get([[
         (function()
           local dir = vim.fn.tempname()
           vim.fn.mkdir(dir .. '/.vscode', 'p')
@@ -516,9 +508,9 @@ T['vscode settings']['each change is pushed exactly once'] = function()
         end)()
     ]])
 
-    local id = start_fake('faketest', '{}', root)
-    local function pushes()
-        return child.lua_get([[
+  local id = start_fake('faketest', '{}', root)
+  local function pushes()
+    return child.lua_get([[
             (function()
               local n = 0
               for _, note in ipairs(_G.fake_notifications) do
@@ -527,33 +519,33 @@ T['vscode settings']['each change is pushed exactly once'] = function()
               return n
             end)()
         ]])
-    end
-    eq(pushes(), 1)
+  end
+  eq(pushes(), 1)
 
-    child.lua(([[
+  child.lua(([[
         vim.fn.writefile({ '{ "probe.value": 2 }' }, vim.g.__root .. '/.vscode/settings.json')
         _G.reloaded = vim.wait(10000, function()
           return vim.lsp.get_client_by_id(%d).settings.probe.value == 2
         end, 100)
     ]]):format(id))
-    eq(child.lua_get([[_G.reloaded]]), true)
-    eq(pushes(), 2)
+  eq(child.lua_get([[_G.reloaded]]), true)
+  eq(pushes(), 2)
 end
 
 -- A workspace with nothing to say must say nothing. Before the push-when-changed
 -- guard, attaching pushed unconditionally, so every client in every project got
 -- woken up for a `.vscode/` that does not exist.
 T['vscode settings']['a workspace with no .vscode is silent'] = function()
-    local root = child.lua_get([[
+  local root = child.lua_get([[
         (function()
           local dir = vim.fn.tempname()
           vim.fn.mkdir(dir, 'p')
           return dir
         end)()
     ]])
-    start_fake('faketest', '{}', root)
-    eq(
-        child.lua_get([[
+  start_fake('faketest', '{}', root)
+  eq(
+    child.lua_get([[
             (function()
               for _, n in ipairs(_G.fake_notifications) do
                 if n.method == 'workspace/didChangeConfiguration' then return true end
@@ -561,13 +553,13 @@ T['vscode settings']['a workspace with no .vscode is silent'] = function()
               return false
             end)()
         ]]),
-        false
-    )
-    -- ...and looking for the settings must not have created the directory it
-    -- looked in. `ltex_dict.get_settings_dir` used to `mkdir` on the *read*
-    -- path, so every project that ever opened a prose file was left with an
-    -- empty `.vscode/` in it (measured, design §1).
-    eq(child.lua_get(([[vim.fn.isdirectory(%q)]]):format(root .. '/.vscode')), 0)
+    false
+  )
+  -- ...and looking for the settings must not have created the directory it
+  -- looked in. `ltex_dict.get_settings_dir` used to `mkdir` on the *read*
+  -- path, so every project that ever opened a prose file was left with an
+  -- empty `.vscode/` in it (measured, design §1).
+  eq(child.lua_get(([[vim.fn.isdirectory(%q)]]):format(root .. '/.vscode')), 0)
 end
 
 -- Creating a `.vscode/settings.json` in a project that is already open. The
@@ -576,7 +568,7 @@ end
 -- the client restarted (second-round review, Q6). The root is watched for
 -- `.vscode` appearing now, and the directory for changes inside it.
 T['vscode settings']['a settings.json created after attach is picked up'] = function()
-    local root = child.lua_get([[
+  local root = child.lua_get([[
         (function()
           local dir = vim.fn.tempname()
           vim.fn.mkdir(dir, 'p')       -- deliberately no .vscode/
@@ -584,10 +576,10 @@ T['vscode settings']['a settings.json created after attach is picked up'] = func
           return dir
         end)()
     ]])
-    local id = start_fake('faketest', '{}', root)
-    eq(child.lua_get(([[vim.lsp.get_client_by_id(%d).settings.probe]]):format(id)), vim.NIL)
+  local id = start_fake('faketest', '{}', root)
+  eq(child.lua_get(([[vim.lsp.get_client_by_id(%d).settings.probe]]):format(id)), vim.NIL)
 
-    child.lua(([[
+  child.lua(([[
         vim.fn.mkdir(vim.g.__root .. '/.vscode', 'p')
         vim.fn.writefile({ '{ "probe.value": 7 }' }, vim.g.__root .. '/.vscode/settings.json')
         _G.picked_up = vim.wait(20000, function()
@@ -595,14 +587,14 @@ T['vscode settings']['a settings.json created after attach is picked up'] = func
           return s.probe ~= nil and s.probe.value == 7
         end, 200)
     ]]):format(id))
-    eq(child.lua_get([[_G.picked_up]]), true)
+  eq(child.lua_get([[_G.picked_up]]), true)
 end
 
 -- The base snapshot exists so a key *removed* from settings.json goes away
 -- instead of surviving in the accumulated settings forever. Nothing asserted
 -- that before this rewrite, which made it the likeliest thing to lose.
 T['vscode settings']['a key removed from settings.json disappears'] = function()
-    local root = child.lua_get([[
+  local root = child.lua_get([[
         (function()
           local dir = vim.fn.tempname()
           vim.fn.mkdir(dir .. '/.vscode', 'p')
@@ -612,17 +604,17 @@ T['vscode settings']['a key removed from settings.json disappears'] = function()
         end)()
     ]])
 
-    local id = start_fake('faketest', '{}', root)
-    eq(child.lua_get(([[vim.lsp.get_client_by_id(%d).settings.probe.drop]]):format(id)), 2)
+  local id = start_fake('faketest', '{}', root)
+  eq(child.lua_get(([[vim.lsp.get_client_by_id(%d).settings.probe.drop]]):format(id)), 2)
 
-    child.lua(([[
+  child.lua(([[
         vim.fn.writefile({ '{ "probe.keep": 1 }' }, vim.g.__root .. '/.vscode/settings.json')
         _G.reloaded = vim.wait(10000, function()
           return vim.lsp.get_client_by_id(%d).settings.probe.drop == nil
         end, 100)
     ]]):format(id))
-    eq(child.lua_get([[_G.reloaded]]), true)
-    eq(child.lua_get(([[vim.lsp.get_client_by_id(%d).settings.probe.keep]]):format(id)), 1)
+  eq(child.lua_get([[_G.reloaded]]), true)
+  eq(child.lua_get(([[vim.lsp.get_client_by_id(%d).settings.probe.keep]]):format(id)), 1)
 end
 
 -- `<dir>/<key>.<variant>.txt` is a `.vscode` setting, so it applies with no
@@ -630,7 +622,7 @@ end
 -- `_ltex.addToDictionary` looks like. This used to be `ucw.lsp.ltex_dict`'s own
 -- `LspAttach` handler; it is `ucw.lsp.vscode`'s SIDECAR_KEYS now.
 T['vscode settings']['sidecar files apply without a settings.json'] = function()
-    local root = child.lua_get([[
+  local root = child.lua_get([[
         (function()
           local dir = vim.fn.tempname()
           vim.fn.mkdir(dir .. '/.vscode', 'p')
@@ -638,12 +630,12 @@ T['vscode settings']['sidecar files apply without a settings.json'] = function()
           return dir
         end)()
     ]])
-    local id = start_fake('faketest', '{}', root)
-    -- blank lines are not words
-    eq(
-        child.lua_get(([==[vim.lsp.get_client_by_id(%d).settings.ltex.dictionary['en-US']]==]):format(id)),
-        { 'orloj', 'hradcany' }
-    )
+  local id = start_fake('faketest', '{}', root)
+  -- blank lines are not words
+  eq(
+    child.lua_get(([==[vim.lsp.get_client_by_id(%d).settings.ltex.dictionary['en-US']]==]):format(id)),
+    { 'orloj', 'hradcany' }
+  )
 end
 
 -- Sidecars *union* with what settings.json declared for the same key. They
@@ -651,7 +643,7 @@ end
 -- wholesale (measured, design §2) - a naive layer would silently drop every
 -- word declared inline.
 T['vscode settings']['sidecar entries are unioned with declared ones'] = function()
-    local root = child.lua_get([[
+  local root = child.lua_get([[
         (function()
           local dir = vim.fn.tempname()
           vim.fn.mkdir(dir .. '/.vscode', 'p')
@@ -661,12 +653,12 @@ T['vscode settings']['sidecar entries are unioned with declared ones'] = functio
           return dir
         end)()
     ]])
-    local id = start_fake('faketest', '{}', root)
-    -- declared first, file entries appended, no duplicate
-    eq(
-        child.lua_get(([==[vim.lsp.get_client_by_id(%d).settings.ltex.dictionary['en-US']]==]):format(id)),
-        { 'declared', 'orloj' }
-    )
+  local id = start_fake('faketest', '{}', root)
+  -- declared first, file entries appended, no duplicate
+  eq(
+    child.lua_get(([==[vim.lsp.get_client_by_id(%d).settings.ltex.dictionary['en-US']]==]):format(id)),
+    { 'declared', 'orloj' }
+  )
 end
 
 -- The P2 regression. It used to be a race between two writers of
@@ -674,10 +666,10 @@ end
 -- because the dictionary file is one of the inputs `ucw.lsp.vscode` composes
 -- rather than something written on top of its output afterwards.
 T['vscode settings']['a reload keeps what the dictionary files added'] = function()
-    load_lsp()
-    child.lua(FAKE_SERVER)
+  load_lsp()
+  child.lua(FAKE_SERVER)
 
-    local root = child.lua_get([[
+  local root = child.lua_get([[
         (function()
           local dir = vim.fn.tempname()
           vim.fn.mkdir(dir .. '/.vscode', 'p')
@@ -688,7 +680,7 @@ T['vscode settings']['a reload keeps what the dictionary files added'] = functio
         end)()
     ]])
 
-    child.lua(([[
+  child.lua(([[
         vim.cmd('enew!')
         _G.cid = vim.lsp.start({
           name = 'ltex_plus',
@@ -697,28 +689,28 @@ T['vscode settings']['a reload keeps what the dictionary files added'] = functio
         })
     ]]):format(root))
 
-    -- both authors have had their say by the end of attach
-    eq(child.lua_get([==[vim.lsp.get_client_by_id(_G.cid).settings.ltex.dictionary['en-US']]==]), { 'orloj' })
-    eq(child.lua_get([[vim.lsp.get_client_by_id(_G.cid).settings.ltex.language]]), 'en-US')
+  -- both authors have had their say by the end of attach
+  eq(child.lua_get([==[vim.lsp.get_client_by_id(_G.cid).settings.ltex.dictionary['en-US']]==]), { 'orloj' })
+  eq(child.lua_get([[vim.lsp.get_client_by_id(_G.cid).settings.ltex.language]]), 'en-US')
 
-    -- now edit the settings file, which is what the watcher reacts to, and wait
-    -- for the change to land rather than for a fixed interval
-    child.lua([[
+  -- now edit the settings file, which is what the watcher reacts to, and wait
+  -- for the change to land rather than for a fixed interval
+  child.lua([[
         vim.fn.writefile({ '{ "ltex.language": "de-DE" }' }, vim.g.__root .. '/.vscode/settings.json')
         _G.reloaded = vim.wait(10000, function()
           return vim.lsp.get_client_by_id(_G.cid).settings.ltex.language == 'de-DE'
         end, 100)
     ]])
-    eq(child.lua_get([[_G.reloaded]]), true)
+  eq(child.lua_get([[_G.reloaded]]), true)
 
-    eq(child.lua_get([==[vim.lsp.get_client_by_id(_G.cid).settings.ltex.dictionary['en-US']]==]), { 'orloj' })
+  eq(child.lua_get([==[vim.lsp.get_client_by_id(_G.cid).settings.ltex.dictionary['en-US']]==]), { 'orloj' })
 end
 
 -- The watcher used to be torn down only if it happened to fire again after the
 -- client had stopped, so a :LspRestart left a 2-second poll running for the
 -- rest of the session (acceptance review P5).
 T['vscode settings']['the watcher stops when the last buffer detaches'] = function()
-    local root = child.lua_get([[
+  local root = child.lua_get([[
         (function()
           local dir = vim.fn.tempname()
           vim.fn.mkdir(dir .. '/.vscode', 'p')
@@ -726,30 +718,30 @@ T['vscode settings']['the watcher stops when the last buffer detaches'] = functi
           return dir
         end)()
     ]])
-    local id = start_fake('faketest', '{}', root)
-    eq(child.lua_get(([[require('ucw.lsp.vscode').is_watching(%d)]]):format(id)), true)
+  local id = start_fake('faketest', '{}', root)
+  eq(child.lua_get(([[require('ucw.lsp.vscode').is_watching(%d)]]):format(id)), true)
 
-    -- LspDetach is per buffer and fires while the buffer is still attached, so
-    -- a second buffer has to keep it alive. Created off-screen on purpose:
-    -- `:enew` would abandon (and, unnamed and unmodified, wipe) the buffer the
-    -- client is already on, which is the thing being kept alive here.
-    local second = child.lua_get(([[
+  -- LspDetach is per buffer and fires while the buffer is still attached, so
+  -- a second buffer has to keep it alive. Created off-screen on purpose:
+  -- `:enew` would abandon (and, unnamed and unmodified, wipe) the buffer the
+  -- client is already on, which is the thing being kept alive here.
+  local second = child.lua_get(([[
         (function()
           local buf = vim.api.nvim_create_buf(true, false)
           vim.lsp.buf_attach_client(buf, %d)
           return buf
         end)()
     ]]):format(id))
-    child.lua(([[vim.lsp.buf_detach_client(%d, %d)]]):format(second, id))
-    eq(child.lua_get(([[require('ucw.lsp.vscode').is_watching(%d)]]):format(id)), true)
+  child.lua(([[vim.lsp.buf_detach_client(%d, %d)]]):format(second, id))
+  eq(child.lua_get(([[require('ucw.lsp.vscode').is_watching(%d)]]):format(id)), true)
 
-    -- ...and detaching the last one has to stop it
-    child.lua(([[
+  -- ...and detaching the last one has to stop it
+  child.lua(([[
         for buf in pairs(vim.lsp.get_client_by_id(%d).attached_buffers) do
           vim.lsp.buf_detach_client(buf, %d)
         end
     ]]):format(id, id))
-    eq(child.lua_get(([[require('ucw.lsp.vscode').is_watching(%d)]]):format(id)), false)
+  eq(child.lua_get(([[require('ucw.lsp.vscode').is_watching(%d)]]):format(id)), false)
 end
 
 T['ltex'] = new_set()
@@ -765,10 +757,10 @@ T['ltex'] = new_set()
 -- added from. Nothing errored - the word *was* added, just in the wrong place,
 -- which is invisible until you open the project on another machine.
 T['ltex']['addToDictionary writes into the project, not the global store'] = function()
-    load_lsp()
-    child.lua(FAKE_SERVER)
+  load_lsp()
+  child.lua(FAKE_SERVER)
 
-    local dirs = child.lua_get([[
+  local dirs = child.lua_get([[
         (function()
           local root = vim.fn.tempname()
           vim.fn.mkdir(root, 'p')
@@ -778,7 +770,7 @@ T['ltex']['addToDictionary writes into the project, not the global store'] = fun
         end)()
     ]])
 
-    child.lua(([[
+  child.lua(([[
         vim.cmd('enew!')
         local id = vim.lsp.start({
           name = 'ltex_plus',
@@ -794,13 +786,10 @@ T['ltex']['addToDictionary writes into the project, not the global store'] = fun
         }, { bufnr = 0 })
     ]]):format(dirs.root))
 
-    eq(
-        child.lua_get(([[vim.fn.readfile(%q)]]):format(dirs.root .. '/.vscode/ltex.dictionary.en-US.txt')),
-        { 'orloj' }
-    )
-    -- and the server was told to re-read its settings
-    eq(
-        child.lua_get([[
+  eq(child.lua_get(([[vim.fn.readfile(%q)]]):format(dirs.root .. '/.vscode/ltex.dictionary.en-US.txt')), { 'orloj' })
+  -- and the server was told to re-read its settings
+  eq(
+    child.lua_get([[
             (function()
               for _, n in ipairs(_G.fake_notifications) do
                 if n.method == 'workspace/didChangeConfiguration' then return true end
@@ -808,8 +797,8 @@ T['ltex']['addToDictionary writes into the project, not the global store'] = fun
               return false
             end)()
         ]]),
-        true
-    )
+    true
+  )
 end
 
 T['hooks are gone'] = new_set()
@@ -817,10 +806,10 @@ T['hooks are gone'] = new_set()
 -- Nothing should reintroduce the monkey-patch layer. `require('lspconfig')`
 -- itself is now a deprecation warning upstream.
 T['hooks are gone']['no ucw.lsp.hooks module and no lspconfig require'] = function()
-    load_lsp()
-    eq(child.lua_get([[pcall(require, 'ucw.lsp.hooks')]]), false)
-    eq(child.lua_get([[pcall(require, 'ucw.lsp.lang.texlab')]]), false)
-    eq(child.lua_get([[package.loaded['lspconfig'] ~= nil]]), false)
+  load_lsp()
+  eq(child.lua_get([[pcall(require, 'ucw.lsp.hooks')]]), false)
+  eq(child.lua_get([[pcall(require, 'ucw.lsp.lang.texlab')]]), false)
+  eq(child.lua_get([[package.loaded['lspconfig'] ~= nil]]), false)
 end
 
 return T

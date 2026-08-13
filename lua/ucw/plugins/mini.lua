@@ -28,9 +28,9 @@ local function setup_ai()
       h = require('ucw.textobjects.ipython').cell,
       H = require('ucw.textobjects.ipython').cell,
       -- treesitter textobjects
-      F = ts_spec({ a = '@function.outer', i = '@function.inner' }),
-      B = ts_spec({ a = '@block.outer', i = '@block.inner' }),
-      C = ts_spec({ a = '@class.outer', i = '@class.inner' }),
+      F = ts_spec { a = '@function.outer', i = '@function.inner' },
+      B = ts_spec { a = '@block.outer', i = '@block.inner' },
+      C = ts_spec { a = '@class.outer', i = '@class.inner' },
     },
 
     -- Number of lines within which textobject is searched
@@ -47,15 +47,12 @@ local function setup_ai()
     local edge = ({ ['['] = 'left', [']'] = 'right' })[seq:sub(1, 1)]
     local ai_type = seq:sub(2, 2)
     local prev_next = ({ l = 'prev', n = 'next' })[seq:sub(3, 3)]
-    vim.keymap.set({ "n", "v" }, seq,
-      function()
-        return string.format([[<Cmd>lua UCW.jump_textobject('%s', '%s', '%s')<CR>]], prev_next, edge, ai_type)
-      end,
-      {
-        expr = true,
-        desc = string.format('Jump to %s edge of %s `%s` text object', edge, ai_type, prev_next)
-      }
-    )
+    vim.keymap.set({ 'n', 'v' }, seq, function()
+      return string.format([[<Cmd>lua UCW.jump_textobject('%s', '%s', '%s')<CR>]], prev_next, edge, ai_type)
+    end, {
+      expr = true,
+      desc = string.format('Jump to %s edge of %s `%s` text object', edge, ai_type, prev_next),
+    })
   end
   gen_action('[al')
   gen_action(']al')
@@ -98,7 +95,7 @@ local function setup_move()
       line_right = '<M-L>',
       line_down = '<M-J>',
       line_up = '<M-K>',
-    }
+    },
   }
 end
 

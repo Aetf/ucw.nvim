@@ -7,13 +7,15 @@ return {
       extensions = {
         'quickfix',
         {
-          filetypes = { "neo-tree" },
+          filetypes = { 'neo-tree' },
           sections = {
             lualine_a = {
-              function() return vim.fn.fnamemodify(vim.fn.getcwd(), ':~') end,
-            }
-          }
-        }
+              function()
+                return vim.fn.fnamemodify(vim.fn.getcwd(), ':~')
+              end,
+            },
+          },
+        },
       },
     }
   end,

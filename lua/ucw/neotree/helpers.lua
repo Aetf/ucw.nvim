@@ -1,17 +1,17 @@
 local M = {}
 
-local renderer = require "neo-tree.ui.renderer"
+local renderer = require('neo-tree.ui.renderer')
 
 -- Set width to be the same as content
 function M.width_fit_content(state)
-  local root_name = vim.fn.fnamemodify(state.path, ":~")
+  local root_name = vim.fn.fnamemodify(state.path, ':~')
   local root_len = string.len(root_name) + 4
   return math.max(root_len, 30)
 end
 
 -- Expand a node and load filesystem info if needed.
 local function open_dir(state, dir_node)
-  local fs = require "neo-tree.sources.filesystem"
+  local fs = require('neo-tree.sources.filesystem')
   fs.toggle_directory(state, dir_node, nil, true, false)
 end
 
@@ -21,7 +21,7 @@ local function recursive_open(state, node, max_depth)
   local stack = { node }
   while next(stack) ~= nil do
     node = table.remove(stack)
-    if node.type == "directory" and not node:is_expanded() then
+    if node.type == 'directory' and not node:is_expanded() then
       open_dir(state, node)
     end
 
@@ -70,7 +70,7 @@ local function set_depthlevel(state, depthlevel)
   while next(stack) ~= nil do
     local node = table.remove(stack)
 
-    if node.type == "directory" then
+    if node.type == 'directory' then
       local should_be_open = depthlevel == nil or node:get_depth() < depthlevel
       if should_be_open and not node:is_expanded() then
         open_dir(state, node)
@@ -94,7 +94,7 @@ local function redraw_after_depthlevel_change(state, stay)
   local node = state.tree:get_node()
 
   if stay then
-    require("neo-tree.ui.renderer").expand_to_node(state.tree, node)
+    require('neo-tree.ui.renderer').expand_to_node(state.tree, node)
   else
     -- Find the closest parent that is still visible.
     local parent = state.tree:get_node(node:get_parent_id())
@@ -191,7 +191,7 @@ function M.commands.neotree_za(state, toggle_all)
     return
   end
 
-  if node.type == "directory" and not node:is_expanded() then
+  if node.type == 'directory' and not node:is_expanded() then
     M.commands.neotree_zo(state, toggle_all)
   else
     M.commands.neotree_zc(state, toggle_all)
@@ -252,9 +252,9 @@ end
 function M.commands.move_out(state)
   local node = state.tree:get_node()
   if node.type == 'directory' and node:is_expanded() then
-    require'neo-tree.sources.filesystem'.toggle_directory(state, node)
+    require('neo-tree.sources.filesystem').toggle_directory(state, node)
   else
-    require'neo-tree.ui.renderer'.focus_node(state, node:get_parent_id())
+    require('neo-tree.ui.renderer').focus_node(state, node:get_parent_id())
   end
 end
 
@@ -263,9 +263,9 @@ function M.commands.move_in(state)
   local node = state.tree:get_node()
   if node.type == 'directory' then
     if not node:is_expanded() then
-      require'neo-tree.sources.filesystem'.toggle_directory(state, node)
+      require('neo-tree.sources.filesystem').toggle_directory(state, node)
     elseif node:has_children() then
-      require'neo-tree.ui.renderer'.focus_node(state, node:get_child_ids()[1])
+      require('neo-tree.ui.renderer').focus_node(state, node:get_child_ids()[1])
     end
   end
 end

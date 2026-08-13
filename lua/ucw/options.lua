@@ -29,8 +29,8 @@ vim.opt.whichwrap:append('h,l,<,>')
 -- use spaces instead of tabs
 vim.opt.expandtab = true
 -- 1 tab == 4 spaces
-vim.opt.shiftwidth=4
-vim.opt.tabstop=4
+vim.opt.shiftwidth = 4
+vim.opt.tabstop = 4
 
 -- smart indent (only a fallback when indentexpr is not available, which will be set by treesitter
 vim.opt.smartindent = true
@@ -83,10 +83,11 @@ end
 -- Removed in Phase 4; see docs/design/phase4-folding-comments.md §1.2.
 au.group('UnfoldCursorLine', {
   {
-    { 'BufWinEnter', 'InsertLeave' }, '*',
+    { 'BufWinEnter', 'InsertLeave' },
+    '*',
     function()
-      vim.cmd [[normal! zv]]
-    end
+      vim.cmd([[normal! zv]])
+    end,
   },
 })
 
@@ -156,16 +157,16 @@ vim.opt.updatetime = 300
 vim.diagnostic.config {
   signs = {
     text = {
-      [vim.diagnostic.severity.ERROR] = "",
-      [vim.diagnostic.severity.WARN] = "",
-      [vim.diagnostic.severity.INFO] = "",
-      [vim.diagnostic.severity.HINT] = "",
+      [vim.diagnostic.severity.ERROR] = '',
+      [vim.diagnostic.severity.WARN] = '',
+      [vim.diagnostic.severity.INFO] = '',
+      [vim.diagnostic.severity.HINT] = '',
     },
     linehl = {
-      [vim.diagnostic.severity.ERROR] = "Error",
-      [vim.diagnostic.severity.WARN] = "Warn",
-      [vim.diagnostic.severity.INFO] = "Info",
-      [vim.diagnostic.severity.HINT] = "Hint",
+      [vim.diagnostic.severity.ERROR] = 'Error',
+      [vim.diagnostic.severity.WARN] = 'Warn',
+      [vim.diagnostic.severity.INFO] = 'Info',
+      [vim.diagnostic.severity.HINT] = 'Hint',
     },
   },
   underline = {
@@ -196,4 +197,3 @@ vim.diagnostic.config {
   -- display higher severity signs over lower ones
   severity_sort = true,
 }
-

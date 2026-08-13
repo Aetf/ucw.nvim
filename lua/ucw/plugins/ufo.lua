@@ -156,7 +156,7 @@ local function config()
 
   ufo_color()
   au.group('ufo-color', {
-    { 'ColorScheme', '*', ufo_color }
+    { 'ColorScheme', '*', ufo_color },
   })
 end
 
