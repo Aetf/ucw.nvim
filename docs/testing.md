@@ -165,11 +165,38 @@ one has already caught something.
   one. Check `maparg().buffer`, and use `bufname('%')`: `bufname(0)` asks for
   buffer number 0, which does not exist, and answers `''`.
 
-## Gaps
+## CI
 
-- **No CI.** The `just ci` recipe exists but nothing runs it on push. A GitHub Actions
-  workflow that runs `just ci` on a bare runner — `checkout` + `nvim` + `just` +
-  `mise`, then `just deps` — is Phase 7; see `design/phase7-ci.md` and
-  `design/phase6.5-binary-deps.md` §8 for the delta 6.5 already paid down. A runner
-  needs no `tree-sitter` CLI: the suite never installs parsers, because nothing
-  installs itself in a headless session.
+`.github/workflows/ci.yml` (Phase 7) runs on every push and pull request. Three jobs,
+each of which only calls `just`, so every gate is reproducible locally by copying one
+line:
+
+| job | recipe | notes |
+|---|---|---|
+| `test` | `just deps` + `just ci` | matrix `neovim: [stable, nightly]`; nightly is `continue-on-error`. A `git diff --exit-code lazy-lock.json` step runs on the `stable` leg only. |
+| `lint` | `just lint` | needs **Neovim** (for `$VIMRUNTIME`) and the **plugins** (`just plugins`, which it depends on). Both silently weaken the check when absent, so the recipe refuses instead. |
+| `format` | `just fmt-check` | no `stylua-action`: `mise.toml` pins stylua, so CI and this machine run the same binary by construction. |
+
+The bare-runner contract is `checkout` + `nvim` + `just` + `mise`, then `just deps`.
+`jdx/mise-action` is version-pinned, because `mise.toml`'s "no `mise trust` needed"
+property is measured against a specific mise.
+
+A runner needs no `tree-sitter` CLI: the suite never installs parsers, because nothing
+installs itself in a session with no UI attached.
+
+**Testing a recipe against a scratch environment does not work the obvious way.**
+`just` here is a zinit wrapper with a `#!/usr/bin/env zsh` shebang, and zsh's startup
+reassigns `XDG_*` on the way through, so `XDG_DATA_HOME=/tmp/scratch just lint` quietly
+runs against your real `~/.local/share/nvim`. It looks like a successful bare-runner
+simulation. Set the variable on the actual process instead:
+
+```sh
+d=$(mktemp -d)
+XDG_DATA_HOME=$d MISE_DATA_DIR=$HOME/.local/share/mise \
+  mise exec -- nvim --headless '+Lazy! install' +qa      # 46 plugins, ~10 s
+XDG_DATA_HOME=$d mise exec -- nvim --clean -l scripts/luarc-lint-config.lua \
+  .luarc.json /tmp/luarc.bare.json
+```
+
+(`MISE_DATA_DIR` because mise's own store also lives under `XDG_DATA_HOME`, and
+redirecting it makes mise reinstall everything before the thing you meant to test.)

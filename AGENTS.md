@@ -156,6 +156,35 @@ Two-stage model: a headless *driver* nvim runs each `tests/test_*.lua`; each tes
 spawns a clean *child* nvim per case. Write tests with `H.new_unit_test()` (no
 nvimd) or `H.new_integration_test()` (full config). See `docs/testing.md`.
 
+## CI
+
+`.github/workflows/ci.yml` runs on every push and pull request, and it only ever
+calls `just` — the three gates are recipes, so "reproduce CI locally" is one line:
+
+```sh
+just ci          # the suite (matrix: neovim stable + nightly, nightly advisory)
+just lint        # lua-language-server --check, gated on .luarc.json
+just fmt-check   # stylua --check
+```
+
+Two things about `just lint` that are easy to undo by accident, because both
+fail *quietly* — a weaker lua_ls config looks exactly like a working one:
+
+- `.luarc.json` is **checked in** so the editor applies the same rules while you
+  type (that is the whole reason it is not generated). Its `runtime.path` and
+  `runtime.pathStrict` travel together: an explicit `path` carrying `lua/?.lua`
+  without `pathStrict` makes `require('snacks')` resolve to this repo's own
+  `lua/ucw/plugins/snacks.lua`, which drops three real findings and invents a
+  false one. `tests/test_luarc.lua` asserts they stay together, and that the
+  globals here cover `after/lsp/lua_ls.lua`'s.
+- The recipe supplies `$VIMRUNTIME` and the installed plugins' `lua/`
+  directories itself, and **errors** rather than checking less if it cannot.
+  Don't "simplify" either away.
+
+Suppressions are `---@diagnostic disable-next-line: <code>` with a comment
+naming the evidence; the ones deliberately left are listed in
+`docs/design/phase7-ci.md` §7.
+
 ## Observing the rendered TUI
 
 You can inspect what the config *actually draws* (screen text, colors, floats,
@@ -177,7 +206,15 @@ cursor) — not just logs. Three tiers, detailed in **`docs/tui-observation.md`*
   vlog-derived one). Both are gone — `nvimd` with Phase 1, structlog with Phase 5,
   which found `ucw.log` had never had a single caller. Use `vim.notify`; everything
   it emits is retrievable afterwards from `:Noice` / `<leader>nn`.
-- **No CI** yet (the `just ci` recipe exists but nothing runs it).
+- **CI runs the suite, the linter and the formatter** on every push and PR — see
+  the "CI" section above. `just ci` / `just lint` / `just fmt-check` locally are
+  the same gates, not approximations of them.
+- **`VAR=x just …` does not reach the recipe.** `just` here is a zinit wrapper
+  with a `#!/usr/bin/env zsh` shebang, and zsh's own startup reassigns the `XDG_*`
+  variables on the way through — so `XDG_DATA_HOME=/tmp/scratch just lint` runs
+  against your real plugin directory and looks like it worked. To exercise a
+  recipe against a scratch environment, run its commands directly with the
+  variable set on the actual process.
 - **Fast boot**: startup uses a *compiled* target; `_G.nvimctl` is rebuilt lazily on
   `VimEnter`. If you change unit graphs, a recompile (`nvimctl:sync()` / next boot)
   is needed to take effect.
