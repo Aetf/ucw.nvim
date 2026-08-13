@@ -111,7 +111,13 @@ return {
     vim.api.nvim_create_autocmd('User', {
       pattern = 'TSUpdate',
       callback = function()
+        -- `ParserInfo.tier` and `InstallInfo.revision` are annotated required
+        -- and are optional in practice - nvim-treesitter fills in both for a
+        -- parser declared this way, which is the shape its own docs show for
+        -- adding one out of tree.
+        ---@diagnostic disable-next-line: missing-fields
         require('nvim-treesitter.parsers').openscad = {
+          ---@diagnostic disable-next-line: missing-fields
           install_info = {
             url = 'https://github.com/bollian/tree-sitter-openscad',
             files = { 'src/parser.c' },

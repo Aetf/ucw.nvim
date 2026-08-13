@@ -153,6 +153,10 @@ local function boot_with_attached_ui(marker, xdg)
   vim.fn.jobstop(job)
   vim.fn.delete(bin_dir, 'rf')
 
+  -- Both values come back from `vim.rpcrequest`, whose return type lua_ls
+  -- infers as `nil`; at runtime they are the integers the three cases below
+  -- assert on. The annotation is narrower than the behaviour, not wrong.
+  ---@diagnostic disable-next-line: return-type-mismatch
   return calls, n_uis
 end
 

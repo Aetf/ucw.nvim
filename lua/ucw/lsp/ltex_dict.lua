@@ -76,6 +76,11 @@ local function handler(spec)
     local root = lu.locate_root_for_doc(client, cmd.arguments[1].uri)
     local dir = root and vscode.workspace_dir(root.filename) or vscode.global_dir()
 
+    -- `cmd.arguments` is `lsp.LSPAny[]`, so indexing into it yields the whole
+    -- LSPAny union rather than the `table<string, string[]>` ltex actually
+    -- sends here. Narrowing it would mean asserting a shape the server already
+    -- guarantees; the surrounding code is the documentation of that shape.
+    ---@diagnostic disable-next-line: param-type-mismatch
     write_entries(dir, spec.key, cmd.arguments[1][spec.arg])
     vscode.reload(client)
   end

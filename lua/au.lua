@@ -59,7 +59,12 @@ local function autocmd(this, event, spec)
   -- event can be a table or string
   local e = type(event) == 'table' and table.concat(event, ',') or event
 
+  -- Both variables start out boolean and are deliberately reused as the string
+  -- fragment that goes into the :autocmd line below; lua_ls infers the type
+  -- from the first assignment and objects to the second. Correct as written.
+  ---@diagnostic disable-next-line: cast-local-type
   once = once and '++once' or ''
+  ---@diagnostic disable-next-line: cast-local-type
   nested = nested and '++nested' or ''
   cmd(table.concat({ 'autocmd', e, pattern, once, nested, action }, ' '))
 end

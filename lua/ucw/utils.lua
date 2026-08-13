@@ -32,6 +32,10 @@ function M.is_pager_mode()
   if pager_mode ~= nil then
     return pager_mode
   end
+  -- `vim.fn.argv()` is annotated `string|string[]` because the zero-argument
+  -- form returns the list and the one-argument form returns a single name;
+  -- called with none, as here, it is always the list `next` wants.
+  ---@diagnostic disable-next-line: param-type-mismatch
   local opened_with_args = next(vim.fn.argv()) ~= nil -- Neovim was opened with args
 
   pager_mode = pager_mode or opened_with_args
@@ -118,9 +122,15 @@ local function buf_kill(kill_cmd, bufnr, force)
 
   -- abort if buffer is modified and not force
   if not force and vim.bo[bufnr].modified then
-    return vim.api.nvim_err_writeln(
-      string.format('No write since last change for buffer %d (set force to true to override)', bufnr)
-    )
+    -- `nvim_echo` with `err = true` rather than `nvim_err_writeln`, which the
+    -- C API deprecated (`:help deprecated`). Same behaviour: error-highlighted,
+    -- kept in message history. Note `tests/test_deprecations.lua` structurally
+    -- cannot see this one - it scans Neovim's *Lua* runtime for
+    -- `vim.deprecate` calls, which is the right net for `vim.lsp.*` and the
+    -- wrong one for `vim.api.*`. The lint gate is that test's complement.
+    return vim.api.nvim_echo({
+      { string.format('No write since last change for buffer %d (set force to true to override)', bufnr) },
+    }, true, { err = true })
   end
 
   if force then

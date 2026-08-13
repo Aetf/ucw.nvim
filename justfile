@@ -31,22 +31,55 @@ test stop_on_error *tags: deps
 fmt:
     @{{ mise }} stylua .
 
-# Same, without writing.
-# Red today, and that is not news: `stylua.toml` has existed unenforced for
-# years and the repo is converting one `format_on_save` at a time
-# (phase7-ci.md §1.4). The one reformat commit that makes this green is
-# Phase 7's D3.
+# Same, without writing. This is the `format` CI job.
 fmt-check:
     @{{ mise }} stylua --check .
 
-# Static-check this repo's Lua.
-# The rule set (`.luarc.json`: the globals, and the plugin library list that
-# makes the check strong rather than merely quiet) is Phase 7's - phase7-ci.md
-# §3.3/D9. Without it this runs against lua_ls's bare defaults, which do not
-# even know `vim` is a global: 472 problems, ~20 of them real (§1.5 has them
-# triaged). A tool to run, not yet a gate to pass.
-lint:
-    @{{ mise }} lua-language-server --check . --checklevel=Warning
+# Install any plugin `lazy-lock.json` names that is not on disk yet, at the
+# commit it names. A no-op on a machine that has opened this config; on a bare
+# runner it is what gives `lint` something to resolve `require('snacks')`
+# against. `install` rather than `restore` on purpose - restore would also drag
+# an already-installed plugin *back* to the lockfile, which is a thing to do
+# deliberately from the editor and not a side effect of running a linter.
+plugins:
+    @{{ mise }} nvim --headless '+Lazy! install' +qa
+
+# Static-check this repo's Lua. This is the `lint` CI job.
+#
+# Three things have to be true for this to be the check phase7-ci.md §1.5
+# measured, and each of them fails *quietly* when it is not - the whole
+# §5 risk of this phase is that a weaker lint config looks identical to a
+# working one. So each is arranged here and each is loud when it cannot be:
+#
+#  1. `$VIMRUNTIME` must be set. It is exported by Neovim to its own child
+#     processes and by nothing else, so a shell does not have it; without it
+#     `.luarc.json`'s library entry silently evaporates and the check runs with
+#     no Neovim annotations at all (measured: 31 problems instead of 18, and
+#     *fewer* of them real). Asked of `nvim` rather than hard-coded, so
+#     whichever Neovim is on PATH is the one checked against.
+#  2. The plugins must be installed (`plugins` above), and their `lua/` dirs
+#     must reach `workspace.library` (`scripts/luarc-lint-config.lua`).
+#  3. `runtime.pathStrict` must be on, which is `.luarc.json`'s job - see the
+#     comment there. It is checked in so the editor gets it too.
+#
+# See phase7-ci.md §1.5a/§1.5b/§3.3, D9/D11.
+lint: plugins
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # `io.write` rather than `:echo`: headless `:echo` goes to *stderr*, so the
+    # obvious spelling captures an empty string and hands the check a config
+    # with the runtime library silently missing. The guard below caught exactly
+    # that on the first run of this recipe.
+    VIMRUNTIME="$({{ mise }} nvim --headless --clean -c 'lua io.write(vim.env.VIMRUNTIME or "")' -c qa)"
+    if [[ -z "$VIMRUNTIME" || ! -d "$VIMRUNTIME/lua" ]]; then
+        echo "just lint: no usable \$VIMRUNTIME from nvim (got '${VIMRUNTIME:-}')." >&2
+        echo "  Without it this checks the repo with none of Neovim's annotations" >&2
+        echo "  and still exits 0 on a good day - see phase7-ci.md §1.5b." >&2
+        exit 1
+    fi
+    export VIMRUNTIME
+    {{ mise }} nvim --clean -l scripts/luarc-lint-config.lua .luarc.json .luarc.lint.json
+    {{ mise }} lua-language-server --check . --checklevel=Warning --configpath=.luarc.lint.json
 
 # Drive a live nvim TUI for observation (see docs/tui-observation.md)
 # e.g. `just tui start`, `just tui capture`, `just tui 'send' ':q<CR>'`, `just tui stop`

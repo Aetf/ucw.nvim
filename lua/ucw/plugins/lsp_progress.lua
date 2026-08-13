@@ -29,6 +29,11 @@ return {
     vim.api.nvim_create_autocmd('User', {
       group = 'lualine_augroup',
       pattern = 'LspProgressStatusUpdated',
+      -- `lualine.refresh` takes an options table and returns nothing, which is
+      -- not the `fun(args): boolean?` shape an autocmd callback is annotated
+      -- with. Passing it directly is intentional: the callback args are simply
+      -- ignored, and a wrapper would only exist to satisfy the annotation.
+      ---@diagnostic disable-next-line: assign-type-mismatch
       callback = lualine.refresh,
     })
   end,

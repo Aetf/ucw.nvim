@@ -6,6 +6,12 @@ end
 
 function M.config()
   local helpers = require('ucw.neotree.helpers')
+  -- Termcode escaping for the two lightspeed mappings below. This used to be
+  -- missing entirely: `t` is a local in lua/ucw/keys/actions.lua and was never
+  -- imported here, so `s`/`S` in the tree window raised "attempt to call a nil
+  -- value" instead of jumping. Found by `just lint`, not by using the editor,
+  -- which is the argument for having the gate at all (phase7-ci.md §1.5).
+  local t = require('ucw.utils').t
 
   require('neo-tree').setup {
     close_if_last_window = true,

@@ -12,9 +12,14 @@ end
 -- from the runtime mini.nvim plugin that lazy.nvim installs/manages on its
 -- own for actual editing features (see lua/ucw/plugins/mini.lua) - the two
 -- are not meant to share a copy.
+-- `rtp:append` is annotated as taking a string; it takes a table too (that is
+-- how `vim.opt` list options work), which is the form this file has always
+-- used. Same on the next append.
+---@diagnostic disable-next-line: param-type-mismatch
 vim.opt.rtp:append { vim.fn.getcwd() .. '/deps/mini.nvim' }
 
 -- Locate test helper rtp
+---@diagnostic disable-next-line: param-type-mismatch
 vim.opt.rtp:append { vim.fn.getcwd() .. '/tests/aux' }
 
 -- Set up 'mini.test'

@@ -85,6 +85,10 @@ local function config()
           -- (`snacks/picker/config/init.lua:198`), so `false` falls straight
           -- through to the default file previewer. `layout.preview = false` is
           -- the switch, and becomes `layout.hidden = { 'preview' }`.
+          -- Typed `"main"?`, so the spelling that actually works reads as a
+          -- type error. Proven empirically by Phase 5's R1 (above); do not
+          -- "fix" this to the annotated shape.
+          ---@diagnostic disable-next-line: assign-type-mismatch
           layout = { preview = false },
           actions = { ucw_bufdelete = bufdelete },
           win = {

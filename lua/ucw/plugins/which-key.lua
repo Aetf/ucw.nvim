@@ -59,6 +59,9 @@ local function config()
     {
       '<leader>nn',
       function()
+        -- noice registers this picker source with snacks at runtime
+        -- (`noice/init.lua`), so no annotation can know the field exists.
+        ---@diagnostic disable-next-line: undefined-field
         Snacks.picker.noice()
       end,
       desc = 'Search all messages',

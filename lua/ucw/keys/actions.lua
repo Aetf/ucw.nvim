@@ -52,7 +52,11 @@ function M.bufwipeout(bufnr, force)
   return utils.bufwipeout(bufnr, force)
 end
 
+-- `vim.cmd` is a callable *table*, not a function, so `pcall`'s `fun(...)`
+-- parameter type rejects it while `pcall` itself is perfectly happy with
+-- anything that has a `__call`. Same suppression on `bufprev` below.
 function M.bufnext()
+  ---@diagnostic disable-next-line: param-type-mismatch
   local ok = pcall(vim.cmd, 'BufferLineCycleNext')
   if not ok then
     vim.cmd([[bnext]])
@@ -60,6 +64,7 @@ function M.bufnext()
 end
 
 function M.bufprev()
+  ---@diagnostic disable-next-line: param-type-mismatch
   local ok = pcall(vim.cmd, 'BufferLineCyclePrev')
   if not ok then
     vim.cmd([[bprev]])
