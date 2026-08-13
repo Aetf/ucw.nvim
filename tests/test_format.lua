@@ -17,13 +17,17 @@
 --     nothing into it - the *absence* of a real formatter there is itself
 --     useful, see below.
 --
--- `stylua`/`ruff`/`taplo` are real binaries already installed on this
--- machine's actual Mason bin dir (not the child's scratch one) - the CLI
--- formatter cases point the child's `PATH` at that real directory explicitly
--- rather than faking a CLI tool's own output, the same "what's real on this
--- machine" methodology the design doc's own measurements used. `prettier`
--- needs `node`, absent here (the same gap `lua/ucw/lsp/servers.lua` already
--- documents for `jsonls`) - covered by shape only, not execution.
+-- `stylua`/`ruff`/`taplo` are real binaries, and the child gets them the way
+-- any other process would: inherited from the environment. They are this
+-- repo's own pinned copies (`mise.toml`), and `just test` runs through
+-- `mise exec`, so the suite formats with the versions the repo names rather
+-- than with whatever the host happens to have installed
+-- (docs/design/phase6.5-binary-deps.md §2.3). Phase 6 instead pointed the
+-- child's `PATH` at *this machine's* `~/.local/share/nvim/mason/bin`, which
+-- quietly made "someone has run mason-tool-installer here" a prerequisite of a
+-- green suite. `prettier` needs `node`, absent here (the same gap
+-- `lua/ucw/lsp/servers.lua` already documents for `jsonls`) - covered by shape
+-- only, not execution.
 
 local H = require('helpers')
 local new_set = MiniTest.new_set
@@ -31,13 +35,14 @@ local eq = MiniTest.expect.equality
 
 local T, child = H.new_integration_test()
 
--- The real, machine-wide Mason install (this process's own stdpath, not the
--- child's - the child's XDG_DATA_HOME is overridden to a scratch dir by
--- tests/aux/lua/helpers.lua before any of this runs).
-local REAL_MASON_BIN = vim.fn.stdpath('data') .. '/mason/bin'
-
-local function use_real_mason_bin()
-    child.lua(([[vim.env.PATH = %q .. ':' .. vim.env.PATH]]):format(REAL_MASON_BIN))
+-- Nothing resolvable on `PATH` at all: the child's own Mason is an empty
+-- scratch dir, so this is the state of a machine where no formatter has ever
+-- been installed. The `lsp_format = 'never'` cases need it *arranged*, not
+-- assumed - once the project's own formatters are reachable (above), "the
+-- buffer came back unchanged" would otherwise be indistinguishable from
+-- "stylua formatted it", which is not what those cases are about.
+local function no_formatters_on_path()
+    child.lua([[vim.env.PATH = vim.fn.tempname()]])
 end
 
 local function lines()
@@ -146,18 +151,31 @@ end
 T['lsp_format blocking'] = new_set()
 
 -- The trap docs/design/phase6-format-lint.md §1.1 is about: `lua_ls` also
--- advertises `documentFormattingProvider`, and this config's `stylua` is
--- unreachable in this child (its Mason bin is the scratch one, empty - the
--- worst case, matching a machine where mason-tool-installer has not run
--- yet). `lsp_format = 'never'` on the `lua` entry must mean the fake
--- lua_ls-like client's edit never gets applied - the buffer stays exactly
--- what it started as, not "formatted, just by the wrong tool."
+-- advertises `documentFormattingProvider`, and with no `stylua` reachable -
+-- the worst case, a machine where nothing has installed one -
+-- `lsp_format = 'never'` on the `lua` entry must mean the fake lua_ls-like
+-- client's edit never gets applied. The buffer stays exactly what it started
+-- as, not "formatted, just by the wrong tool."
 T['lsp_format blocking']['lua stays unformatted rather than falling back to a formatting-capable client'] = function()
+    no_formatters_on_path()
     local id = start_fake_formatter('lua_ls', 'lua', 'FORMATTED_BY_FAKE')
     eq(id ~= vim.NIL and id ~= nil, true)
     set_lines({ 'local x=1' })
     do_format()
     eq(lines(), { 'local x=1' })
+end
+
+-- The same buffer with `stylua` reachable, which is the case that actually
+-- happens: the client is still there, still advertising formatting, and still
+-- must not be the one that wins. Splitting the two states apart is what keeps
+-- the case above honest - on its own it passes whether `lsp_format = 'never'`
+-- works or merely nothing was installed.
+T['lsp_format blocking']['lua formats with stylua, not with the formatting-capable client'] = function()
+    local id = start_fake_formatter('lua_ls', 'lua', 'FORMATTED_BY_FAKE')
+    eq(id ~= vim.NIL and id ~= nil, true)
+    set_lines({ 'local x=1' })
+    do_format()
+    eq(lines(), { 'local x = 1' })
 end
 
 -- docs/design/phase6-format-lint.md §1.5: texlab advertises formatting too,
@@ -191,7 +209,6 @@ end
 T['real CLI formatters'] = new_set()
 
 T['real CLI formatters']['stylua formats a lua buffer via <leader>lf'] = function()
-    use_real_mason_bin()
     child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'lua']])
     set_lines({ 'local x=1' })
     do_format()
@@ -199,7 +216,6 @@ T['real CLI formatters']['stylua formats a lua buffer via <leader>lf'] = functio
 end
 
 T['real CLI formatters']['ruff_format formats a python buffer via <leader>lf'] = function()
-    use_real_mason_bin()
     child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'python']])
     set_lines({ 'x=1' })
     do_format()
@@ -207,7 +223,6 @@ T['real CLI formatters']['ruff_format formats a python buffer via <leader>lf'] =
 end
 
 T['real CLI formatters']['taplo formats a toml buffer via <leader>lf'] = function()
-    use_real_mason_bin()
     child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'toml']])
     set_lines({ '[a]', 'x=1' })
     do_format()
@@ -218,13 +233,58 @@ end
 -- - it is a `BufWritePre` hook, and the two can diverge if the autocmd
 -- priority/timing is wrong, which a buffer-only assertion would miss.
 T['real CLI formatters']['format_on_save reformats a lua file on disk'] = function()
-    use_real_mason_bin()
     local path = vim.fn.tempname() .. '.lua'
     child.lua(([[vim.cmd.edit(%q)]]):format(path))
     set_lines({ 'local x=1' })
     child.lua('vim.cmd.write()')
     eq(vim.fn.readfile(path), { 'local x = 1' })
     vim.fn.delete(path)
+end
+
+T['PATH order'] = new_set()
+
+-- docs/design/phase6.5-binary-deps.md §2.2: `mason.setup { PATH = 'append' }`
+-- instead of Mason's default `prepend`. Mason is the compatibility floor, so a
+-- copy the project put ahead of it on `PATH` has to win - that is the only
+-- mechanism by which a repo's `node_modules/.bin`, `.venv` or `mise.toml` pin
+-- reaches the editor at all, and conform's bare `command = 'stylua'`
+-- (conform/formatters/stylua.lua) is the shape every consumer of it has.
+--
+-- The earlier `stylua` is a shell script that ignores its input and prints a
+-- marker, because two real stylua builds would be indistinguishable. Both
+-- directions are in one case on purpose: a test that only ran the first half
+-- would pass under `prepend` too, on any machine where Mason has no `stylua`
+-- installed - which is every test child.
+T['PATH order']['a stylua ahead of Mason on PATH is the one conform runs'] = function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({ '#!/bin/sh', 'cat > /dev/null', 'echo AHEAD_OF_MASON' }, dir .. '/stylua')
+    vim.fn.setfperm(dir .. '/stylua', 'rwxr-xr-x')
+
+    local inherited = child.lua_get([[vim.env.PATH]])
+    child.lua(([[vim.env.PATH = %q .. ':' .. vim.env.PATH]]):format(dir))
+    child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'lua']])
+    set_lines({ 'local x=1' })
+    do_format()
+    eq(lines(), { 'AHEAD_OF_MASON' })
+
+    child.lua(([[vim.env.PATH = %q]]):format(inherited))
+    set_lines({ 'local x=1' })
+    do_format()
+    eq(lines(), { 'local x = 1' })
+
+    vim.fn.delete(dir, 'rf')
+end
+
+-- The structural half, and the one that fails the moment someone restores the
+-- upstream default: Mason's bin directory must be *last*. `exepath()` answers
+-- for the binaries that exist today; this answers for the ones that do not
+-- exist yet, which is most of the value of doing it with `PATH` at all.
+T['PATH order']['Mason appends its bin directory rather than prepending it'] = function()
+    child.lua([[require('lazy').load { plugins = { 'mason.nvim' } }]])
+    local entries = child.lua_get([[vim.split(vim.env.PATH, ':', { plain = true })]])
+    local mason_bin = child.lua_get([[require('mason-core.installer.InstallLocation').global():bin()]])
+    eq(entries[#entries], mason_bin)
 end
 
 -- docs/design/phase6-acceptance-review.md R1: `conform.lua` used to carry
@@ -243,24 +303,12 @@ end
 -- the `cond` also switched `format_on_save` on in these same contexts.
 T['embedded contexts'] = new_set()
 
--- Reboots the child with an embedded-context marker (`vim.g.vscode` /
--- `vim.g.started_by_firenvim`) set *before* `ucw.boot()` runs, which is the
--- only moment that matters: lazy.nvim evaluates every `cond` while
--- `init.lua` is still sourcing. The standard `pre_case` hook has already
--- booted the full-UI config by the time a test body runs, so there is
--- nothing to flip afterwards. Reuses the already-populated XDG_DATA_HOME so
--- the reboot costs a boot, not a download.
+-- `H.boot_embedded` reboots the child with the marker set *before*
+-- `ucw.boot()`, which is the only moment that matters - see its comment in
+-- tests/aux/lua/helpers.lua. It lives there rather than here because
+-- tests/test_health.lua needs the same thing for the same reason.
 local function boot_embedded(marker)
-    local xdg = child.env.XDG_DATA_HOME
-    child.restart({})
-    child.env.XDG_DATA_HOME = xdg
-    child.o.rtp = xdg .. ',' .. child.o.rtp
-    child.o.packpath = xdg .. ',' .. child.o.packpath
-    child.o.rtp = vim.fn.getcwd() .. ',' .. child.o.rtp
-    child.g[marker] = true
-    child.lua([[require('ucw').boot()]])
-    child.lua([[require('lazy.manage').install()]])
-    eq(child.lua_get([[require('ucw.targets').is_full_ui()]]), false)
+    H.boot_embedded(child, marker)
 end
 
 T['embedded contexts']['<leader>lf does not hard-error under vscode-neovim'] = function()
@@ -353,7 +401,6 @@ end
 -- regression coming back.
 T['embedded contexts']['format_on_save is off, <leader>lf still formats'] = function()
     boot_embedded('started_by_firenvim')
-    use_real_mason_bin()
     local path = vim.fn.tempname() .. '.lua'
     child.lua(([[vim.cmd.edit(%q)]]):format(path))
     set_lines({ 'local x=1' })

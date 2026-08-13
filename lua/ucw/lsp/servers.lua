@@ -8,6 +8,14 @@
 -- Optional per-server settings live in `after/lsp/<name>.lua`, which Neovim
 -- discovers by itself; a server with nothing to customize gets no file.
 --
+-- A binary that has to be *installed* but not enabled here - a server whose
+-- lifecycle another plugin owns, or a formatter with no server at all - is
+-- declared in `mason-tool-installer`'s `ensure_installed`
+-- (lua/ucw/plugins/mason-tool-installer.lua), which is precisely the
+-- complement of this file. Nothing else may restate these names: this list is
+-- the single source of truth for LSP, and a second list is how the two drift
+-- (docs/design/phase6.5-binary-deps.md §2.1).
+--
 -- Why the filetypes are written out instead of read from nvim-lspconfig:
 -- lazy.nvim needs the `ft` list to decide whether to load nvim-lspconfig at
 -- all, so it cannot come from nvim-lspconfig. To keep the duplication honest,

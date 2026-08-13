@@ -112,6 +112,30 @@ function M.new_integration_test(opts)
     return T, child
 end
 
+-- Reboot an integration-test `child` into one of the embedded contexts
+-- (`marker` is 'vscode' or 'started_by_firenvim').
+--
+-- The marker has to be set *before* `ucw.boot()` and that is the whole reason
+-- this exists: lazy.nvim evaluates every spec's `cond` while `init.lua` is
+-- still sourcing, and the standard `pre_case` hook has already booted the
+-- full-UI config by the time a test body runs, so there is nothing left to
+-- flip afterwards. Reuses the already-populated XDG_DATA_HOME, so the reboot
+-- costs a boot rather than a download.
+function M.boot_embedded(child, marker)
+    local xdg = child.env.XDG_DATA_HOME
+    child.restart({})
+    child.env.XDG_DATA_HOME = xdg
+    child.o.rtp = xdg .. ',' .. child.o.rtp
+    child.o.packpath = xdg .. ',' .. child.o.packpath
+    child.o.rtp = vim.fn.getcwd() .. ',' .. child.o.rtp
+    child.g[marker] = true
+    child.lua([[require('ucw').boot()]])
+    child.lua([[require('lazy.manage').install()]])
+    if child.lua_get([[require('ucw.targets').is_full_ui()]]) ~= false then
+        error(('child booted with g:%s is still a full-UI target'):format(marker))
+    end
+end
+
 -- Without booting the full config
 function M.new_unit_test(opts)
     local child = MiniTest.new_child_neovim()

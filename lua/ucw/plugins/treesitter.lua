@@ -66,19 +66,36 @@ return {
   },
   config = function()
     require('nvim-treesitter').setup {}
-    -- Parser compilation shells out to the `tree-sitter` CLI. Without it
-    -- installed, .install() would otherwise retry (and fail, noisily) every
-    -- single boot for every not-yet-compiled parser. Check once and skip
-    -- with a single clear warning instead.
-    if vim.fn.executable('tree-sitter') == 1 then
-      require('nvim-treesitter').install(ensure_installed)
-    else
-      vim.notify(
-        'tree-sitter CLI not found on $PATH - skipping treesitter parser install/update. '
-        .. 'Install it (e.g. `cargo install tree-sitter-cli`) to get new/updated parsers.',
-        vim.log.levels.WARN,
-        { title = 'nvim-treesitter' }
-      )
+    -- Only a session someone is actually looking at installs parsers by
+    -- itself. This is the same rule Mason applies to its own automatic
+    -- installs, and tests/test_lsp.lua already leans on Mason's version of it;
+    -- nvim-treesitter has no equivalent, so it is written here. `nvim
+    -- --headless`, a `-c` script and a mini.test child all get a config that
+    -- boots in milliseconds instead of one that downloads and compiles a
+    -- couple of dozen grammars into whatever data directory they happen to
+    -- have. `:TSUpdate` and `:TSInstall` are untouched - only the automatic
+    -- boot-time install is gated.
+    --
+    -- Until Phase 6.5 this held by accident: no `tree-sitter` CLI was
+    -- reachable from anywhere, so the branch below never ran. Making the
+    -- project's own tools resolvable (docs/design/phase6.5-binary-deps.md
+    -- §2.3) is what turned that luck into a real code path, and the suite
+    -- promptly started compiling parsers per test file.
+    if #vim.api.nvim_list_uis() > 0 then
+      -- Parser compilation shells out to the `tree-sitter` CLI. Without it
+      -- installed, .install() would otherwise retry (and fail, noisily) every
+      -- single boot for every not-yet-compiled parser. Check once and skip
+      -- with a single clear warning instead.
+      if vim.fn.executable('tree-sitter') == 1 then
+        require('nvim-treesitter').install(ensure_installed)
+      else
+        vim.notify(
+          'tree-sitter CLI not found on $PATH - skipping treesitter parser install/update. '
+            .. 'Install it (e.g. `mise use -g tree-sitter@latest`) to get new/updated parsers.',
+          vim.log.levels.WARN,
+          { title = 'nvim-treesitter' }
+        )
+      end
     end
 
     -- Additional parser
