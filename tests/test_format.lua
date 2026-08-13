@@ -57,6 +57,35 @@ local function do_format()
   child.lua([[require('ucw.lsp.actions').call('format')]])
 end
 
+-- Stands in for `vim.notify` and keeps everything handed to it. conform defers
+-- its own notifications through `vim.schedule_wrap` but looks `vim.notify` up
+-- at call time (`conform/init.lua`), so replacing it here is enough - no need
+-- to reach into noice, whose routing is tests/test_picker.lua's subject.
+local function capture_notifications()
+  child.lua([[
+    _G.__notified = {}
+    vim.notify = function(msg, level)
+      table.insert(_G.__notified, { msg = msg, level = level })
+    end
+  ]])
+end
+
+-- Waits for the deferred notification rather than for a duration: the format
+-- call returns before `vim.schedule` has run the callback, and `vim.wait`
+-- drives the event loop until it has.
+local function warnings()
+  child.lua([[vim.wait(2000, function() return #_G.__notified > 0 end)]])
+  return child.lua_get([[
+    (function()
+      local msgs = {}
+      for _, n in ipairs(_G.__notified) do
+        if n.level == vim.log.levels.WARN then table.insert(msgs, n.msg) end
+      end
+      return msgs
+    end)()
+  ]])
+end
+
 T['shape'] = new_set()
 
 -- Queried field-by-field rather than as one table (same reason
@@ -202,6 +231,52 @@ T['lsp_format blocking']['an unlisted filetype (rust) still reaches its LSP fall
   child.lua(([[vim.cmd.write(%q)]]):format(path))
   eq(vim.fn.readfile(path), { 'FORMATTED_BY_FAKE' })
   vim.fn.delete(path)
+end
+
+-- "No formatter is installed" is a real state of a real machine, not an
+-- accident of CI, so both of its halves are specified behaviour: the buffer
+-- comes back untouched, *and* the user is told once why. Phase 6.5 built the
+-- first half of this axis and skipped the second; this is the rest of it
+-- (docs/design/phase7-ci.md §3.4, D8).
+--
+-- Both assertions live in one case on purpose. "The buffer is unchanged" alone
+-- passes just as well when conform never ran at all - which is precisely the
+-- failure this is here to notice - and a WARN alone says nothing about what
+-- happened to the text.
+--
+-- `exactly one` rather than `at least one`: conform caches the notification per
+-- filetype per session (`has_notified_ft_no_formatters`, Phase 6), so this is
+-- only assertable in a fresh child, which `pre_case` gives. It is also what
+-- would catch that cache regressing in either direction.
+T['formatters unavailable'] = new_set()
+
+-- The `PATH`-stripped state: a machine where nothing has ever been installed.
+-- `lua` has an explicit `formatters_by_ft` entry (`stylua`) plus
+-- `lsp_format = 'never'`, so there is nothing left to fall back to and the
+-- warning is the only thing that happens.
+T['formatters unavailable']['lua with nothing on PATH: unchanged buffer and one WARN'] = function()
+  no_formatters_on_path()
+  capture_notifications()
+  child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'lua']])
+  set_lines { 'local x=1' }
+  do_format()
+  eq(warnings(), { 'Formatters unavailable for lua file' })
+  eq(lines(), { 'local x=1' })
+end
+
+-- markdown needs no arranging at all, which is the point of covering it too:
+-- its formatter is `prettier`, `mason-tool-installer` is what would install one
+-- and its spec is `cond = is_full_ui`, never true in a headless child. So this
+-- is the same behaviour reached *by construction* rather than by stripping the
+-- environment - it holds identically on this machine and on a bare runner, and
+-- it does not depend on `npm` being absent from either (§1.2).
+T['formatters unavailable']['markdown has no formatter anywhere: unchanged buffer and one WARN'] = function()
+  capture_notifications()
+  child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'markdown']])
+  set_lines { '#    title' }
+  do_format()
+  eq(warnings(), { 'Formatters unavailable for markdown file' })
+  eq(lines(), { '#    title' })
 end
 
 T['real CLI formatters'] = new_set()
