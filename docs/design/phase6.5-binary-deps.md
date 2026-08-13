@@ -432,6 +432,40 @@ reproduces interactively it is a dotfiles bug, not an nvim one, and it is
 outside this phase — but it is the reason §2.4.1 reports resolved paths
 instead of assuming them.
 
+> **r5: checked in a real terminal, and it is worse than "no mise entries".**
+> A login+interactive `zsh` on this machine has a **five-entry** `PATH`:
+>
+> ```
+> ~/.local/share/zsh/zinit/polaris/bin : /usr/local/bin : /usr/bin
+> : ~/.local/bin : ~/.local/share/cargo/bin
+> ```
+>
+> No mise, and also no `/usr/local/sbin`, no `/usr/bin/{site,vendor,core}_perl`,
+> no `/usr/lib/rustup/bin`, no `~/.local/share/krew/bin` — all of which *are*
+> present in the environment this session's own shell inherited, and in the
+> tmux server's global environment. So something in the zsh startup is
+> **assigning** `path` rather than extending it. A real Neovim TUI launched
+> from that shell was confirmed to have exactly that `PATH` plus Mason's
+> appended bin dir, read straight off `:checkhealth ucw`.
+>
+> Two consequences worth stating plainly, because they decide what this phase
+> is actually worth *today*:
+>
+> * **The mechanism is correct and currently delivers nothing here.** An
+>   interactive session started inside this repo does not see `mise.toml`'s
+>   pins, because the shell it inherits from cannot see them either. `just`
+>   does (it calls `mise exec` itself, §2.3a), which is why the suite runs on
+>   the pins and the editor does not.
+> * **`rust-analyzer` still comes from Mason's Oct 2022 build in real use** —
+>   not because Mason wins, but because `/usr/lib/rustup/bin` is not on that
+>   `PATH` at all. §2.2's switchover is real wherever rustup's shims are
+>   reachable; it is not reachable from a terminal-launched editor here.
+>
+> Still a dotfiles bug and still §9's non-goal — but it is now a *known* one
+> with a measurement attached, rather than a caveat to check. It is also the
+> single highest-value thing anyone could fix next, since it is what stands
+> between this phase's mechanism and its effect.
+
 ### 3.4 The name mapping is the registry's, not mason-lspconfig's
 
 `mason-lspconfig/mappings.lua` builds its map by inverting each registry
@@ -679,12 +713,13 @@ both runs.
 | §5 asked | Result |
 |---|---|
 | `append` actually reorders | **Yes**, and reverse-verified two ways. A marker-printing `stylua` earlier on `PATH` is the one conform runs; removing it brings the real one back. Flipping the spec to `prepend` turns the structural case red and leaves the behavioural one green — which is exactly why both exist (the child's Mason is empty, so `prepend` shadows nothing there). |
-| the rust-analyzer switchover, both states | The "after" state is live and verified (client initializes against rustup's 1.89.0 build). The "before" state no longer exists — the component was added 2026-08-09 (§2.2) — and re-creating it means uninstalling a user's toolchain component, so it was simulated with a broken shim instead. **The prediction was wrong: the failure is silent, not loud.** 0 clients, nothing in `:messages`, the stderr only in `~/.local/state/nvim/lsp.log`. Phase 3's P4 shape exactly. §6's first risk is therefore un-mitigated except by §2.4.1, which is now the only thing that would show it. |
+| the rust-analyzer switchover, both states | The "after" state works where rustup is reachable — verified: a client initializes against rustup's 1.89.0 build. **It is not reachable from a terminal-launched editor on this machine** (§3.3's r5 note), so real sessions still get Mason's 2022 copy until the shell's `PATH` is fixed. The "before" state no longer exists — the component was added 2026-08-09 (§2.2) — and re-creating it means uninstalling a user's toolchain component, so it was simulated with a broken shim instead. **The prediction was wrong: the failure is silent, not loud.** 0 clients, nothing in `:messages`, the stderr only in `~/.local/state/nvim/lsp.log`. Phase 3's P4 shape exactly. §6's first risk is therefore un-mitigated except by §2.4.1, which is now the only thing that would show it. |
 | the project's tools are what the suite runs | **Yes**, and proved by removing the mechanism rather than by renaming the user's Mason directory: without `mise exec` on the `test` recipe, six cases go red. The suite never had `~/.local/share/nvim/mason/bin` on `PATH` in the green runs — no reference to it survives in the repo. |
 | `mise.toml` is load-bearing | Partly. `mise exec` resolves the pinned copies (checked per binary), and `ruff` moving 0.16.0 → 0.16.2 is visible in `:checkhealth ucw`. The "remove mise from `PATH` and confirm `just deps` fails loudly" leg was not run: `mise` is on `PATH` by construction here and `just` reports a missing command as a non-zero exit anyway. |
 | the health check discriminates, all three states | **Yes**, all three plus the OK state, as offline fixtures rather than real installs (`is_installed()` is a directory stat; the version comes from `mason-receipt.json`). Two cases also assert the *absence* of the other states' lines, because four cases each asserting one string would all pass against a report that printed all four. |
 | the absent-formatter cases can still fail | **Yes**: dropping the `PATH` strip makes `lua stays unformatted` go red, because the project's `stylua` formats it. That case had been passing for a reason that no longer holds, which is why it is now paired with an explicit "formatter present" twin. |
 | the whole suite twice | Done, green both times. |
+| *(not asked for, and the most useful result)* | `:checkhealth ucw` run in a **real TUI**, which is the only place the editor's actual `PATH` can be seen. It reported every binary resolving to Mason — including the four this repo pins — and that is how §3.3's shell bug stopped being a caveat and became a measurement. The report earned its keep on its first real run. |
 
 **Two bugs this phase's own code shipped into the working tree and then had
 to fix — both are the seams these reviews keep finding, not new shapes:**
