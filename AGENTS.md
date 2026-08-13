@@ -145,7 +145,7 @@ Activation sequence per unit: `setup()` → `packadd` → source its `after/` fi
 Harness is **mini.test** (fetched into `deps/`, gitignored). Recipes (`justfile`):
 
 ```sh
-just deps      # clone/update mini.nvim into deps/mini.nvim
+just deps      # pinned binaries (mise.toml) + mini.nvim into deps/, at lazy-lock.json's commit
 just unit      # unit tests   (tag: unit)
 just int       # integration tests (tag: integration; full config boot + install)
 just all       # everything

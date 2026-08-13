@@ -11,7 +11,7 @@ in `mise.toml` the way any project pins its tools. Nothing needs `mise trust`; t
 is deliberately kept to plain `[tools]` with literal versions.
 
 ```sh
-just deps        # mise install (the pinned binaries) + clone/update deps/mini.nvim (gitignored)
+just deps        # mise install (the pinned binaries) + deps/mini.nvim at its pinned commit (gitignored)
 just unit        # tag: unit
 just int         # tag: integration (boots the full config; installs plugins)
 just all         # both
@@ -39,6 +39,13 @@ See `design/phase6.5-binary-deps.md` §2.3a.
 `g:TestTags` is a space-separated tag filter (`tests/aux/driver_run.lua` keeps only
 cases matching **all** given tags). `just deps` is a dependency of `test`, so both the
 binaries and mini.nvim are provisioned automatically.
+
+`deps/mini.nvim` is checked out at the commit `lazy-lock.json` names for `mini.nvim`,
+not at `origin/main` — one pin for two physically separate checkouts (the harness here,
+and the runtime copy lazy.nvim installs for editing features). To move the harness,
+move that lockfile entry; there is no `just deps update=true` any more, and the recipe
+fails loudly rather than falling back to `origin/main` if the entry goes missing.
+See `design/phase7-ci.md` §1.6.
 
 ### Run a single file
 
