@@ -2,6 +2,11 @@
 
 > Revision history
 >
+> * **r10** (2026-08-14) — the `stable` screenshot flake and the two `nightly`
+>   failures were one mechanism: a notification float over the two cases that
+>   read the screen. Root-caused to a real 0.13 removal (`BufModifiedSet`) that
+>   breaks the pinned neo-tree branch; screen tests now dismiss notifications
+>   and `tests/test_neotree.lua` owns the error question. §9.8.
 > * **r9** (2026-08-14) — first green CI. D1 done and caching decided (no cache:
 >   `test` is ~2.5 min on a runner), so §8.5 is closed; `continue-on-error`
 >   confirmed against a real nightly failure; one screenshot flake outstanding
@@ -1049,6 +1054,13 @@ knowledge leaking out of the repo:
   §1.5) — new members of the §7 annotation list above, same reasoning:
   `vim.rpcrequest`'s inferred return type is looser than what the three
   cases using it assert.
+* **(r10) neo-tree on Neovim 0.13.** `BufModifiedSet` is removed in 0.13 and
+  neo-tree's `v2.x` branch still registers it, so its event setup raises `E216`
+  and the error is notified on every first open of the tree. Fixed upstream on
+  `main` only; this config pins `branch = 'v2.x'` and is already at its tip, so
+  the resolution is a branch decision rather than a version bump. Not urgent -
+  0.13 is not released - and `tests/test_neotree.lua` fails by name the day it
+  becomes urgent. See §9.8.
 * **(r7) `gitsigns.undo_stage_hunk`.** Joins `toggle_deleted` directly below,
   for the identical reason and after the identical measurement — r6 shipped it
   as a "mechanical" replacement and it was not one. `undo_stage_hunk()` pops a
@@ -1410,3 +1422,71 @@ that file asserted `screen:find(...) ~= nil` against `true`, which reports
 drawn instead. `expect_on_screen` now errors with the whole rendered grid
 (reverse-verified per F5). The next red run is the one that explains it. Per §5
 and the standing rule: no retry, no sleep, root-cause when there is evidence.
+
+### 9.8 (r10) The three loose ends, and the one thing they were
+
+§9.7 left three: an unexplained screenshot flake on `stable`, two red cases on
+`nightly`, and the standing blink.cmp popup bug (§6). The first two turned out
+to share a mechanism, and finding it cost nothing because §9.7's instrumentation
+was already in place - the *nightly* leg hit the flake on its next run and
+printed the screen:
+
+```
+01|▎   󰈔 [No Name]    ●
+02|   1   hello from ucw.╭──────────────────────  ──────────────────────╮
+03|     1 second line    │ Neo-tree ERROR Error in setup for vim_buffer_…│
+04|~                     ╰───────────────────────────────────────────────╯
+05|~                          ╭──────────────  Messages ─────────────────╮
+```
+
+**A notification is a float, and a float lands on whatever is on screen.** Two
+of this suite's cases read the rendered screen, and both were at the mercy of
+any notification that happened to arrive first. On `nightly` the notification is
+neo-tree's startup error; on `stable` there is no error and the only candidate
+is the `blink.cmp  Downloading pre-built binary` notice that a cold install
+emits - which is why it was rare, and why it never reproduced locally, where the
+timing differs.
+
+**The findings, separated because they are separate:**
+
+* **A real 0.13 incompatibility, not ours and not hidden.** `BufModifiedSet`
+  was **removed** in 0.13 (`news.txt`: use `OptionSet` with pattern `modified`);
+  neo-tree's `define_autocmd_event` still registers it, so its event setup dies
+  with `E216: No such group or event`. Upstream fixed this on `main`
+  (nvim-neo-tree/neo-tree.nvim#2023, merged 2026-04-27) and **not** on the
+  `v2.x` branch this config pins - and we are already at that branch's tip
+  (`80dc74d`), so there is no bump that fixes it. Moving off `v2.x` is a
+  plugin decision, not a CI fix. **Carried to §7.**
+* **`test_lsp`'s detach case was pinning an upstream decision it does not own.**
+  On 0.12.4 the `LspDetach` handler `_disable()`s the buffer; on 0.13-dev it no
+  longer does. The case asserted the intermediate `false`. Now it *observes*
+  that value and asserts only the behaviour that is ours - hints are on after a
+  reattach - while recording that what the pass is worth depends on which side
+  upstream is on.
+* **`test_fold` was never about folding here.** Its screen scan read the float
+  instead of the fold line (`function! Foo()╭─── Error ───╮`). It dismisses
+  notifications first now, like `test_tui_screenshot`.
+
+**The new case, and the two dud versions of it that came first.** Dismissing
+notifications in the screen tests removes the symptom, so something had to own
+the question "does this config raise an error notification". Two attempts were
+green when they had to be red:
+
+1. *Read `Snacks.notifier.get_history()` after boot* - red, green, red across
+   three identical nightly runs.
+2. *Wrap `vim.notify` before `ucw.boot()`* - green 3/3. Booting **replaces**
+   `vim.notify` (noice, snacks behind it), so the wrapper was thrown away;
+   plugins resolve `vim.notify` at call time and land on whichever side of the
+   swap they run on. Unioning both sources still measured red, green, red.
+
+The remaining nondeterminism was not in the recording but in the event:
+neo-tree's sources subscribe when the tree is **first opened**, so whether it
+happens during boot at all is a race. `tests/test_neotree.lua` opens the tree
+and asserts no error-level notification: **3/3 red on 0.13-dev, 3/3 green on
+0.12.4.** It is a file of its own rather than a case in `test_boot.lua`,
+because "booting works" and "neo-tree works" are two owners.
+
+**Result.** `stable` 146/146 green twice; `nightly` 145/146, the single failure
+being a named, deterministic, actionable incompatibility instead of two mystery
+cases. That is what the advisory leg is for, and §5's "delete it if it is red
+for something unactionable" does not apply.

@@ -437,10 +437,25 @@ end
 T['inlay hint toggle']['hints come back after a detach/reattach cycle'] = function()
   local id = start_fake('faketest', '{ inlayHintProvider = true }')
   child.lua(([[vim.lsp.buf_detach_client(0, %d)]]):format(id))
-  eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), false)
+  -- Deliberately observed rather than asserted: whether detaching disables the
+  -- buffer is upstream's business and upstream has changed its mind. On 0.12.4
+  -- the LspDetach handler `_disable()`s it (`false` here), and on
+  -- `NVIM v0.13.0-dev` it no longer does (`true`) - measured on both, with the
+  -- nightly CI leg being what surfaced it. Asserting either value pins this
+  -- config's test to a version of a decision it does not own.
+  local disabled_on_detach = child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]) == false
 
   child.lua(([[vim.lsp.buf_attach_client(0, %d)]]):format(id))
-  eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
+  -- This is the line that is ours, and it holds either way. Note what it is
+  -- worth depends on the observation above: where upstream does disable on
+  -- detach, this passing is proof the re-assert in `ucw.lsp.attach` works;
+  -- where it does not, the re-assert is simply not needed and this is weaker.
+  -- Kept unconditional rather than skipped, because "hints are on after a
+  -- reattach" is the behaviour, and a `MiniTest.skip()` is a green case.
+  eq({ disabled_on_detach, child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]) }, {
+    disabled_on_detach,
+    true,
+  })
 end
 
 T['vscode settings'] = new_set()

@@ -301,6 +301,13 @@ T['full UI']['renders the line count in fold text, and peeks on K'] = function()
   child.cmd('normal! 1Gzc')
   eq(child.lua_get([[vim.fn.foldclosed(1)]]), 1)
 
+  -- Same reason as tests/test_tui_screenshot.lua: a notification float lands
+  -- over the fold line and this scan reads the float instead. Measured on
+  -- `NVIM v0.13.0-dev`, where neo-tree's startup error made it reproducible -
+  -- the row came back as `function! Foo()<float border>  Error  ...`.
+  -- Whether the config raises an error at all is tests/test_neotree.lua's case.
+  child.lua([[pcall(function() Snacks.notifier.hide() end)]])
+
   local row
   for _, line in ipairs(child.get_screenshot().text) do
     local text = table.concat(line)

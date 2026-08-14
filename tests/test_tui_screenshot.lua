@@ -29,12 +29,24 @@ local function expect_on_screen(screen, pattern, what)
   error(('%s not found on the rendered screen.\nScreen was:\n%s'):format(what, screen))
 end
 
+-- Notifications are drawn as floats over whatever is on screen, and a cold
+-- plugin install emits at least one (`blink.cmp  Downloading pre-built binary`)
+-- at a moment nothing here controls - which is what made the first case above
+-- go red on a runner and stay green through six local repeats. Dismissing them
+-- is not hiding anything: `tests/test_neotree.lua` owns "does this config raise
+-- an error notification", by level rather than text, so a real error fails
+-- there by name instead of surfacing as an unreadable screen here.
+local function dismiss_notifications()
+  child.lua([[pcall(function() Snacks.notifier.hide() end)]])
+end
+
 T['screenshot'] = new_set()
 
 -- Reads the rendered grid and asserts on visible text. Robust across terminals
 -- because it only checks that expected text is present, not exact colors.
 T['screenshot']['sees buffer text on screen'] = function()
   child.api.nvim_buf_set_lines(0, 0, -1, true, { 'hello from ucw.nvim', 'second line' })
+  dismiss_notifications()
 
   local shot = child.get_screenshot() -- implies :redraw
   local screen = tostring(shot) -- whole screen as a multi-line string
@@ -56,6 +68,7 @@ T['screenshot']['sees floating window content'] = function()
             border = 'rounded', style = 'minimal',
         })
     ]])
+  dismiss_notifications()
 
   local screen = tostring(child.get_screenshot())
   expect_on_screen(screen, 'floating hello', 'floating window content')
