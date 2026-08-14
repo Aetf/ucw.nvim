@@ -142,6 +142,59 @@ T['sources']['path source produces real entries in the menu'] = function()
   eq({ 'has tests/', contains(labels, 'tests') }, { 'has tests/', true })
 end
 
+T['menu mode'] = new_set()
+
+-- The completion menu is an insert/cmdline-mode object, and blink can be made
+-- to open it in normal mode. Upstream race, understood and not ours to fix
+-- (v1.10.2 is the latest release): `lib/cmdline_events.lua` hooks `vim.on_key`,
+-- checks `mode == 'c'` at key time, then defers the reaction with
+-- `vim.schedule`; submitting the cmdline runs the command first, so
+-- `trigger.show()` lands in normal mode against the buffer just opened. Typing
+-- `:edit foo.lua<CR>` left a 33-item snippet menu floating over a normal-mode
+-- buffer that ate the next keys typed - observed since the Phase 6 TUI work,
+-- confirmed a real bug by the user 2026-08-06, root-caused here by wrapping
+-- `trigger.show` in a live TUI and reading the traceback.
+--
+-- `blink-cmp.lua` answers it as an invariant (any menu opened outside
+-- insert/cmdline closes itself) rather than by patching that one path.
+--
+-- Both directions in one case on purpose. "The menu is not visible" alone
+-- passes just as well when the menu never opened - which in a headless child,
+-- where keyword-triggered completion is unreliable (see this file's header), is
+-- exactly what would happen. So the guard is cleared first and the menu is
+-- shown *through the same entry point the bug uses*, proving it does open in
+-- normal mode here, before proving the guard closes it.
+T['menu mode']['a menu opened in normal mode closes itself'] = function()
+  local show_in_normal_mode = [[
+    vim.cmd('stopinsert')
+    require('blink.cmp.completion.trigger').show()
+  ]]
+  -- `child.lua` for the wait (it takes arguments and may hold statements) and
+  -- `child.lua_get` for the read (it takes an expression) - the two are not
+  -- interchangeable, and a `local` in the latter is a syntax error.
+  local function settle(want)
+    child.lua(
+      [[
+        local want = ...
+        vim.wait(2000, function() return require('blink.cmp').is_menu_visible() == want end)
+      ]],
+      { want }
+    )
+    return child.lua_get([[{ require('blink.cmp').is_menu_visible(), vim.api.nvim_get_mode().mode }]])
+  end
+
+  -- with the guard: the same call the bug makes leaves nothing behind
+  child.lua(show_in_normal_mode)
+  eq(settle(false), { false, 'n' })
+
+  -- and now the half that stops the above from being vacuous: without the
+  -- guard the menu really does open, in normal mode, in this very child.
+  -- Cleared last so nothing has to put it back.
+  child.lua([[vim.api.nvim_clear_autocmds({ group = 'ucw_blink_menu_mode' })]])
+  child.lua(show_in_normal_mode)
+  eq(settle(true), { true, 'n' })
+end
+
 T['lsp'] = new_set()
 
 -- Guards the bug this phase actually uncovered: cmp-nvim-lsp merged its

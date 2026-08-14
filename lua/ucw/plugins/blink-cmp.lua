@@ -78,5 +78,34 @@ return {
     -- completion-related capabilities otherwise, which would drop everything
     -- Neovim advertises by default (signatureHelp, hover, ...).
     vim.lsp.config('*', { capabilities = blink.get_lsp_capabilities(nil, true) })
+
+    -- Close a menu that opened outside insert/cmdline mode. This is a
+    -- workaround for an upstream race, kept because the race is understood and
+    -- the fix is not ours to make (blink v1.10.2 is the latest release, so
+    -- there is no version to move to).
+    --
+    -- `lib/cmdline_events.lua` hooks `vim.on_key`, checks `mode == 'c'` *at key
+    -- time*, and then queues the reaction with `vim.schedule`. Submitting the
+    -- cmdline runs the command before that callback gets its turn, so
+    -- `on_char_added` -> `trigger.show()` executes in normal mode and completes
+    -- against the buffer you just opened. Typing `:edit foo.lua<CR>` therefore
+    -- leaves a 33-item snippet menu floating over a normal-mode buffer, with no
+    -- keypress able to explain it - and it eats the next keys you type.
+    -- Traceback captured live: cmdline_events.lua:47 -> :28 -> trigger:63.
+    --
+    -- Stated as the invariant rather than as "undo that one path": the menu is
+    -- an insert/cmdline-mode object, and anything that opens it elsewhere is
+    -- wrong regardless of which code path got there.
+    vim.api.nvim_create_autocmd('User', {
+      pattern = 'BlinkCmpMenuOpen',
+      group = vim.api.nvim_create_augroup('ucw_blink_menu_mode', { clear = true }),
+      callback = function()
+        local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
+        -- i: insert, c: cmdline, R: replace, s/S: select (snippet tabstops)
+        if not mode:match('[icRsS]') then
+          blink.hide()
+        end
+      end,
+    })
   end,
 }

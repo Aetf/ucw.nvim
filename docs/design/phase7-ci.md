@@ -2,6 +2,9 @@
 
 > Revision history
 >
+> * **r11** (2026-08-14) — §6's standing blink.cmp popup bug root-caused and
+>   fixed: it is triggered by using the cmdline, not by `.lua`, and the cause is
+>   an upstream race in `blink.cmp`'s `vim.on_key` handler. §9.9.
 > * **r10** (2026-08-14) — the `stable` screenshot flake and the two `nightly`
 >   failures were one mechanism: a notification float over the two cases that
 >   read the screen. Root-caused to a real 0.13 removal (`BufModifiedSet`) that
@@ -1012,9 +1015,11 @@ installs) and decide caching from that number rather than from a guess
 
 ## 6. Observed, out of scope
 
-* The blink.cmp completion popup that appears in a freshly opened `.lua`
-  buffer with no keypress (Phase 6 design doc r4; confirmed a real bug by
-  the user 2026-08-06). Unrelated to this phase, still unfixed.
+* ~~The blink.cmp completion popup that appears in a freshly opened `.lua`
+  buffer with no keypress~~ - **root-caused and fixed (r11, §9.9)**. It was not
+  about `.lua` files: using the *cmdline* to open anything is the trigger, and
+  the cause is an upstream race between `vim.on_key`'s mode check and the
+  `vim.schedule` that acts on it.
 
 ## 7. Carried forward (D5's "record the rest")
 
@@ -1490,3 +1495,63 @@ because "booting works" and "neo-tree works" are two owners.
 being a named, deterministic, actionable incompatibility instead of two mystery
 cases. That is what the advisory leg is for, and §5's "delete it if it is red
 for something unactionable" does not apply.
+
+### 9.9 (r11) The blink.cmp popup, root-caused
+
+§6 has carried this since Phase 6: *"a completion popup appears in a freshly
+opened `.lua` buffer with no keypress"*, confirmed a real bug by the user
+2026-08-06 and never diagnosed. It is diagnosed now, and it was never about
+`.lua` files.
+
+**It depends on how the file is opened**, which is why it looked arbitrary:
+
+| how | menu in normal mode |
+|---|---|
+| `nvim foo.lua` (file as argument) | no |
+| typing `:edit foo.lua<CR>` | **yes** |
+| `tui-drive`'s programmatic `cmd 'edit …'` | **yes** |
+
+So the common factor is *the cmdline was used*, not the filetype - and it
+reproduces with real typed keys, so it was never an artefact of driving Neovim
+over a socket.
+
+**Mechanism, read off a live traceback** rather than guessed: `blink.cmp`'s
+`lib/cmdline_events.lua` hooks `vim.on_key`, checks `mode == 'c'` **at key
+time**, and then defers the reaction through `vim.schedule`. Submitting the
+cmdline runs the command before that callback gets its turn, so
+`on_changed` → `on_char_added` → `trigger.show()` executes in **normal mode**,
+completing against the buffer that was just opened. Captured by wrapping
+`trigger.show` in a real TUI:
+
+```
+MODE=n
+  .../completion/trigger/init.lua:63: in function 'on_char_added'
+  .../lib/cmdline_events.lua:28: in function 'on_changed'
+  .../lib/cmdline_events.lua:47: in function <.../cmdline_events.lua:46>
+```
+
+The 33 items are the `snippets` source (`dateMDY`, `copyright`, `uuid`, …),
+which is why the menu always looked unrelated to anything typed. It also eats
+the next keystrokes, which is how it corrupted a scratch file during Phase 6's
+TUI work.
+
+**Upstream, and not fixable by moving.** `v1.10.2` (2026-04-04) is the latest
+release and is what this config pins. So this is a workaround, taken knowingly
+and with the race understood - the standing rule is against workarounds for
+*unknown* causes.
+
+**Written as the invariant, not as an undo of that path.** The menu is an
+insert/cmdline-mode object; anything that opens it elsewhere is wrong however it
+got there. `blink-cmp.lua` hangs one autocmd on blink's own `BlinkCmpMenuOpen`
+and hides the menu when the mode is not one of `i`/`c`/`R`/`s`/`S`.
+
+**The regression test asserts both halves in one case**, because "the menu is
+not visible" passes just as well when the menu never opened - and in a headless
+child, where this file's own header says keyword-triggered completion is
+unreliable, that is exactly what would otherwise happen. So it shows the menu
+through the entry point the bug uses, asserts the guard closed it, *then* clears
+the guard and asserts the same call does leave it open. Reverse-verified per F5
+by deleting the guard: `Left: { true, "n" }` against `Right: { false, "n" }`.
+
+**§6 is closed.** 147/147 on 0.12.4 twice; 146/147 on 0.13-dev, the one failure
+still being §9.8's named neo-tree incompatibility.
