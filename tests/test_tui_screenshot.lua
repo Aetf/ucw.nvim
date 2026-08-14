@@ -14,9 +14,20 @@
 
 local H = require('helpers')
 local new_set = MiniTest.new_set
-local expect, eq = MiniTest.expect, MiniTest.expect.equality
 
 local T, child = H.new_integration_test()
+
+-- `expect.equality(screen:find(...) ~= nil, true)` reports `false ~= true` and
+-- nothing else, which is useless for the one failure mode these cases have:
+-- something was drawn over the text. Both were written that way and the first
+-- one went red exactly once, on a CI runner, with no way to tell what covered
+-- it. So the screen goes in the failure message.
+local function expect_on_screen(screen, pattern, what)
+  if screen:find(pattern) ~= nil then
+    return
+  end
+  error(('%s not found on the rendered screen.\nScreen was:\n%s'):format(what, screen))
+end
 
 T['screenshot'] = new_set()
 
@@ -28,7 +39,7 @@ T['screenshot']['sees buffer text on screen'] = function()
   local shot = child.get_screenshot() -- implies :redraw
   local screen = tostring(shot) -- whole screen as a multi-line string
 
-  expect.equality(screen:find('hello from ucw%.nvim') ~= nil, true)
+  expect_on_screen(screen, 'hello from ucw%.nvim', 'buffer text')
   -- `shot.text` / `shot.attr` are 2d arrays if you need per-cell checks, e.g.
   -- the first text row: table.concat(shot.text[1])
 end
@@ -47,7 +58,7 @@ T['screenshot']['sees floating window content'] = function()
     ]])
 
   local screen = tostring(child.get_screenshot())
-  expect.equality(screen:find('floating hello') ~= nil, true)
+  expect_on_screen(screen, 'floating hello', 'floating window content')
 
   -- Pixel-for-pixel reference screenshots are also supported, but are sensitive
   -- to colorscheme / plugin versions, so they are not used here:
