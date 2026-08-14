@@ -2,6 +2,11 @@
 
 > Revision history
 >
+> * **r8** (2026-08-14) — the first real CI run was red, and it was R1 a third
+>   time: lazy.nvim resets `rtp` to `stdpath('config')`, so the *test* child gets its
+>   plugins from there too and the acceptance review's "the `test` job is
+>   unaffected" was wrong. Fixed by giving `test` the same `nvim_config_env`;
+>   §9.6. `lint`/`format` were green, so §9.1 held.
 > * **r7** (2026-08-13) — **acceptance review fixes.** `docs/design/phase7-acceptance-review.md`
 >   found four; all four fixed, §9 below is the record. The one that matters is
 >   R1: §8.2 noticed the `lint` job had no plugins and answered "depend on
@@ -1310,3 +1315,48 @@ green. Bare-runner shape green, as above. `git status` clean, so D6's premise
 still holds. §8.5's open items are unchanged: nothing has run on a real runner,
 the caching decision waits on those timings, and **D1 (push + PR) is still the
 one irreversible step, still held for explicit confirmation.**
+
+### 9.6 (r8) What the first real CI run found, and it was R1 again
+
+The first run on a real runner (PR #19) was **red**, and the acceptance review
+had said the one thing that turned out to matter was safe:
+
+> The `test` job is unaffected for exactly this reason and it is worth saying
+> why: `tests/aux/driver_init.lua` and `helpers.lua` put `vim.fn.getcwd()` on
+> the child's `rtp` explicitly … the harness never assumes where the config
+> lives.
+
+That was checked before §9.1 established that **lazy.nvim resets `rtp` to
+`stdpath('config')`** before importing specs, and never re-checked afterwards.
+The `rtp` the harness sets is real and is also discarded. So on the runner
+lazy imported no specs, installed nothing, and every integration case died in
+`pre_case` at `require('mini.test')` — that copy is the *runtime* mini.nvim
+lazy installs (`lua/ucw/plugins/mini.lua`), not `deps/mini.nvim`. Observed:
+`test_boot` and the first case of every integration file red, `test_health` all
+eight red, the unit-only files (`deprecations`, `lsp_actions`, `luarc`,
+`ipython_cell`) all green — exactly the plugin/no-plugin split. Then
+`test_treesitter`'s `boot_with_attached_ui` waited on a second Neovim that could
+never come up, and the job burned the remaining 18 minutes to
+`timeout-minutes: 20`. `lint` and `format` were green, so §9.1's fix did hold.
+
+**Fix: `test` gets the same `{{ nvim_config_env }}`.** One more caller of the
+lever that already existed; no new mechanism.
+
+**The dud that made this take three tries is the part worth keeping.** Running
+the suite from a runner-shaped copy under `/tmp` reported **113/113 integration
+cases green** while CI was red on the same commit — because `~/.config/nvim`
+still exists on this machine, so `stdpath('config')` falls back to the real repo
+and the copy is only half a simulation. The probe that discriminates needs an
+empty `XDG_CONFIG_HOME` as well; with it, `test_health` reproduced CI's failure
+exactly (`module 'mini.test' not found`, `helpers.lua:67`), and with the fix the
+full suite is **145/145 in that same environment**. docs/testing.md now carries
+both halves, because "copy the tree out of `~/.config`" was the lesson written
+down after R1 and it was not sufficient.
+
+Three instances now of one failure mode — `just plugins`, the `lint` library,
+the test child — and all three are the same sentence: **this repo is a Neovim
+config, so "where the config is" is a variable everywhere else and a constant
+here.** That is the thing to check first in anything that runs `nvim`.
+
+`timeout-minutes: 20` is left alone: it did its job, and the 18 minutes it
+absorbed were a hang caused by the bug, not a slow suite.

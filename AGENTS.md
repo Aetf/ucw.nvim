@@ -180,13 +180,15 @@ fail *quietly* — a weaker lua_ls config looks exactly like a working one:
 - The recipe supplies `$VIMRUNTIME`, the installed plugins' `lua/` directories
   and `deps/mini.nvim`, and **errors** rather than checking less if it cannot.
   Don't "simplify" any of them away.
-- `just plugins`/`just lint` set `XDG_CONFIG_HOME` + `NVIM_APPNAME` so this
-  checkout *is* the config directory Neovim loads. On this machine that is a
-  no-op (the repo already is `~/.config/nvim`); on a runner it is the whole
-  difference between working and `E492: Not an editor command: Lazy!`. `rtp` is
-  not a substitute — lazy.nvim resets it to `stdpath('config')` before importing
-  specs. Simulating a bare runner therefore means copying the tree *out of*
-  `~/.config`, not just pointing `XDG_DATA_HOME` somewhere else.
+- `just test`/`just plugins`/`just lint` set `XDG_CONFIG_HOME` + `NVIM_APPNAME`
+  so this checkout *is* the config directory Neovim loads. On this machine that
+  is a no-op (the repo already is `~/.config/nvim`); on a runner it is the whole
+  difference between working and not. **`rtp` is not a substitute** — lazy.nvim
+  resets `rtp` to `stdpath('config')` before importing specs, which is why the
+  integration suite needs this too even though the harness puts `getcwd()` on
+  the child's `rtp` explicitly. Simulating a runner means copying the tree *out
+  of* `~/.config` **and** giving it an empty `XDG_CONFIG_HOME`; the copy alone
+  still falls back to your real `~/.config/nvim` and passes.
 
 Suppressions are `---@diagnostic disable-next-line: <code>` with a comment
 naming the evidence; the ones deliberately left are listed in

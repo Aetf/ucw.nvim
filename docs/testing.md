@@ -186,21 +186,36 @@ installs itself in a session with no UI attached.
 
 **Simulating a bare runner: the variable that matters is where the *config* lives.**
 This repo is `~/.config/nvim`, so on this machine it is simultaneously the checkout and
-the thing Neovim loads as your config. A runner has only the first. Any simulation that
-varies `XDG_DATA_HOME` and nothing else keeps the second, which is how the first version
-of `just plugins` — bare `nvim '+Lazy! install'` — passed a bare-runner check and would
-still have failed every CI run with `E492: Not an editor command: Lazy!`
-(acceptance review R1). So copy the tree somewhere runner-shaped and run the recipes
-there:
+the thing Neovim loads as your config. A runner has only the first. Anything that leans
+on the second — and more of this repo does than looks like it — works here and fails
+there. Two instances, both found the expensive way: `just plugins` was bare
+`nvim '+Lazy! install'` and would have failed every CI run with `E492: Not an editor
+command: Lazy!` (acceptance review R1); and the whole *integration* suite died in
+`pre_case`, because lazy.nvim **resets `rtp` to `stdpath('config')`** before importing
+specs, so the child's plugins come from there and not from the `getcwd()` the harness
+puts on `rtp` (§9.6).
+
+**Copying the tree elsewhere is not enough on its own.** While `~/.config/nvim` still
+exists, `stdpath('config')` falls back to it and everything passes — a copy of this repo
+under `/tmp` ran 113/113 integration cases green while CI was red on the same commit.
+The simulation needs *both* halves: a runner-shaped checkout **and** an empty config
+dir to fall back to.
 
 ```sh
 w=$(mktemp -d)/ucw.nvim && mkdir -p "$w"
 tar --exclude=.git --exclude=deps -cf - . | (cd "$w" && tar -xf -)
 cd "$w" && just plugins    # "46 plugins present", ~8 s
 cd "$w" && just lint       # clones deps/mini.nvim, 43 library entries, green
+
+# the discriminating one: no config dir to fall back to
+c=$(mktemp -d)
+XDG_CONFIG_HOME=$c mise exec -- env XDG_CONFIG_HOME=$c just all    # 145/145
 ```
 
-`just plugins`/`just lint` set `XDG_CONFIG_HOME` + `NVIM_APPNAME` from
+(The doubled `XDG_CONFIG_HOME` is the zinit-wrapper problem below: the outer one is for
+`mise`, the inner `env` is what actually reaches `just`.)
+
+`just test`/`just plugins`/`just lint` set `XDG_CONFIG_HOME` + `NVIM_APPNAME` from
 `justfile_directory()` themselves (see the `nvim_config_env` comment in the justfile),
 so from that copy `stdpath()` lands on its own scratch data dir automatically —
 `~/.local/share/ucw.nvim` rather than `~/.local/share/nvim`. Delete it afterwards.

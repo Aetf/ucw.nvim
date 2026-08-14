@@ -36,8 +36,18 @@ all: (test "true")
 ci: (test "false")
 
 # Run tests
+#
+# `{{ nvim_config_env }}` for the same reason `plugins` below needs it, and this
+# is the less obvious of the two: the harness *does* put `getcwd()` on the
+# child's `rtp` explicitly, which looks like it settles the question - but
+# lazy.nvim resets `rtp` to `stdpath('config')` before it imports specs, so the
+# child's plugin set comes from wherever Neovim thinks your config is, not from
+# the checkout. On this machine those are the same directory, which is why this
+# was invisible until CI: every integration case died in `pre_case` at
+# `require('mini.test')`, because that copy is one lazy.nvim installs
+# (`lua/ucw/plugins/mini.lua`) and lazy had imported no specs at all.
 test stop_on_error *tags: deps
-    @{{ mise }} nvim --headless --clean \
+    @{{ nvim_config_env }} {{ mise }} nvim --headless --clean \
         --cmd 'let g:TestTags = "{{ tags }}"' \
         --cmd 'let g:TestExecuteStopOnError = v:{{ stop_on_error }}' \
         -u ./tests/aux/driver_init.lua \
