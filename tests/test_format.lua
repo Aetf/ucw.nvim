@@ -25,9 +25,14 @@
 -- (docs/design/phase6.5-binary-deps.md §2.3). Phase 6 instead pointed the
 -- child's `PATH` at *this machine's* `~/.local/share/nvim/mason/bin`, which
 -- quietly made "someone has run mason-tool-installer here" a prerequisite of a
--- green suite. `prettier` needs `node`, absent here (the same gap
--- `lua/ucw/lsp/servers.lua` already documents for `jsonls`) - covered by shape
--- only, not execution.
+-- green suite. `prettier` is covered by shape only, never by execution, and the
+-- reason is structural rather than environmental: the thing that would install
+-- one is `mason-tool-installer`, whose spec is `cond = is_full_ui` and so never
+-- loads in a headless child. (It is *not* that `node` is missing - `mise exec`,
+-- which is how `just test` runs, resolves both `node` and `npm` since the
+-- machine-side PATH fix. That was the old argument, and it made a guarantee out
+-- of an accident; see docs/design/phase7-ci.md §1.2. The 'formatters
+-- unavailable' group at the bottom of this file leans on the structural one.)
 
 local H = require('helpers')
 local new_set = MiniTest.new_set

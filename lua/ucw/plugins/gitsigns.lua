@@ -15,14 +15,22 @@ return {
     cmd('GitsignsResetHunk', function()
       require('gitsigns').reset_hunk()
     end)
-    -- gitsigns unified staging and unstaging: with staged signs shown,
-    -- `stage_hunk()` on an already-staged hunk is what undoes it, and
-    -- `undo_stage_hunk()` is deprecated in favour of exactly that. The command
-    -- name stays - the point of this list is that these are reachable from the
-    -- cmdline and from command history, and that surface should not shift under
-    -- the user because upstream merged two functions.
+    -- Deprecated in favour of `stage_hunk()` on staged signs, and *not* replaced
+    -- here, for the same reason as `toggle_deleted` below: upstream's suggested
+    -- replacement is a different operation, not a renamed one.
+    --   * `undo_stage_hunk()` pops a session-local LIFO (`bcache.staged_diffs`)
+    --     and unstages whatever comes off it. The cursor is never consulted.
+    --   * `stage_hunk()` acts on the hunk *at the cursor*, and only inverts when
+    --     there is no unstaged hunk there.
+    -- Measured in a real TUI on a two-hunk repo: with the cursor on an unstaged
+    -- hunk, the "undo" command *stages* it, and between hunks it does nothing
+    -- where it used to work. A command called `GitsignsUndoStageHunk` that
+    -- sometimes stages is worse than a deprecation warning. Turning this into a
+    -- cursor-local toggle is a behaviour decision for whoever wants one - see
+    -- docs/design/phase7-ci.md §7 and the acceptance review's R2.
     cmd('GitsignsUndoStageHunk', function()
-      require('gitsigns').stage_hunk()
+      ---@diagnostic disable-next-line: deprecated
+      require('gitsigns').undo_stage_hunk()
     end)
     cmd('GitsignsPreviewHunk', function()
       require('gitsigns').preview_hunk()

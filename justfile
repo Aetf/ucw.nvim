@@ -7,6 +7,22 @@ set ignore-comments
 # See docs/design/phase6.5-binary-deps.md §2.3.
 mise := 'mise exec --'
 
+# Make this checkout be the directory Neovim calls "your config", wherever it
+# happens to sit. On this machine it already is one - the repo *is*
+# `~/.config/nvim` - and there both variables evaluate to exactly what they
+# already were, so this is a no-op here and load-bearing everywhere else (a CI
+# runner checks out to `$GITHUB_WORKSPACE`, and bare `nvim` there finds no
+# config at all).
+#
+# `rtp` is not the lever. lazy.nvim *resets* the runtimepath to
+# `stdpath('config')` + `$VIMRUNTIME` (`performance.rtp.reset`, on by default)
+# before it imports specs, so a `--cmd 'set rtp^=...'` is discarded and the
+# import finds nothing. `NVIM_APPNAME` moves `stdpath()` itself, which is the
+# thing lazy actually reads - and it moves `stdpath('data')` with it, so every
+# recipe that has to agree about where the plugins are uses this same variable.
+# See docs/design/phase7-acceptance-review.md R1.
+nvim_config_env := 'XDG_CONFIG_HOME=' + parent_directory(justfile_directory()) + ' NVIM_APPNAME=' + file_name(justfile_directory())
+
 # Unit tests
 unit: (test "true" "unit")
 
@@ -41,12 +57,32 @@ fmt-check:
 # against. `install` rather than `restore` on purpose - restore would also drag
 # an already-installed plugin *back* to the lockfile, which is a thing to do
 # deliberately from the editor and not a side effect of running a linter.
+#
+# `{{ nvim_config_env }}` is not decoration, and leaving it off is invisible *on
+# this machine only*: bare `nvim` loads `$XDG_CONFIG_HOME/nvim`, which here
+# happens to be this very repo and on a runner is nothing at all. Without it CI
+# gets `E492: Not an editor command: Lazy!` - and headless Neovim **exits 0**
+# after that, so `just` sees a recipe that succeeded and the failure only
+# surfaces one step later, in `scripts/luarc-lint-config.lua`, as advice to run
+# this recipe.
+#
+# And the recipe checks its own postcondition rather than delegating that
+# downstream: the generator only refuses on a *completely* empty plugin root, so
+# three failed clones out of 46 would otherwise be a smaller library, a green
+# check and no signal - phase7-ci.md §5's failure mode. Asked of lazy.nvim,
+# which is the one thing that knows both what it wanted and where it put it.
+# `pcall` because a `-c` that errors does not stop the ones after it.
 plugins:
-    @{{ mise }} nvim --headless '+Lazy! install' +qa
+    #!/usr/bin/env bash
+    set -euo pipefail
+    {{ nvim_config_env }} {{ mise }} nvim --headless \
+        '+Lazy! install' \
+        -c 'lua local ok, lazy = pcall(require, "lazy") if not ok then io.stderr:write("just plugins: this config did not load - lazy.nvim is not on rtp\n") vim.cmd("cquit 1") end local missing = {} for _, p in ipairs(lazy.plugins()) do if not vim.uv.fs_stat(p.dir) then table.insert(missing, p.name) end end if #missing > 0 then io.stderr:write("just plugins: not installed: " .. table.concat(missing, " ") .. "\n") vim.cmd("cquit 1") end io.write(("%d plugins present\n"):format(#lazy.plugins()))' \
+        +qa
 
 # Static-check this repo's Lua. This is the `lint` CI job.
 #
-# Three things have to be true for this to be the check phase7-ci.md §1.5
+# Four things have to be true for this to be the check phase7-ci.md §1.5
 # measured, and each of them fails *quietly* when it is not - the whole
 # §5 risk of this phase is that a weaker lint config looks identical to a
 # working one. So each is arranged here and each is loud when it cannot be:
@@ -59,11 +95,17 @@ plugins:
 #     whichever Neovim is on PATH is the one checked against.
 #  2. The plugins must be installed (`plugins` above), and their `lua/` dirs
 #     must reach `workspace.library` (`scripts/luarc-lint-config.lua`).
-#  3. `runtime.pathStrict` must be on, which is `.luarc.json`'s job - see the
+#  3. `deps/mini.nvim` must exist (`deps` below), because `.luarc.json` names
+#     `deps/mini.nvim/lua` as a library too and lua_ls ignores a library path
+#     that is not there without saying so. This one is currently worth nothing
+#     measurably - stripping the entry changes no finding - and it is depended
+#     on anyway, because the other two inputs each got a refusal path and
+#     leaving the third to silence is the asymmetry §5 is about.
+#  4. `runtime.pathStrict` must be on, which is `.luarc.json`'s job - see the
 #     comment there. It is checked in so the editor gets it too.
 #
-# See phase7-ci.md §1.5a/§1.5b/§3.3, D9/D11.
-lint: plugins
+# See phase7-ci.md §1.5a/§1.5b/§3.3, D9/D11, and the acceptance review's R4.
+lint: deps plugins
     #!/usr/bin/env bash
     set -euo pipefail
     # `io.write` rather than `:echo`: headless `:echo` goes to *stderr*, so the
@@ -78,7 +120,10 @@ lint: plugins
         exit 1
     fi
     export VIMRUNTIME
-    {{ mise }} nvim --clean -l scripts/luarc-lint-config.lua .luarc.json .luarc.lint.json
+    # Same `{{ nvim_config_env }}` as `plugins` above, for the same reason read
+    # the other way round: this has to look for the plugins where that recipe
+    # put them, and `NVIM_APPNAME` moves `stdpath('data')` too.
+    {{ nvim_config_env }} {{ mise }} nvim --clean -l scripts/luarc-lint-config.lua .luarc.json .luarc.lint.json
     {{ mise }} lua-language-server --check . --checklevel=Warning --configpath=.luarc.lint.json
 
 # Drive a live nvim TUI for observation (see docs/tui-observation.md)

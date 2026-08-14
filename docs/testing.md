@@ -174,7 +174,7 @@ line:
 | job | recipe | notes |
 |---|---|---|
 | `test` | `just deps` + `just ci` | matrix `neovim: [stable, nightly]`; nightly is `continue-on-error`. A `git diff --exit-code lazy-lock.json` step runs on the `stable` leg only. |
-| `lint` | `just lint` | needs **Neovim** (for `$VIMRUNTIME`) and the **plugins** (`just plugins`, which it depends on). Both silently weaken the check when absent, so the recipe refuses instead. |
+| `lint` | `just lint` | needs **Neovim** (for `$VIMRUNTIME`), the **plugins** (`just plugins`) and **`deps/mini.nvim`** (`just deps`) — it depends on both recipes. Each silently weakens the check when absent, so the recipe refuses instead. |
 | `format` | `just fmt-check` | no `stylua-action`: `mise.toml` pins stylua, so CI and this machine run the same binary by construction. |
 
 The bare-runner contract is `checkout` + `nvim` + `just` + `mise`, then `just deps`.
@@ -184,17 +184,37 @@ property is measured against a specific mise.
 A runner needs no `tree-sitter` CLI: the suite never installs parsers, because nothing
 installs itself in a session with no UI attached.
 
-**Testing a recipe against a scratch environment does not work the obvious way.**
-`just` here is a zinit wrapper with a `#!/usr/bin/env zsh` shebang, and zsh's startup
-reassigns `XDG_*` on the way through, so `XDG_DATA_HOME=/tmp/scratch just lint` quietly
-runs against your real `~/.local/share/nvim`. It looks like a successful bare-runner
-simulation. Set the variable on the actual process instead:
+**Simulating a bare runner: the variable that matters is where the *config* lives.**
+This repo is `~/.config/nvim`, so on this machine it is simultaneously the checkout and
+the thing Neovim loads as your config. A runner has only the first. Any simulation that
+varies `XDG_DATA_HOME` and nothing else keeps the second, which is how the first version
+of `just plugins` — bare `nvim '+Lazy! install'` — passed a bare-runner check and would
+still have failed every CI run with `E492: Not an editor command: Lazy!`
+(acceptance review R1). So copy the tree somewhere runner-shaped and run the recipes
+there:
+
+```sh
+w=$(mktemp -d)/ucw.nvim && mkdir -p "$w"
+tar --exclude=.git --exclude=deps -cf - . | (cd "$w" && tar -xf -)
+cd "$w" && just plugins    # "46 plugins present", ~8 s
+cd "$w" && just lint       # clones deps/mini.nvim, 43 library entries, green
+```
+
+`just plugins`/`just lint` set `XDG_CONFIG_HOME` + `NVIM_APPNAME` from
+`justfile_directory()` themselves (see the `nvim_config_env` comment in the justfile),
+so from that copy `stdpath()` lands on its own scratch data dir automatically —
+`~/.local/share/ucw.nvim` rather than `~/.local/share/nvim`. Delete it afterwards.
+
+**And note `VAR=x just …` does not reach the recipe at all.** `just` here is a zinit
+wrapper with a `#!/usr/bin/env zsh` shebang, and zsh's startup reassigns `XDG_*` on the
+way through, so `XDG_DATA_HOME=/tmp/scratch just lint` quietly runs against your real
+`~/.local/share/nvim` and looks like it worked. If you need to drive the underlying
+commands with a scratch environment, set the variables on the actual process:
 
 ```sh
 d=$(mktemp -d)
 XDG_DATA_HOME=$d MISE_DATA_DIR=$HOME/.local/share/mise \
-  mise exec -- nvim --headless '+Lazy! install' +qa      # 46 plugins, ~10 s
-XDG_DATA_HOME=$d mise exec -- nvim --clean -l scripts/luarc-lint-config.lua \
+  mise exec -- nvim --clean -l scripts/luarc-lint-config.lua \
   .luarc.json /tmp/luarc.bare.json
 ```
 

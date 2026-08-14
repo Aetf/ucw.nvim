@@ -2,6 +2,16 @@
 
 > Revision history
 >
+> * **r7** (2026-08-13) — **acceptance review fixes.** `docs/design/phase7-acceptance-review.md`
+>   found four; all four fixed, §9 below is the record. The one that matters is
+>   R1: §8.2 noticed the `lint` job had no plugins and answered "depend on
+>   `just plugins`", without asking whether `just plugins` works on a runner. It
+>   did not — bare `nvim` loads `$XDG_CONFIG_HOME/nvim`, which on this machine
+>   *is* this repo and on a runner is nothing, so every `lint` run would have
+>   been red. §8.3's bare-runner probe could not have caught it because it varied
+>   `XDG_DATA_HOME` only. R2 is the other half of §8.1's own triage:
+>   `undo_stage_hunk → stage_hunk` is not mechanical either, and shipped a
+>   command that stages when it says undo.
 > * **r6** (2026-08-13) — **as built.** §3.5's six steps landed as seven commits
 >   (`2529804`..`52dc6a5`); §8 is the new as-built section and is the only part
 >   of this document written after the code. Everything above it is left as the
@@ -1029,6 +1039,11 @@ knowledge leaking out of the repo:
   §1.5) — new members of the §7 annotation list above, same reasoning:
   `vim.rpcrequest`'s inferred return type is looser than what the three
   cases using it assert.
+* **(r7) `gitsigns.undo_stage_hunk`.** Joins `toggle_deleted` directly below,
+  for the identical reason and after the identical measurement — r6 shipped it
+  as a "mechanical" replacement and it was not one. `undo_stage_hunk()` pops a
+  session-local LIFO and ignores the cursor; `stage_hunk()` acts on the hunk at
+  the cursor and only inverts when there is no unstaged hunk there. See §9/R2.
 * **(r6) `gitsigns.toggle_deleted`.** Deprecated in favour of
   `preview_hunk_inline()`, and left alone rather than replaced: the two are
   different features (a persistent `show_deleted` toggle versus a one-shot
@@ -1183,3 +1198,115 @@ does work.
   confirmation.
 * Everything in §7 stands as written, plus the `gitsigns.toggle_deleted`
   entry §8.1 adds to it.
+
+## 9. (r7) Acceptance review fixes
+
+Four findings from `phase7-acceptance-review.md`, all fixed. That document is
+left as the record of the audit as taken and is not rewritten.
+
+### 9.1 R1 — the `lint` job could not have worked on a runner
+
+`just plugins` was bare `nvim --headless '+Lazy! install' +qa`, and bare `nvim`
+loads `$XDG_CONFIG_HOME/nvim`. **On this machine that directory is this repo**,
+so the recipe booted this config and installed 46 plugins. On a runner the
+checkout is `$GITHUB_WORKSPACE` and there is no config at all: `E492: Not an
+editor command: Lazy!`, headless Neovim **exits 0** anyway, `just` sees success,
+and the failure surfaced one step later in `scripts/luarc-lint-config.lua` as
+advice to run the recipe that had just reported success.
+
+**`rtp` is not the lever, which is the part worth writing down.** The first fix
+tried was `--cmd 'set rtp^=<repo>' -u <repo>/init.lua`. lazy.nvim **resets** the
+runtimepath to `stdpath('config')` + `$VIMRUNTIME` (`performance.rtp.reset`,
+default on) before it imports specs, so the prepend is discarded and the import
+reports *"No specs found for module ucw.plugins"*. Measured, not reasoned:
+the attempt printed that error and `1 plugins present`.
+
+What works is moving `stdpath()` itself, and the shape of the fix is worth more
+than its content:
+
+```just
+nvim_config_env := 'XDG_CONFIG_HOME=' + parent_directory(justfile_directory())
+                 + ' NVIM_APPNAME=' + file_name(justfile_directory())
+```
+
+On this machine that evaluates to `XDG_CONFIG_HOME=/home/aetf/.config
+NVIM_APPNAME=nvim` — **exactly the status quo**, so it is a verified no-op here
+and load-bearing everywhere else. On a runner it is `XDG_CONFIG_HOME=/home/
+runner/work/ucw.nvim NVIM_APPNAME=ucw.nvim`, and the checkout becomes the config
+directory by construction rather than by where it happens to be. `NVIM_APPNAME`
+moves `stdpath('data')` too, so `lint` uses the same variable for the generator:
+one definition, and the two recipes cannot disagree about where the plugins are.
+
+`plugins` also checks its own postcondition now (every `require('lazy').plugins()`
+entry has a directory on disk, `cquit 1` naming the missing ones), because the
+generator only refuses on a *completely* empty plugin root — three failed clones
+out of 46 would otherwise be a smaller library, a green check and no signal,
+which is §5's failure mode with the guard one level too far downstream. The
+`pcall` is not defensive style: a `-c` that errors does **not** stop the ones
+after it (measured), so an unguarded verify step would itself exit 0.
+
+**Verified the way the original could not have been.** The tree was copied to
+`/tmp/…/ucw.nvim` — outside `~/.config`, named like a runner checkout — and the
+recipes run from there: `just plugins` → `46 plugins present` in 8.4 s into a
+fresh `~/.local/share/ucw.nvim/lazy`; `just lint` → `deps` clones mini.nvim, the
+generator reports `43 library entries (41 plugins)`, `Diagnosis completed, no
+problems found`. docs/testing.md's bare-runner recipe is replaced with this one;
+the old `XDG_DATA_HOME`-only version is what certified the bug.
+
+(41 rather than this machine's 42 is expected and not drift: the real data dir
+carries a firenvim install from Phase 6's embedded-target boot.)
+
+### 9.2 R2 — `:GitsignsUndoStageHunk` staged hunks
+
+Reverted to `undo_stage_hunk()` with a `deprecated` suppression, and carried in
+§7 next to `toggle_deleted`. §8.1 asked exactly the right question about
+`toggle_deleted` — *are these two functions the same thing?* — and did not ask
+it about the entry directly above it in the same file, calling that one
+"mechanical … same surface, same intent". The surface was stable; the intent
+inverted. Measured in a real TUI on a two-hunk scratch repo, `signs_staged_enable`
+at its default:
+
+| cursor | call | result |
+|---|---|---|
+| on an unstaged hunk, another already staged | `stage_hunk()` (r6's version) | **stages it** — the opposite of the command's name |
+| between hunks | `stage_hunk()` (r6's version) | nothing; "No hunk to stage" |
+| between hunks | `undo_stage_hunk()` (restored) | unstages the last-staged hunk |
+
+The mechanism: `undo_stage_hunk` pops `bcache.staged_diffs`, a session-local
+LIFO, and never consults the cursor; `stage_hunk` looks up the hunk at the
+cursor and only inverts when there is no *unstaged* hunk there. Making the
+command a cursor-local toggle is a behaviour decision and stays available; it is
+not a lint fix. **D5's fixable list is two items, not three** — r6 already cut it
+from four to three for `toggle_deleted`, by the same argument, one entry short.
+
+### 9.3 R3 — a stale absence in `tests/test_format.lua`
+
+The file header still argued prettier was shape-only because it *"needs `node`,
+absent here"*. `mise exec -- command -v node` resolves (node 25.9.0), and
+`mise exec` is the environment `just test` establishes. §1.2 (r4) had already
+recorded the flip and supplied the structural replacement (`cond = is_full_ui`),
+which the new markdown case at the *bottom* of the same file states correctly —
+so the file carried the corrected argument and the superseded one 240 lines
+apart, stale copy first. Header rewritten to the structural reason. The
+parenthetical citing `lua/ucw/lsp/servers.lua` is dropped: that comment is a
+conditional troubleshooting note, not a record of an absence.
+
+### 9.4 R4 — the third library input now refuses too
+
+`lint: deps plugins`. `.luarc.json` names three kinds of `workspace.library`
+entry; `$VIMRUNTIME` and the plugin dirs each got a refusal path this phase and
+`deps/mini.nvim/lua` did not, while lua_ls ignores a missing library path
+without a word (§1.5a measured that and called it a feature). Measured impact
+today is **zero** — stripping the entry changes no finding (0 problems at
+`Warning`, the same 1 at `Information`), because `mini/test.lua` declares
+`local MiniTest = {}` and only assigns `_G.MiniTest` inside `setup()`. Depended
+on anyway, on this phase's own "identical today is not equivalent" standard
+(§1.5b used it to add `runtime.path`).
+
+### 9.5 Re-verified after the fixes
+
+`just all` twice — 145/145, exit 0, no flake. `just lint` and `just fmt-check`
+green. Bare-runner shape green, as above. `git status` clean, so D6's premise
+still holds. §8.5's open items are unchanged: nothing has run on a real runner,
+the caching decision waits on those timings, and **D1 (push + PR) is still the
+one irreversible step, still held for explicit confirmation.**

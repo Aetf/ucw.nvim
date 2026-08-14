@@ -177,9 +177,16 @@ fail *quietly* — a weaker lua_ls config looks exactly like a working one:
   `lua/ucw/plugins/snacks.lua`, which drops three real findings and invents a
   false one. `tests/test_luarc.lua` asserts they stay together, and that the
   globals here cover `after/lsp/lua_ls.lua`'s.
-- The recipe supplies `$VIMRUNTIME` and the installed plugins' `lua/`
-  directories itself, and **errors** rather than checking less if it cannot.
-  Don't "simplify" either away.
+- The recipe supplies `$VIMRUNTIME`, the installed plugins' `lua/` directories
+  and `deps/mini.nvim`, and **errors** rather than checking less if it cannot.
+  Don't "simplify" any of them away.
+- `just plugins`/`just lint` set `XDG_CONFIG_HOME` + `NVIM_APPNAME` so this
+  checkout *is* the config directory Neovim loads. On this machine that is a
+  no-op (the repo already is `~/.config/nvim`); on a runner it is the whole
+  difference between working and `E492: Not an editor command: Lazy!`. `rtp` is
+  not a substitute — lazy.nvim resets it to `stdpath('config')` before importing
+  specs. Simulating a bare runner therefore means copying the tree *out of*
+  `~/.config`, not just pointing `XDG_DATA_HOME` somewhere else.
 
 Suppressions are `---@diagnostic disable-next-line: <code>` with a comment
 naming the evidence; the ones deliberately left are listed in

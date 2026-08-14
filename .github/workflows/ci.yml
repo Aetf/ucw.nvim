@@ -81,9 +81,13 @@ jobs:
       - uses: jdx/mise-action@v4
         with:
           version: 2026.7.11
-      # `just lint` depends on `just plugins`, because the plugin `lua/`
-      # directories are the difference between the check that finds 22 problems
-      # and the one that finds 16 and says nothing about the rest.
+      # `just lint` depends on `just plugins` and `just deps`, because the
+      # plugin `lua/` directories are the difference between the check that
+      # finds 22 problems and the one that finds 16 and says nothing about the
+      # rest. `plugins` names this checkout as Neovim's config directory
+      # explicitly (`NVIM_APPNAME`); bare `nvim` would find no config here at
+      # all, which is invisible on a machine where the repo *is*
+      # `~/.config/nvim`. See the acceptance review's R1.
       - run: just lint
 
   format:
