@@ -2,6 +2,10 @@
 
 > Revision history
 >
+> * **r9** (2026-08-14) — first green CI. D1 done and caching decided (no cache:
+>   `test` is ~2.5 min on a runner), so §8.5 is closed; `continue-on-error`
+>   confirmed against a real nightly failure; one screenshot flake outstanding
+>   with the assertion now carrying evidence. §9.7.
 > * **r8** (2026-08-14) — the first real CI run was red, and it was R1 a third
 >   time: lazy.nvim resets `rtp` to `stdpath('config')`, so the *test* child gets its
 >   plugins from there too and the acceptance review's "the `test` job is
@@ -1032,8 +1036,9 @@ knowledge leaking out of the repo:
   narrower than upstream behaviour; each suppression names the evidence.
 * ~~**A pinned `v0.12.3` leg**, if Arch has not caught up by Phase 10~~ —
   it did (r4, §5). Nothing carried.
-* **Cache design for the 10 cold plugin installs**, deferred to the first
-  run's real numbers (§1.3, §4).
+* ~~**Cache design for the 10 cold plugin installs**, deferred to the first
+  run's real numbers~~ — measured on the real runner and **dropped**: the whole
+  `test` job is ~2.5 min including all ten (r9, §9.7).
 * **`README.md` is still the pre-migration document** (r4). It opens by
   describing the systemd-style dependency engine Phase 1 deleted. D7 adds a
   badge to it, which does not make it less wrong; the rewrite belongs with
@@ -1360,3 +1365,48 @@ here.** That is the thing to check first in anything that runs `nvim`.
 
 `timeout-minutes: 20` is left alone: it did its job, and the 18 minutes it
 absorbed were a hang caused by the bug, not a slow suite.
+
+### 9.7 (r9) The first green runs, and what they closed
+
+PR [#19](https://github.com/Aetf/ucw.nvim/pull/19). Both trigger paths green at
+`d7f6cc5`, run conclusion `success` on `push` and on `pull_request`.
+
+**§8.5's two open items are closed.**
+
+* **D1 is done** — branch pushed, PR open. The pre-push content check §5 asked
+  for was done rather than asserted: no secret-shaped strings, one author and
+  one committer identity across all 38 commits, the six `/home/aetf/...` hits
+  all pasted error output in `docs/`, nothing added-then-deleted except Phase
+  1's `lua/nvimd/`.
+* **Caching is decided, and the answer is "no".** §1.3 deferred it to the first
+  run's real numbers rather than guessing at runner network. The numbers:
+
+  | job | wall clock |
+  |---|---|
+  | `test` (either leg) | **~2.5 min** |
+  | `lint` | ~1.8 min |
+  | `format` | ~11 s |
+
+  Ten cold installs of 46 plugins, once per integration file, cost so little on
+  a runner that a cache would be complexity bought against nothing. The local
+  93 s figure §1.1 measured is the same order. **§7's cache entry is
+  removed, not deferred again.**
+
+**Two of §4's verifications happened by themselves rather than on purpose.**
+The `nightly` leg is genuinely red — `test_fold`'s fold-text case and
+`test_lsp`'s inlay-hint detach/reattach case fail on `NVIM v0.13.0-dev-1307`,
+which is the leg doing exactly its job — and both workflow runs still report
+`success`, so `continue-on-error` is confirmed against a real failure instead of
+a manufactured one. Per §5 that leg stays: two named, reproducible, actionable
+failures are the opposite of the "red for three months for no actionable reason"
+case that says to delete it. Fixing them is not this phase's.
+
+**One flake is outstanding and deliberately not chased with a retry.**
+`test_tui_screenshot.lua | sees buffer text on screen` went red once, at
+`3afd9fe`, on the `push` run while the `pull_request` run of the same commit was
+green; 144/145 otherwise. Six local repeats do not reproduce it. Both cases in
+that file asserted `screen:find(...) ~= nil` against `true`, which reports
+`false ~= true` and discards the only fact that could explain it — what was
+drawn instead. `expect_on_screen` now errors with the whole rendered grid
+(reverse-verified per F5). The next red run is the one that explains it. Per §5
+and the standing rule: no retry, no sleep, root-cause when there is evidence.
