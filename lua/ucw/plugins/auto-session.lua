@@ -130,6 +130,18 @@ end
 return {
   'rmagatti/auto-session',
   cond = require('ucw.targets').is_full_ui,
+  -- `keys` alone would flip the spec to lazy-loading; session autosave needs
+  -- the plugin up from startup, so stay eager (Phase 8 relocates
+  -- registration, not triggers).
+  lazy = false,
+  -- Phase 8 (D1): moved here verbatim from `which-key.lua`; the `<leader>s`
+  -- group header stays there. `:AutoSession <sub>` spellings, not the legacy
+  -- `:Session*` ones - see `legacy_cmds` below.
+  keys = {
+    { '<leader>sc', '<cmd>AutoSession save<cr>', desc = 'Manually save session' },
+    { '<leader>sr', '<cmd>AutoSession restore<cr>', desc = 'Manually restore session' },
+    { '<leader>ss', '<cmd>AutoSession search<cr>', desc = 'Open session' },
+  },
   config = function()
     require('auto-session').setup {
       log_level = 'warn',

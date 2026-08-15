@@ -9,6 +9,33 @@
 return {
   'folke/noice.nvim',
   lazy = false,
+  -- Phase 8 (D1): moved here verbatim from `which-key.lua`; the `<leader>n`
+  -- group header stays there. `<leader>nh` (snacks notifier history) is in
+  -- `snacks.lua` - the notification *tree* spans two owners.
+  --
+  -- The pain point `<leader>nn` answers: message history used to be
+  -- effectively unreadable. `Snacks.picker.noice` is the superset - noice
+  -- registers that picker source itself when snacks.picker is present, and
+  -- noice sees *all* message traffic, not only `vim.notify()` calls.
+  keys = {
+    {
+      '<leader>nn',
+      function()
+        -- noice registers this picker source with snacks at runtime
+        -- (`noice/init.lua`), so no annotation can know the field exists.
+        ---@diagnostic disable-next-line: undefined-field
+        Snacks.picker.noice()
+      end,
+      desc = 'Search all messages',
+    },
+    {
+      '<leader>nd',
+      function()
+        require('noice').cmd('dismiss')
+      end,
+      desc = 'Dismiss notifications',
+    },
+  },
   dependencies = {
     'MunifTanjim/nui.nvim',
     'folke/snacks.nvim',

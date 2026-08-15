@@ -2,6 +2,17 @@ return {
   'akinsho/bufferline.nvim',
   cond = require('ucw.targets').is_full_ui,
   dependencies = { 'echasnovski/mini.nvim' },
+  -- `keys` alone would flip the spec to lazy-loading; the bufferline has to
+  -- exist from startup, so stay eager (Phase 8 relocates registration, not
+  -- triggers). `<Tab>`/`<S-Tab>` are *not* here: their actions fall back to
+  -- `:bnext`/`:bprev` without bufferline, so they are core keys
+  -- (`which-key.lua`), not bufferline-owned.
+  lazy = false,
+  keys = {
+    { '<C-PageDown>', '<cmd>BufferLineCycleNext<cr>', desc = 'Go To Next Buffer' },
+    { '<C-PageUp>', '<cmd>BufferLineCyclePrev<cr>', desc = 'Go To Previous Buffer' },
+    { '<leader>bd', '<cmd>BufferLinePickClose<cr>', desc = 'Pick Buffer To Close' },
+  },
   config = function()
     require('bufferline').setup {
       options = {

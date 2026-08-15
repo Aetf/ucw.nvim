@@ -1,6 +1,12 @@
 return {
   'NeogitOrg/neogit',
   cmd = 'Neogit',
+  -- Phase 8 (D1): moved here verbatim from `which-key.lua`. The plugin was
+  -- already lazy on `cmd`; the key now also lazy-load-triggers it, so at boot
+  -- the mapping is lazy.nvim's stub (callback) rather than the raw string.
+  keys = {
+    { '<leader>gg', '<cmd>Neogit<cr>', desc = 'Neogit' },
+  },
   dependencies = {
     'nvim-lua/plenary.nvim',
     'sindrets/diffview.nvim',

@@ -116,5 +116,56 @@ return {
   'folke/snacks.nvim',
   lazy = false,
   dependencies = { 'echasnovski/mini.nvim' },
+  -- Phase 8 (D1): moved here verbatim from `which-key.lua`; the `<leader>T`
+  -- and `<leader>n` group headers stay there.
+  --
+  -- `<leader>Tr` (`Telescope reloader`) is gone rather than ported - snacks
+  -- has no equivalent source.
+  keys = {
+    {
+      '<C-p>',
+      function()
+        Snacks.picker.files()
+      end,
+      desc = 'Find File',
+    },
+    {
+      '<M-S-f>',
+      function()
+        Snacks.picker.grep()
+      end,
+      desc = 'Find in CWD',
+    },
+    -- `lines` is snacks' name for what Telescope called
+    -- `current_buffer_fuzzy_find`.
+    {
+      '<M-f>',
+      function()
+        Snacks.picker.lines()
+      end,
+      desc = 'Find in File',
+    },
+    {
+      '<leader>Th',
+      function()
+        Snacks.picker.command_history()
+      end,
+      desc = 'Command history',
+    },
+    {
+      '<leader>bb',
+      function()
+        Snacks.picker.buffers()
+      end,
+      desc = 'Go to buffer',
+    },
+    {
+      '<leader>nh',
+      function()
+        Snacks.notifier.show_history()
+      end,
+      desc = 'Notification history',
+    },
+  },
   config = config,
 }
