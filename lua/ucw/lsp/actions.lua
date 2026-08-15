@@ -31,7 +31,6 @@ local M = {}
 ---@field desc string
 ---@field lsp? string dotted path under `vim.lsp`, e.g. 'buf.code_action'
 ---@field args? any[] arguments for the `lsp`/`fn` function
----@field toggle? boolean call `lsp` as `enable(not is_enabled())` instead
 ---@field cmd? string ex-command to run instead of an `lsp` call
 ---@field picker? string a `snacks.picker` source name, e.g. 'lsp_references'
 ---@field fn? ucw.lsp.ActionFn a `require(mod).fn` entry point outside `vim.lsp`
@@ -88,16 +87,10 @@ M.actions = {
   -- on screen in which-key all along.
   diagnostics = { desc = 'Diagnostics for current buffer', picker = 'diagnostics_buffer' },
 
-  -- Inlay hints are on by default (see attach.lua); this is the way back off.
-  -- Bound provisionally at `<leader>lI` - Phase 9 decides where it really goes.
-  --
-  -- `toggle` resolves the sibling `is_enabled` and passes no filter, so both
-  -- calls talk about the *global* flag. That only works because
-  -- `ucw.lsp.attach` treats that flag as the user preference and mirrors it
-  -- onto each buffer at attach; a toggle that read the global flag while
-  -- attach wrote only the buffer one needed two presses to turn anything off
-  -- (Phase 3 acceptance review, P1).
-  toggle_inlay_hint = { desc = 'Toggle inlay hints', lsp = 'inlay_hint.enable', toggle = true },
+  -- The inlay-hint toggle (`<leader>lI`) is not here: Phase 8 (D2) made it a
+  -- `Snacks.toggle` (`ucw.toggles`), which owns the enable/is_enabled pairing
+  -- the bespoke `toggle` kind used to encode. The *global*-flag semantics it
+  -- must keep (Phase 3 acceptance review, P1) are documented there.
 }
 
 ---Resolve a dotted path under `vim.lsp`.
@@ -154,11 +147,6 @@ function M.call(name)
   local fn = M.resolve(assert(action.lsp, ('LSP action %q has no `lsp` path'):format(name)))
   if type(fn) ~= 'function' then
     error(('LSP action %q: vim.lsp.%s is not a function'):format(name, action.lsp))
-  end
-  if action.toggle then
-    -- `enable`/`is_enabled` pairs: the upstream-documented way to toggle
-    local is_enabled = M.resolve(action.lsp:gsub('%.enable$', '.is_enabled'))
-    return fn(not is_enabled())
   end
   return fn(unpack(action.args or {}))
 end

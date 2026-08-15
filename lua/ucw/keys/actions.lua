@@ -118,19 +118,9 @@ function M.opfunc_textobj_go_end()
   vim.cmd('normal! `]')
 end
 
--- Toggle full diagnostic text rendered below the line, between "current line
--- only" and "every line in the buffer".
---
--- Was lsp_lines.nvim, which replaced core's `virtual_lines` handler with its
--- own; core renders the same thing now, so only the toggle survives. The option
--- is `current_line` - lsp_lines spelled it `only_current_line`, and the old
--- toggle kept writing that name, which core silently ignores.
-function M.toggle_virtual_lines()
-  local enabled = not vim.diagnostic.config().virtual_lines
-  vim.diagnostic.config {
-    virtual_lines = enabled and { current_line = true } or false,
-  }
-end
+-- The diagnostic virtual-lines toggle that lived here (`toggle_virtual_lines`,
+-- the remnant of lsp_lines.nvim) is a `Snacks.toggle` in `ucw.toggles` now
+-- (Phase 8, D2), history and all.
 
 -- Invoke fold preview or lsp preview
 function M.hoverK()

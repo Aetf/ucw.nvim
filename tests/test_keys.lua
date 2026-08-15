@@ -77,6 +77,80 @@ T['which-key spec'] = new_set()
 -- Deliberately not "every labelled key must resolve to a mapping": which-key's
 -- own presets document ~150 built-in keys (`zc`, `ap`, `<c-w>h`, ...) that
 -- have no mapping by design, and they share `Config.mappings` with ours.
+-- Phase 8 (D1) split registration across the plugin specs, and group headers
+-- are the one part that deliberately stayed central and *eager* - a lazy
+-- plugin's subtree with no header is exactly how octo was invisible until the
+-- first `:Octo`. This is the boot-time census: every leader group this config
+-- declares, present before any lazy plugin has loaded. `m.group` is `true` in
+-- `Config.mappings` for header entries (measured; the display name lives in
+-- `desc`).
+T['which-key spec']['every leader group header is registered at boot'] = function()
+  local groups = child.lua_get([[
+        (function()
+          local Config = require('which-key.config')
+          local groups = {}
+          for _, m in ipairs(Config.mappings or {}) do
+            -- lhs is stored in spec notation, '<leader>T' literally (measured)
+            if m.group and m.mode == 'n' and vim.startswith(m.lhs or '', '<leader>') then
+              table.insert(groups, m.lhs)
+            end
+          end
+          table.sort(groups)
+          return groups
+        end)()
+    ]])
+  eq(groups, {
+    '<leader>T',
+    '<leader>b',
+    '<leader>g',
+    '<leader>go',
+    '<leader>gt',
+    '<leader>l',
+    '<leader>n',
+    '<leader>s',
+    '<leader>t',
+    '<leader>w',
+  })
+end
+
+T['lazy keys'] = new_set()
+
+-- The other half of the octo fix: the keys themselves exist at boot as
+-- lazy.nvim stubs - mapped and described while the plugin is still unloaded.
+-- Before Phase 8 (D3), `maparg` on these was empty until the first `:Octo`.
+T['lazy keys']['octo keys are live stubs before the plugin loads'] = function()
+  eq(child.lua_get([[require('lazy.core.config').plugins['octo.nvim']._.loaded ~= nil]]), false)
+  for lhs, desc in pairs { [' goo'] = 'Pick an action', [' goi'] = 'Search issues', [' gop'] = 'Search issues' } do
+    -- project out of the dict inside the child: the stub's `callback` is a
+    -- function, which RPC cannot serialize whole
+    local got = child.lua_get(([[vim.fn.maparg(%q, 'n', false, true).desc]]):format(lhs))
+    eq({ lhs, got }, { lhs, desc })
+  end
+end
+
+T['toggles'] = new_set()
+
+-- The four `Snacks.toggle`s (Phase 8, D2): each claimed id maps to a real
+-- key. The inlay-hint toggle's *semantics* (global flag, not the built-in
+-- per-buffer factory) are asserted where they can fail meaningfully,
+-- tests/test_lsp.lua's 'inlay hint toggle' set; `<leader>lp`'s modes in
+-- tests/test_diagnostics.lua. This is just the registration census.
+T['toggles']['all four toggles are registered and mapped'] = function()
+  for id, lhs in pairs {
+    inlay_hints = ' lI',
+    diag_virtual_lines = ' lp',
+    gitsigns_blame = ' gtb',
+    gitsigns_deleted = ' gtd',
+  } do
+    -- `rawget` of the registry, NOT `Snacks.toggle.get`: `get()` on an
+    -- unclaimed id falls back to calling a built-in factory of that name,
+    -- which for `inlay_hints` would *create* the per-buffer toggle and turn
+    -- this into a test that can never fail.
+    eq({ id, child.lua_get(([[require('snacks.toggle').toggles[%q] ~= nil]]):format(id)) }, { id, true })
+    eq({ id, child.lua_get(([[vim.fn.maparg(%q, 'n') ~= '']]):format(lhs)) }, { id, true })
+  end
+end
+
 T['which-key spec']['no entry carries a right-hand side in its description'] = function()
   local bad = child.lua_get([[
         (function()

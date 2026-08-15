@@ -48,21 +48,13 @@ local function config()
     lsp_actions.wk('<leader>lf', 'format'),
     lsp_actions.wk('<leader>lR', 'rename'),
     lsp_actions.wk('<leader>l<CR>', 'codelens_run'),
-    lsp_actions.wk('<leader>lI', 'toggle_inlay_hint'),
-    -- Not an `ucw.lsp.actions` entry: this is diagnostic *rendering*, not a
-    -- per-client request, and it has no bare-`g` counterpart. It used to be
-    -- defined by the lsp_lines.nvim spec, which Phase 4 deleted in favour of
-    -- core's `virtual_lines` handler.
-    {
-      '<leader>lp',
-      require('ucw.keys.actions').toggle_virtual_lines,
-      desc = 'Toggle diagnostic virtual lines',
-      -- lsp_lines bound this with `vim.keymap.set('', ...)`, i.e. normal +
-      -- visual/select + operator-pending; which-key defaults to normal only.
-      -- Operator-pending is meaningless for a toggle, the other two are not.
-      mode = { 'n', 'v' },
-    },
   }
+
+  -- `<leader>lI` (inlay hints) and `<leader>lp` (diagnostic virtual lines)
+  -- are `Snacks.toggle`s now (Phase 8, D2) - stateful in this popup - not
+  -- `wk.add` entries. They stay in this file because the `<leader>l` tree is
+  -- registered here; snacks is in `dependencies` for load order.
+  require('ucw.toggles').setup()
 
   -- Goto prev/next diag warning/error.
   --
@@ -94,10 +86,13 @@ local function config()
   }
 
   -- Git group headers; the keys are `keys =` entries in `gitsigns.lua`,
-  -- `neogit.lua` and `diffview.lua` (Phase 8, D1).
+  -- `neogit.lua`, `diffview.lua` and `octo.lua` (Phase 8, D1/D3). octo's
+  -- header lives here *eagerly* on purpose: its keys are lazy-load stubs, and
+  -- before Phase 8 the whole subtree was invisible until the first `:Octo`.
   wk.add {
     { '<leader>g', group = 'git' },
     { '<leader>gt', group = 'toggles' },
+    { '<leader>go', group = 'octo (GitHub)' },
   }
 
   -- Window and Buffer: core-editor keys only. Plugin-owned ones moved to
@@ -132,5 +127,8 @@ end
 return {
   'folke/which-key.nvim',
   lazy = false,
+  -- for `ucw.toggles`: both eager, but `Snacks` must exist when `config()`
+  -- runs, and lazy.nvim only guarantees order through `dependencies`
+  dependencies = { 'folke/snacks.nvim' },
   config = config,
 }

@@ -182,7 +182,7 @@ vim.diagnostic.config {
     --prefix = 'Hahaha:',
   },
   -- Full diagnostic text under the cursor's line only, toggled by `<leader>lp`
-  -- (ucw.keys.actions.toggle_virtual_lines).
+  -- (a `Snacks.toggle` in `ucw.toggles`, whose on-state must match this).
   --
   -- This used to be lsp_lines.nvim, which replaced core's `virtual_lines`
   -- handler with its own. Core absorbed the same rendering (measured: same

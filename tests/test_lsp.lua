@@ -395,12 +395,18 @@ end
 
 T['inlay hint toggle'] = new_set()
 
--- `<leader>lI` runs `enable(not is_enabled())`, i.e. it reads and writes the
--- *global* flag. Attach used to write only the buffer flag, leaving the global
--- one at its `false` default, so the first press "enabled" hints that were
--- already on and it took two presses to turn anything off (acceptance review
--- P1). The fix is that the global flag *is* the preference and attach mirrors
--- it, so assert both halves.
+-- `<leader>lI` is the `Snacks.toggle` from `ucw.toggles` (Phase 8, D2), and
+-- its get/set read and write the *global* flag. Attach used to write only the
+-- buffer flag, leaving the global one at its `false` default, so the first
+-- press "enabled" hints that were already on and it took two presses to turn
+-- anything off (acceptance review P1). The fix is that the global flag *is*
+-- the preference and attach mirrors it, so assert both halves.
+--
+-- `Snacks.toggle.get('inlay_hints')` is deliberate double duty: if
+-- `ucw.toggles` ever stops claiming that id, `get()` falls back to *calling
+-- the built-in factory*, whose get/set are `{ bufnr = 0 }` - and the
+-- "buffer attached after the toggle" case below fails on exactly the
+-- per-buffer-vs-global difference that P1 was.
 T['inlay hint toggle']['the preference is on by default'] = function()
   start_fake('faketest', '{ inlayHintProvider = true }')
   eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled()]]), true)
@@ -410,11 +416,11 @@ end
 T['inlay hint toggle']['one press turns hints off, the next turns them back on'] = function()
   start_fake('faketest', '{ inlayHintProvider = true }')
 
-  child.lua([[require('ucw.lsp.actions').call('toggle_inlay_hint')]])
+  child.lua([[Snacks.toggle.get('inlay_hints'):toggle()]])
   eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), false)
   eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled()]]), false)
 
-  child.lua([[require('ucw.lsp.actions').call('toggle_inlay_hint')]])
+  child.lua([[Snacks.toggle.get('inlay_hints'):toggle()]])
   eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
 end
 
@@ -422,7 +428,7 @@ end
 -- Attach fires again there, and a literal `true` would quietly undo the toggle.
 T['inlay hint toggle']['a buffer attached after the toggle respects it'] = function()
   start_fake('faketest', '{ inlayHintProvider = true }')
-  child.lua([[require('ucw.lsp.actions').call('toggle_inlay_hint')]])
+  child.lua([[Snacks.toggle.get('inlay_hints'):toggle()]])
 
   -- same client, new buffer - i.e. what `:edit <another .lua>` does
   start_fake('faketest', '{ inlayHintProvider = true }')

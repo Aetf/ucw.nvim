@@ -55,10 +55,10 @@ end
 T['<leader>lp'] = new_set()
 
 T['<leader>lp']['toggles the rendering off and back on'] = function()
-  child.lua([[require('ucw.keys.actions').toggle_virtual_lines()]])
+  child.lua([[Snacks.toggle.get('diag_virtual_lines'):toggle()]])
   eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), false)
 
-  child.lua([[require('ucw.keys.actions').toggle_virtual_lines()]])
+  child.lua([[Snacks.toggle.get('diag_virtual_lines'):toggle()]])
   -- Spelled `current_line`, not lsp_lines' `only_current_line`, which core
   -- accepts and ignores.
   eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), { current_line = true })

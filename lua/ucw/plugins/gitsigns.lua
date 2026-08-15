@@ -1,7 +1,9 @@
 return {
   'lewis6991/gitsigns.nvim',
   cond = require('ucw.targets').is_full_ui,
-  dependencies = { 'nvim-lua/plenary.nvim' },
+  -- snacks: `config()` builds `Snacks.toggle`s; both specs are eager, but
+  -- only `dependencies` guarantees the order
+  dependencies = { 'nvim-lua/plenary.nvim', 'folke/snacks.nvim' },
   -- `keys` alone would flip the spec to lazy-loading; the gutter has to exist
   -- from startup, so stay eager (Phase 8 relocates registration, not triggers).
   lazy = false,
@@ -20,8 +22,8 @@ return {
     { '<leader>gp', '<cmd>Gitsigns preview_hunk<CR>', desc = 'Preview hunk' },
     { '<leader>gr', '<cmd>Gitsigns reset_hunk<CR>', desc = 'Reset hunk' },
     { '<leader>gs', '<cmd>Gitsigns stage_hunk<CR>', desc = 'Stage hunk' },
-    { '<leader>gtb', '<cmd>Gitsigns toggle_current_line_blame<CR>', desc = 'Toggle current line blame' },
-    { '<leader>gtd', '<cmd>Gitsigns toggle_deleted<CR>', desc = 'Toggle deleted' },
+    -- `<leader>gtb`/`<leader>gtd` are `Snacks.toggle`s registered in
+    -- `config()` below (Phase 8, D2), not `keys =` entries.
     { '<leader>gu', '<cmd>Gitsigns undo_stage_hunk<CR>', desc = 'Undo stage hunk' },
     { '<leader>gr', ':Gitsigns reset_hunk<CR>', desc = 'Reset hunk', mode = 'v' },
     { '<leader>gs', ':Gitsigns stage_hunk<CR>', desc = 'Stage hunk', mode = 'v' },
@@ -89,5 +91,40 @@ return {
       ---@diagnostic disable-next-line: deprecated
       require('gitsigns').toggle_deleted()
     end)
+
+    -- The two gitsigns toggles as `Snacks.toggle`s (Phase 8, D2): state read
+    -- from `gitsigns.config`, written through the toggle functions' explicit
+    -- `value` parameter - both measured to exist in the pinned gitsigns
+    -- (actions.lua:222/:237). Registered here rather than in `keys =` because
+    -- a stateful toggle needs the object, not just an rhs; `config()` runs at
+    -- startup for this eager spec, so the keys exist at boot the same as the
+    -- others.
+    Snacks.toggle
+      .new({
+        id = 'gitsigns_blame',
+        name = 'Current line blame',
+        get = function()
+          return require('gitsigns.config').config.current_line_blame
+        end,
+        set = function(state)
+          require('gitsigns').toggle_current_line_blame(state)
+        end,
+      })
+      :map('<leader>gtb')
+    Snacks.toggle
+      .new({
+        id = 'gitsigns_deleted',
+        name = 'Show deleted',
+        get = function()
+          return require('gitsigns.config').config.show_deleted
+        end,
+        set = function(state)
+          -- deprecated upstream, same status and same reasoning as the
+          -- `GitsignsToggleDeleted` command right above
+          ---@diagnostic disable-next-line: deprecated
+          require('gitsigns').toggle_deleted(state)
+        end,
+      })
+      :map('<leader>gtd')
   end,
 }
