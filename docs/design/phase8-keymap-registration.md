@@ -2,6 +2,16 @@
 
 > Revision history
 >
+> * **r3** (2026-08-15) — **as built.** Two commits (`aa0a3d8` relocation,
+>   `face32e` toggles + octo + iron), §6 is the record and the only part of
+>   this document written after the code. The §3.5 invariant held: across 312
+>   typeable global mappings, the full-phase diff is exactly the enumerated
+>   deltas and nothing else. Two measurement notes that changed the method:
+>   `<Plug>` mappings had to be excluded from snapshots (blink.cmp creates
+>   one at a nondeterministic post-boot time - present in one boot, absent
+>   15s into an identical boot), and the iron defect measured worse than
+>   §1.5 guessed: in insert mode the stray characters were literally typed
+>   into the buffer.
 > * **r2** (2026-08-15) — **decisions locked** (user). D1: (b), plugin-owned
 >   `keys =`. D2: adopt `Snacks.toggle`, upstream-default notifications kept
 >   (the notify-off variant was offered and not chosen). D3: octo via
@@ -279,11 +289,93 @@ Probe: `Snacks.toggle.new` with custom `get`/`set` reading/writing the
   are folke-maintained and co-released in the same distro (LazyVim), which
   is as low as cross-plugin coupling risk gets in this ecosystem.
 
-## 6. Observed, out of scope
+## 6. (r3) As built
+
+Commits: `aa0a3d8` (D1 relocation + `scripts/keymap-snapshot.lua`),
+`face32e` (D2 toggles, D3 octo, D4 iron, tests). 150 cases green ×3,
+`just lint` clean.
+
+### 6.1 The invariant, measured
+
+`scripts/keymap-snapshot.lua` dumps every global mapping (mode, lhs,
+rhs-or-`<callback>`, desc), sorted; baseline taken on the pre-phase tree in
+a real TUI, compared after each step. Full-phase diff over 312 mappings is
+**exactly** this, nothing else:
+
+* `<leader>gg`, `<leader>gh`: string rhs → lazy.nvim stub `<callback>`
+  (neogit/diffview now also key-triggered; pressing `<leader>gg` measured
+  loading neogit and opening its status buffer).
+* `<leader>goo/goi/gop`: **new at boot** (previously nonexistent until the
+  first `:Octo`), descs verbatim from the v1 block.
+* `<leader>gtb/gtd/lI/lp`: rhs → toggle callback, desc → `Toggle <Name>`
+  (the only desc changes in the phase, and the point of D2).
+* iron's six mapping instances (n/v/i × 2 keys): rhs lost the trailing
+  `')`. Measured *before* fixing, with `iron_send_block` stubbed out in a
+  live TUI: an insert-mode press typed `hello ')` into the buffer.
+
+Two protocol notes. `<Plug>` mappings are excluded by the script -
+blink.cmp's `BlinkCmpDotRepeatHack` appears at a nondeterministic post-boot
+moment (in one boot's snapshot, absent ≥15s into another; a server-side
+`vim.wait` on it timed out), and nvim-autopairs creates its insert `<CR>`
+map on first InsertEnter, so snapshots are only comparable when taken with
+the same interaction history (here: none).
+
+### 6.2 `keys =` semantics, measured (the §2/D1 homework)
+
+* **Eager (`lazy = false`) + `keys =`**: real mappings at boot, rhs
+  byte-identical to the `wk.add` versions they replaced. The flip side is
+  now load-bearing everywhere: *`keys =` alone makes a spec lazy*, so
+  every eager spec that gained keys also gained an explicit `lazy = false`
+  (gitsigns, bufferline, auto-session, navigator, iron; snacks/noice
+  already had it).
+* **`cmd`-lazy + `keys =`**: stub callback at boot carrying the `desc`;
+  press loads the plugin and re-executes. which-key ingests the desc with
+  no `wk.add` involvement.
+* **`cond` false + `keys =`**: nothing is registered at all (headless probe
+  with the vscode flag: gitsigns/bufferline/auto-session keys empty,
+  neogit's non-cond stub present). This is the enumerated embedded-target
+  delta: those keys used to be registered everywhere by `which-key.lua`
+  and bound to ex-commands of plugins that never load there. Note for
+  future headless probes: `<Tab>`-style `wk.add` core keys look *absent*
+  under `--headless -c` because which-key defers spec processing to
+  VeryLazy, which headless never fires (known since Phase 6) - that is a
+  probe artifact, not a regression; the TUI snapshot has them.
+
+### 6.3 Toggles, measured in the TUI
+
+`<leader>l` popup renders `I ➜ Disable Inlay Hints` / `p ➜ Disable
+Diagnostic virtual lines` at boot (both on); pressing `I` flips the
+*global* flag (`is_enabled()` → false over RPC) and the popup then offers
+`Enable Inlay Hints`. Same for `<leader>gt`: `b/d` show `Enable …` (both
+off by default), pressing `b` measured flipping
+`gitsigns.config.config.current_line_blame` both directions. The
+`Snacks.toggle.get` factory-fallback trap is real and now guarded twice:
+un-claiming `id = 'inlay_hints'` makes `tests/test_keys.lua`'s registry
+census fail *and* makes both P1-shaped cases in `tests/test_lsp.lua` fail
+on exactly the per-buffer-vs-global difference (measured by breaking the
+id and running both files).
+
+### 6.4 Tests
+
+Three new cases in `tests/test_keys.lua`, each reverse-verified by
+breaking its subject (F5): the boot-time census of all ten leader group
+headers (`Config.mappings` entries with `group`, lhs stored in literal
+`<leader>` spec notation - measured), octo stubs mapped+described while
+the plugin is unloaded (projecting `.desc` inside the child: a stub's
+`callback` is a function and RPC cannot serialize the dict whole), and
+the four claimed toggle ids via `rawget`-style registry access -
+`Snacks.toggle.get` would *call the factory* on a miss and the test could
+never fail. `test_lsp.lua`/`test_diagnostics.lua` toggle cases now drive
+`Snacks.toggle.get(id):toggle()` instead of the retired action/function.
+
+## 7. Observed, out of scope
 
 * `_G.UCW.jump_textobject` global + `<Cmd>lua UCW.…<CR>` string rhs built in
   `mini.lua`, and the vendored `H.echo` mini.ai helpers in
   `ucw/keys/actions.lua` — content cleanup, Phase 9/10 territory.
+* octo's `<leader>gop` (`pr search`) is labelled 'Search issues', a copy
+  of the line above it in the old v1 block. Kept verbatim (labels are
+  content); Phase 9's binding pass should fix the label.
 * `which-key.lua` loading in embedded targets (§1.5 last bullet) — Phase 9
   policy question.
 * Group icons/`wk_desc` cosmetics — Phase 9, with the bindings themselves.
