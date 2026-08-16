@@ -12,22 +12,45 @@ return {
   -- in embedded targets (`cond` false) these keys no longer exist at all,
   -- where before they were registered everywhere and bound to ex-commands of
   -- a plugin that never loads there.
+  -- `silent = true` on every entry restores what the `wk.add` originals had
+  -- (which-key defaults to silent, `vim.keymap.set` does not) - acceptance
+  -- review R1: the `:`-prefixed visual/textobject entries would otherwise
+  -- type a visible command line.
+  --
+  -- `[c` used to read `&diff ? ']c' : …` - both hunk motions evaluated to
+  -- *next* hunk inside a diff (measured under `diffthis`; upstream's own
+  -- README has `[c` on that branch). Same remnant class as iron's `')`,
+  -- fixed by the same D4 standard (acceptance review R5).
   keys = {
-    { '[c', "&diff ? ']c' : '<cmd>Gitsigns prev_hunk<CR>'", desc = 'Prev hunk', expr = true, replace_keycodes = false },
-    { ']c', "&diff ? ']c' : '<cmd>Gitsigns next_hunk<CR>'", desc = 'Next hunk', expr = true, replace_keycodes = false },
-    { '<leader>gR', '<cmd>Gitsigns reset_buffer<CR>', desc = 'Reset buffer' },
-    { '<leader>gS', '<cmd>Gitsigns stage_buffer<CR>', desc = 'Stage buffer' },
-    { '<leader>gb', '<cmd>lua require"gitsigns".blame_line{full=true}<CR>', desc = 'Blame line' },
-    { '<leader>gd', '<cmd>Gitsigns diffthis<CR>', desc = 'Diff with index' },
-    { '<leader>gp', '<cmd>Gitsigns preview_hunk<CR>', desc = 'Preview hunk' },
-    { '<leader>gr', '<cmd>Gitsigns reset_hunk<CR>', desc = 'Reset hunk' },
-    { '<leader>gs', '<cmd>Gitsigns stage_hunk<CR>', desc = 'Stage hunk' },
+    {
+      '[c',
+      "&diff ? '[c' : '<cmd>Gitsigns prev_hunk<CR>'",
+      desc = 'Prev hunk',
+      expr = true,
+      replace_keycodes = false,
+      silent = true,
+    },
+    {
+      ']c',
+      "&diff ? ']c' : '<cmd>Gitsigns next_hunk<CR>'",
+      desc = 'Next hunk',
+      expr = true,
+      replace_keycodes = false,
+      silent = true,
+    },
+    { '<leader>gR', '<cmd>Gitsigns reset_buffer<CR>', desc = 'Reset buffer', silent = true },
+    { '<leader>gS', '<cmd>Gitsigns stage_buffer<CR>', desc = 'Stage buffer', silent = true },
+    { '<leader>gb', '<cmd>lua require"gitsigns".blame_line{full=true}<CR>', desc = 'Blame line', silent = true },
+    { '<leader>gd', '<cmd>Gitsigns diffthis<CR>', desc = 'Diff with index', silent = true },
+    { '<leader>gp', '<cmd>Gitsigns preview_hunk<CR>', desc = 'Preview hunk', silent = true },
+    { '<leader>gr', '<cmd>Gitsigns reset_hunk<CR>', desc = 'Reset hunk', silent = true },
+    { '<leader>gs', '<cmd>Gitsigns stage_hunk<CR>', desc = 'Stage hunk', silent = true },
     -- `<leader>gtb`/`<leader>gtd` are `Snacks.toggle`s registered in
     -- `config()` below (Phase 8, D2), not `keys =` entries.
-    { '<leader>gu', '<cmd>Gitsigns undo_stage_hunk<CR>', desc = 'Undo stage hunk' },
-    { '<leader>gr', ':Gitsigns reset_hunk<CR>', desc = 'Reset hunk', mode = 'v' },
-    { '<leader>gs', ':Gitsigns stage_hunk<CR>', desc = 'Stage hunk', mode = 'v' },
-    { 'ic', ':<C-U>Gitsigns select_hunk<CR>', desc = 'Select hunk (change) ', mode = { 'x', 'o' } },
+    { '<leader>gu', '<cmd>Gitsigns undo_stage_hunk<CR>', desc = 'Undo stage hunk', silent = true },
+    { '<leader>gr', ':Gitsigns reset_hunk<CR>', desc = 'Reset hunk', mode = 'v', silent = true },
+    { '<leader>gs', ':Gitsigns stage_hunk<CR>', desc = 'Stage hunk', mode = 'v', silent = true },
+    { 'ic', ':<C-U>Gitsigns select_hunk<CR>', desc = 'Select hunk (change) ', mode = { 'x', 'o' }, silent = true },
   },
   config = function()
     require('gitsigns').setup()
@@ -110,7 +133,7 @@ return {
           require('gitsigns').toggle_current_line_blame(state)
         end,
       })
-      :map('<leader>gtb')
+      :map('<leader>gtb', { silent = true })
     Snacks.toggle
       .new({
         id = 'gitsigns_deleted',
@@ -125,6 +148,6 @@ return {
           require('gitsigns').toggle_deleted(state)
         end,
       })
-      :map('<leader>gtd')
+      :map('<leader>gtd', { silent = true })
   end,
 }

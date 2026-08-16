@@ -2,6 +2,20 @@
 
 > Revision history
 >
+> * **r4** (2026-08-16) — **acceptance review fixes.** Two independent audits
+>   (`phase8-acceptance-review.md`, review 1; `phase8-acceptance-review-2.md`,
+>   review 2 — review 2 confirmed all five of review 1's findings first-hand
+>   and added the fingerprint false-positive analysis). All five fixed, §7 is
+>   the record: silent-flag parity restored on every relocated entry and the
+>   snapshot script now dumps option flags (R1); the desc-fingerprint guard
+>   is mechanism-independent (R2); an eager-spec census guards the five
+>   `lazy = false` lines (R3); AGENTS.md and the test_keys header teach the
+>   post-phase model (R4); `[c` goes backwards again in a diff (R5a);
+>   R5b + octo's label recorded in §8 for Phase 9. 152 cases green ×2,
+>   lint/format clean. §6.1's claim is now proven by an instrument that can
+>   see flags: the re-measured pre/post diff (real TUI worktree boot on each
+>   side) contains the enumerated deltas and *zero* flag changes outside the
+>   lazy stubs' own construction.
 > * **r3** (2026-08-15) — **as built.** Two commits (`aa0a3d8` relocation,
 >   `face32e` toggles + octo + iron), §6 is the record and the only part of
 >   this document written after the code. The §3.5 invariant held: across 312
@@ -368,7 +382,41 @@ the four claimed toggle ids via `rawget`-style registry access -
 never fail. `test_lsp.lua`/`test_diagnostics.lua` toggle cases now drive
 `Snacks.toggle.get(id):toggle()` instead of the retired action/function.
 
-## 7. Observed, out of scope
+## 7. (r4) Acceptance review fixes
+
+Both review documents hold the findings in full; this section records what
+changed and what was re-measured, keyed by finding.
+
+* **R1** — every `keys =` entry this phase added carries `silent = true`
+  (which-key's default, `vim.keymap.set`'s not), and the four `Toggle:map`
+  calls pass it too; `scripts/keymap-snapshot.lua` now dumps
+  `noremap/silent/expr/nowait/replace_keycodes` per mapping. Re-measured
+  end to end with the upgraded instrument — pre-phase worktree
+  (`46f5696`, booted as a real TUI via `XDG_CONFIG_HOME` + a wrapper
+  `UCW_TUI_NVIM`, since `tmux new-session` takes the server's environment,
+  not the caller's) against fixed HEAD: 309 → 312 mappings, and the diff is
+  the enumerated deltas with **zero** flag changes, except that the lazy
+  *stubs* themselves are `si=0 ex=1 rk=1` by lazy.nvim's construction (the
+  spec's `silent = true` applies to the real mapping once the plugin
+  loads).
+* **R2** — new `tests/test_keys.lua` case scanning `nvim_get_keymap` descs
+  across all modes for the rhs fingerprint; the colon classes are `^:%u`
+  and `^:<`, not review 1's proposed `^:%a`, which has 33 false positives
+  from Neovim's own command-shaped default descs (`[b` → ':bprevious') that
+  cannot be excluded by sid — Lua mappings all share the Lua sid (review 2,
+  A1). Reverse-verified with a planted `{ lhs, desc = ':Octo zzz<cr>' }`.
+  The registry-based case stays for the label-without-mapping shape.
+* **R3** — new census asserting the five keys-bearing eager specs
+  (`gitsigns/bufferline/auto-session/Navigator/iron`) are `_.loaded` at
+  boot. Reverse-verified by deleting bufferline's `lazy = false` — red
+  here, where review 1 measured the suite green without this case.
+* **R4** — AGENTS.md's Key idioms keymap bullet rewritten to the split
+  model plus the two hard-won rules (`keys =` implies lazy; toggles are
+  `Snacks.toggle` objects); test_keys.lua's header rewritten the same way.
+* **R5a** — `[c` is `&diff ? '[c' : …`; measured under `diffthis`:
+  `[c → [c`, `]c → ]c`. **R5b** — §8 note below, Phase 9's.
+
+## 8. Observed, out of scope
 
 * `_G.UCW.jump_textobject` global + `<Cmd>lua UCW.…<CR>` string rhs built in
   `mini.lua`, and the vendored `H.echo` mini.ai helpers in
@@ -376,6 +424,12 @@ never fail. `test_lsp.lua`/`test_diagnostics.lua` toggle cases now drive
 * octo's `<leader>gop` (`pr search`) is labelled 'Search issues', a copy
   of the line above it in the old v1 block. Kept verbatim (labels are
   content); Phase 9's binding pass should fix the label.
+* The `<leader>e` iron subtree (eight mappings registered by iron's own
+  `setup()`) has no group header and its descs are identifiers
+  (`iron_repl_send_file`, ...). Untouched by this phase, but the group
+  census in `tests/test_keys.lua` now pins the header list, so adding one
+  is a deliberate act with a test to update — Phase 9's, together with the
+  descs (acceptance review, R5).
 * `which-key.lua` loading in embedded targets (§1.5 last bullet) — Phase 9
   policy question.
 * Group icons/`wk_desc` cosmetics — Phase 9, with the bindings themselves.

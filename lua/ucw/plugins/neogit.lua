@@ -5,7 +5,7 @@ return {
   -- already lazy on `cmd`; the key now also lazy-load-triggers it, so at boot
   -- the mapping is lazy.nvim's stub (callback) rather than the raw string.
   keys = {
-    { '<leader>gg', '<cmd>Neogit<cr>', desc = 'Neogit' },
+    { '<leader>gg', '<cmd>Neogit<cr>', desc = 'Neogit', silent = true },
   },
   dependencies = {
     'nvim-lua/plenary.nvim',

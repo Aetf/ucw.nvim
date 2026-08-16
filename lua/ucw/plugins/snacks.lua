@@ -128,6 +128,7 @@ return {
         Snacks.picker.files()
       end,
       desc = 'Find File',
+      silent = true,
     },
     {
       '<M-S-f>',
@@ -135,6 +136,7 @@ return {
         Snacks.picker.grep()
       end,
       desc = 'Find in CWD',
+      silent = true,
     },
     -- `lines` is snacks' name for what Telescope called
     -- `current_buffer_fuzzy_find`.
@@ -144,6 +146,7 @@ return {
         Snacks.picker.lines()
       end,
       desc = 'Find in File',
+      silent = true,
     },
     {
       '<leader>Th',
@@ -151,6 +154,7 @@ return {
         Snacks.picker.command_history()
       end,
       desc = 'Command history',
+      silent = true,
     },
     {
       '<leader>bb',
@@ -158,6 +162,7 @@ return {
         Snacks.picker.buffers()
       end,
       desc = 'Go to buffer',
+      silent = true,
     },
     {
       '<leader>nh',
@@ -165,6 +170,7 @@ return {
         Snacks.notifier.show_history()
       end,
       desc = 'Notification history',
+      silent = true,
     },
   },
   config = config,

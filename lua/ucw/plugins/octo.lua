@@ -10,9 +10,9 @@ return {
   -- `which-key.lua`. Descs are verbatim from the v1 block, including `pr
   -- search` labelled 'Search issues' - bindings and labels are Phase 9's.
   keys = {
-    { '<leader>goo', '<cmd>Octo actions<cr>', desc = 'Pick an action' },
-    { '<leader>goi', '<cmd>Octo issue search<cr>', desc = 'Search issues' },
-    { '<leader>gop', '<cmd>Octo pr search<cr>', desc = 'Search issues' },
+    { '<leader>goo', '<cmd>Octo actions<cr>', desc = 'Pick an action', silent = true },
+    { '<leader>goi', '<cmd>Octo issue search<cr>', desc = 'Search issues', silent = true },
+    { '<leader>gop', '<cmd>Octo pr search<cr>', desc = 'Search issues', silent = true },
   },
   dependencies = {
     'nvim-lua/plenary.nvim',

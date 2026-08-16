@@ -34,7 +34,7 @@ function M.setup()
         vim.lsp.inlay_hint.enable(state)
       end,
     })
-    :map('<leader>lI')
+    :map('<leader>lI', { silent = true })
 
   -- Full diagnostic text rendered below the line, on the current line only.
   --
@@ -63,7 +63,7 @@ function M.setup()
         }
       end,
     })
-    :map('<leader>lp', { mode = { 'n', 'v' } })
+    :map('<leader>lp', { mode = { 'n', 'v' }, silent = true })
 end
 
 return M

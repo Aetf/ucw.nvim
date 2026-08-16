@@ -27,6 +27,7 @@ return {
         Snacks.picker.noice()
       end,
       desc = 'Search all messages',
+      silent = true,
     },
     {
       '<leader>nd',
@@ -34,6 +35,7 @@ return {
         require('noice').cmd('dismiss')
       end,
       desc = 'Dismiss notifications',
+      silent = true,
     },
   },
   dependencies = {

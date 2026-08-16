@@ -89,16 +89,23 @@ Activation sequence per unit: `setup()` → `packadd` → source its `after/` fi
 
 - **Autocmds** — use the `au` DSL (`lua/au.lua`): `au.BufWritePost = fn` or
   `au.group('Name', { BufEnter = fn, ... })`. Raw `nvim_create_autocmd` also appears.
-- **Keymaps** — global maps via `require('ucw.utils').map(modes, lhs, rhs, opts)`
-  (defaults `noremap=true`); the bulk of leader bindings live in which-key
-  (`lua/ucw/plugins/which-key.lua`) via `wk.add {...}`; named actions in
-  `keys/actions.lua`, and LSP ones in `lua/ucw/lsp/actions.lua`.
-  **which-key v3 trap**: the rhs is the *second array element*,
-  `{ lhs, rhs, desc = '...' }`. An entry with no rhs is accepted silently — it
-  registers a label for a key nobody mapped — so `{ lhs, desc = '<cmd>...<cr>' }`
-  (the shape the v2 → v3 conversion produced) is a key that does nothing and a
-  popup entry that reads like code. `g[`/`g]` were dead that way for a month;
-  `tests/test_keys.lua` now fails on any `desc` that looks like a rhs.
+- **Keymaps** (Phase 8 layout) — a plugin's keys live in *its own spec* as
+  lazy.nvim `keys = { { lhs, rhs, desc = '...', silent = true }, ... }`
+  entries; `lua/ucw/plugins/which-key.lua` keeps only group headers, core
+  editor keys and the `<leader>l` tree (via `wk.add`); toggles are
+  `Snacks.toggle` objects (`lua/ucw/toggles.lua`, gitsigns' in its spec) so
+  which-key shows live state — never a plain `<cmd>` rhs. Named actions in
+  `keys/actions.lua`, LSP ones in `lua/ucw/lsp/actions.lua`; low-level
+  remaps via `require('ucw.utils').map` in `keys.lua`.
+  **Two traps.** ① `keys =` on a spec silently makes it *lazy*: an eager
+  plugin (gutter, tabline, session autosave...) needs an explicit
+  `lazy = false` next to it, and `tests/test_keys.lua`'s eager census fails
+  if one is dropped. ② In both `wk.add` and `keys =` the rhs is the *second
+  array element*; an entry with no rhs is accepted silently, so
+  `{ lhs, desc = '<cmd>...<cr>' }` is a key that does nothing and a popup
+  entry that reads like code (`g[`/`g]` were dead that way for a month);
+  `tests/test_keys.lua` fails on any `desc` that looks like a rhs, in any
+  mechanism.
 - **Options** — plain `vim.opt.*` in `options.lua`, heavily commented with *why*.
 - **LSP** — there is no framework to learn; use Neovim's native layers.
   To add a server: one line in `lua/ucw/lsp/servers.lua` (`name = { filetypes }`),

@@ -138,9 +138,9 @@ return {
   -- group header stays there. `:AutoSession <sub>` spellings, not the legacy
   -- `:Session*` ones - see `legacy_cmds` below.
   keys = {
-    { '<leader>sc', '<cmd>AutoSession save<cr>', desc = 'Manually save session' },
-    { '<leader>sr', '<cmd>AutoSession restore<cr>', desc = 'Manually restore session' },
-    { '<leader>ss', '<cmd>AutoSession search<cr>', desc = 'Open session' },
+    { '<leader>sc', '<cmd>AutoSession save<cr>', desc = 'Manually save session', silent = true },
+    { '<leader>sr', '<cmd>AutoSession restore<cr>', desc = 'Manually restore session', silent = true },
+    { '<leader>ss', '<cmd>AutoSession search<cr>', desc = 'Open session', silent = true },
   },
   config = function()
     require('auto-session').setup {

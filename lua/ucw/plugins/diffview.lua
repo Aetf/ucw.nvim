@@ -4,7 +4,7 @@ return {
   -- Phase 8 (D1): moved here verbatim from `which-key.lua`. Same shape as
   -- neogit: already lazy on `cmd`, the key becomes an additional trigger.
   keys = {
-    { '<leader>gh', '<cmd>DiffviewFileHistory<CR>', desc = 'History for current buffer' },
+    { '<leader>gh', '<cmd>DiffviewFileHistory<CR>', desc = 'History for current buffer', silent = true },
   },
   dependencies = {
     'nvim-lua/plenary.nvim',

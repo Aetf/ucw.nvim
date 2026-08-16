@@ -9,9 +9,9 @@ return {
   -- (`which-key.lua`), not bufferline-owned.
   lazy = false,
   keys = {
-    { '<C-PageDown>', '<cmd>BufferLineCycleNext<cr>', desc = 'Go To Next Buffer' },
-    { '<C-PageUp>', '<cmd>BufferLineCyclePrev<cr>', desc = 'Go To Previous Buffer' },
-    { '<leader>bd', '<cmd>BufferLinePickClose<cr>', desc = 'Pick Buffer To Close' },
+    { '<C-PageDown>', '<cmd>BufferLineCycleNext<cr>', desc = 'Go To Next Buffer', silent = true },
+    { '<C-PageUp>', '<cmd>BufferLineCyclePrev<cr>', desc = 'Go To Previous Buffer', silent = true },
+    { '<leader>bd', '<cmd>BufferLinePickClose<cr>', desc = 'Pick Buffer To Close', silent = true },
   },
   config = function()
     require('bufferline').setup {

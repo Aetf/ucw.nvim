@@ -31,7 +31,22 @@ for _, query in ipairs { 'n', 'v', 's', 'o', 'i', 'c', 't' } do
     if not seen[key] and not m.lhs:find('^<Plug>') then
       seen[key] = true
       local rhs = m.callback and '<callback>' or (m.rhs or '')
-      table.insert(out, ('%s\t%s\t%s'):format(key, rhs, m.desc or ''))
+      -- The option flags too - acceptance review R1: which-key defaults
+      -- `silent = true` where `vim.keymap.set` does not, so a relocation can
+      -- change flags while lhs/rhs/desc all read identical, and a snapshot
+      -- without them certifies "nothing changed" over a class of change it
+      -- cannot see.
+      local flags = ('nr=%d si=%d ex=%d nw=%d rk=%d'):format(
+        m.noremap or 0,
+        m.silent or 0,
+        m.expr or 0,
+        m.nowait or 0,
+        -- returned at runtime for expr mappings, but missing from the
+        -- annotated return type of `nvim_get_keymap`
+        ---@diagnostic disable-next-line: undefined-field
+        m.replace_keycodes or 0
+      )
+      table.insert(out, ('%s\t%s\t%s\t%s'):format(key, rhs, flags, m.desc or ''))
     end
   end
 end

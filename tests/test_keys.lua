@@ -1,17 +1,21 @@
--- Coverage for the global keymap declarations in `ucw.plugins.which-key`.
+-- Coverage for global keymap *registration*, wherever it happens: since
+-- Phase 8 (D1) that is three mechanisms - lazy.nvim `keys =` in each
+-- plugin's spec (the bulk), `wk.add` in `ucw.plugins.which-key` (group
+-- headers, core editor keys, the `<leader>l` tree), and `Snacks.toggle`
+-- objects (`ucw.toggles` + `gitsigns.lua`) for the four toggles.
 --
--- Written after the Phase 3 acceptance review found `g[` / `g]` (previous /
--- next diagnostic) had not been mapped at all since Phase 1: the which-key v2
--- form was `{ rhs, "description" }`, and the v2 -> v3 conversion put the *rhs*
--- string into `desc` and left the entry with no rhs. which-key accepts that
--- without complaint - it just registers a label for a key nobody mapped - so
--- the popup still showed the entry, `maparg` returned nothing, and pressing
--- the key did nothing at all.
+-- The founding bug: the Phase 3 acceptance review found `g[` / `g]`
+-- (previous / next diagnostic) had not been mapped at all since Phase 1 -
+-- the which-key v2 form was `{ rhs, "description" }`, and the v2 -> v3
+-- conversion put the *rhs* string into `desc` and left the entry with no
+-- rhs. which-key accepts that without complaint, so the popup showed the
+-- entry while pressing the key did nothing. The same mistake is expressible
+-- in a `keys =` entry (`Keys:_set` is `if keys.rhs then ...` - no rhs, no
+-- mapping, label still shown), so the guards below scan the *real* mapping
+-- tables, not any one mechanism's registry (Phase 8 acceptance review, R2).
 --
 -- `ucw.lsp.actions` (tests/test_lsp_actions.lua) solves this for LSP entry
--- points by naming them as data. Everything else in which-key.lua is still
--- hand-written, so the guard here is the complementary one: whatever the spec
--- declares, a real mapping has to exist for it.
+-- points by naming them as data.
 
 local H = require('helpers')
 local new_set = MiniTest.new_set
@@ -148,6 +152,61 @@ T['toggles']['all four toggles are registered and mapped'] = function()
     -- this into a test that can never fail.
     eq({ id, child.lua_get(([[require('snacks.toggle').toggles[%q] ~= nil]]):format(id)) }, { id, true })
     eq({ id, child.lua_get(([[vim.fn.maparg(%q, 'n') ~= '']]):format(lhs)) }, { id, true })
+  end
+end
+
+-- The mechanism-independent form of the fingerprint scan below (Phase 8
+-- acceptance review, R2): after D1 relocated most keys out of which-key's
+-- registry, the registry-based case covers 31 entries where it used to cover
+-- 85 - including octo's, which had been promised that coverage "for free".
+-- This one reads the real mapping tables, so it sees `wk.add`, `keys =`,
+-- `Snacks.toggle` and whatever mechanism comes next.
+--
+-- The colon classes are `^:%u` and `^:<`, not `^:%a`: Neovim's own default
+-- mappings use command-shaped descs on purpose (`[b` -> ':bprevious',
+-- `&` -> ':help &-default', ...) and cannot be filtered by script id - Lua
+-- mappings all share the Lua sid. Measured: 33 false positives under
+-- `^:%a`, zero under these, and every ex-command this config binds starts
+-- uppercase (`:Gitsigns`, `:AutoSession`) or with `<C-U>`.
+T['which-key spec']['no mapping anywhere carries a right-hand side in its description'] = function()
+  local bad = child.lua_get([[
+        (function()
+          local bad = {}
+          for _, mode in ipairs { 'n', 'v', 's', 'o', 'i', 'c', 't' } do
+            for _, m in ipairs(vim.api.nvim_get_keymap(mode)) do
+              local desc = m.desc or ''
+              if
+                desc:lower():match('^<cmd>')
+                or desc:lower():match('^<plug>')
+                or desc:match('^:%u')
+                or desc:match('^:<')
+              then
+                table.insert(bad, ('%s %s -> %s'):format(mode, m.lhs, desc))
+              end
+            end
+          end
+          table.sort(bad)
+          return bad
+        end)()
+    ]])
+  eq(bad, {})
+end
+
+T['eager specs'] = new_set()
+
+-- The trap Phase 8 itself discovered: `keys =` on a spec silently makes it
+-- lazy, so five eager plugins carry an explicit `lazy = false` that nothing
+-- else guards (acceptance review, R3). Measured before this case existed:
+-- deleting bufferline's line left the suite 150/150 green while a real TUI
+-- booted with no tabline; a lazy auto-session never arms session autosave.
+-- gitsigns alone failed a test, and only because its toggles happen to
+-- register in `config()`.
+T['eager specs']['every keys-bearing eager plugin really loads at boot'] = function()
+  for _, name in ipairs { 'gitsigns.nvim', 'bufferline.nvim', 'auto-session', 'Navigator.nvim', 'iron.nvim' } do
+    eq(
+      { name, child.lua_get(([[require('lazy.core.config').plugins[%q]._.loaded ~= nil]]):format(name)) },
+      { name, true }
+    )
   end
 end
 
