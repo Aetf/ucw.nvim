@@ -53,7 +53,7 @@ end
 -- though that option is on. Measured: it is called from
 -- `AutoSession.auto_save_session()` only (`auto-session/init.lua:339`), i.e. on
 -- the `VimLeavePre` autosave path - `save_session()`, which is what
--- `:AutoSession save` and `<leader>sc` reach, never calls it. Dropping this
+-- `:AutoSession save` and `<leader>qs` reach, never calls it. Dropping this
 -- sweep on the strength of the option being enabled restored a stale neo-tree
 -- drawer into the layout after a manual save/restore cycle (5 windows instead
 -- of 4), which is how that was found.
@@ -134,13 +134,18 @@ return {
   -- the plugin up from startup, so stay eager (Phase 8 relocates
   -- registration, not triggers).
   lazy = false,
-  -- Phase 8 (D1): moved here verbatim from `which-key.lua`; the `<leader>s`
-  -- group header stays there. `:AutoSession <sub>` spellings, not the legacy
+  -- Phase 8 (D1) moved these out of `which-key.lua`; Phase 9 (D3) moved the
+  -- tree from `<leader>s` (freed for search) to `<leader>q` = quit/session,
+  -- the LazyVim namespace. Letter note (r2.1): LazyVim's `qs` means
+  -- *restore*; here the `s`ave/`r`estore pair is self-describing, and
+  -- auto-session's manual save makes an explicit save key meaningful. The
+  -- `<leader>q` group header (and `qq` quit-all, core-editor) stay in
+  -- `which-key.lua`. `:AutoSession <sub>` spellings, not the legacy
   -- `:Session*` ones - see `legacy_cmds` below.
   keys = {
-    { '<leader>sc', '<cmd>AutoSession save<cr>', desc = 'Manually save session', silent = true },
-    { '<leader>sr', '<cmd>AutoSession restore<cr>', desc = 'Manually restore session', silent = true },
-    { '<leader>ss', '<cmd>AutoSession search<cr>', desc = 'Open session', silent = true },
+    { '<leader>qs', '<cmd>AutoSession save<cr>', desc = 'Manually save session', silent = true },
+    { '<leader>qr', '<cmd>AutoSession restore<cr>', desc = 'Manually restore session', silent = true },
+    { '<leader>ql', '<cmd>AutoSession search<cr>', desc = 'List and open sessions', silent = true },
   },
   config = function()
     require('auto-session').setup {
@@ -165,7 +170,7 @@ return {
       bypass_save_filetypes = { 'neotree', 'help' },
       -- Don't define the legacy `:Session*` / `:Autosession` commands. They
       -- still work but notify a deprecation warning when used, and leaving them
-      -- defined is how `<leader>ss` went on invoking `:SessionSearch` - the
+      -- defined is how the old session-search key went on invoking `:SessionSearch` - the
       -- same shape of staleness as the old option names above, one layer down.
       legacy_cmds = false,
     }
