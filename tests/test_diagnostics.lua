@@ -3,7 +3,7 @@
 -- Phase 4 deleted lsp_lines.nvim, which had *replaced* core's `virtual_lines`
 -- handler with its own. Core renders the same thing now, so the plugin went and
 -- two things it owned moved into config: the default, into `ucw.options`, and
--- the `<leader>lp` toggle, into `ucw.keys.actions`.
+-- the `<leader>uv` toggle, into `ucw.keys.actions`.
 --
 -- Both moves changed something that no assertion caught at the time: the plugin
 -- was `cond = is_full_ui`, so the default has to stay off in firenvim/vscode,
@@ -52,9 +52,9 @@ T['virtual_lines']['is off in the embedded contexts'] = function()
   eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), false)
 end
 
-T['<leader>lp'] = new_set()
+T['<leader>uv'] = new_set()
 
-T['<leader>lp']['toggles the rendering off and back on'] = function()
+T['<leader>uv']['toggles the rendering off and back on'] = function()
   child.lua([[Snacks.toggle.get('diag_virtual_lines'):toggle()]])
   eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), false)
 
@@ -64,12 +64,12 @@ T['<leader>lp']['toggles the rendering off and back on'] = function()
   eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), { current_line = true })
 end
 
-T['<leader>lp']['is bound in normal and visual mode'] = function()
+T['<leader>uv']['is bound in normal and visual mode'] = function()
   -- lsp_lines bound it with mode '' (normal + visual/select + operator
   -- pending); which-key defaults to normal only, which silently dropped the
   -- others when the binding moved.
-  eq(child.lua_get([[vim.fn.maparg(' lp', 'n') ~= '']]), true)
-  eq(child.lua_get([[vim.fn.maparg(' lp', 'v') ~= '']]), true)
+  eq(child.lua_get([[vim.fn.maparg(' uv', 'n') ~= '']]), true)
+  eq(child.lua_get([[vim.fn.maparg(' uv', 'v') ~= '']]), true)
 end
 
 return T

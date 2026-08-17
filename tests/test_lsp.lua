@@ -428,7 +428,7 @@ end
 
 T['inlay hint toggle'] = new_set()
 
--- `<leader>lI` is the `Snacks.toggle` from `ucw.toggles` (Phase 8, D2), and
+-- `<leader>uh` is the `Snacks.toggle` from `ucw.toggles` (Phase 8, D2), and
 -- its get/set read and write the *global* flag. Attach used to write only the
 -- buffer flag, leaving the global one at its `false` default, so the first
 -- press "enabled" hints that were already on and it took two presses to turn

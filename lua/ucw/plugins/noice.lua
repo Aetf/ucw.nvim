@@ -29,8 +29,10 @@ return {
       desc = 'Search all messages',
       silent = true,
     },
+    -- Under the toggle/UI prefix (Phase 9, D4/D7): not a toggle, but "make
+    -- the popups go away" is a UI action and LazyVim's own `un` letter.
     {
-      '<leader>nd',
+      '<leader>un',
       function()
         require('noice').cmd('dismiss')
       end,

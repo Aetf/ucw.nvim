@@ -7,8 +7,8 @@ return {
   -- `keys` alone would flip the spec to lazy-loading; the gutter has to exist
   -- from startup, so stay eager (Phase 8 relocates registration, not triggers).
   lazy = false,
-  -- Phase 8 (D1): moved here verbatim from `which-key.lua`. Group headers
-  -- (`<leader>g`, `<leader>gt`) stay there. A side effect of the move, wanted:
+  -- Phase 8 (D1): moved here verbatim from `which-key.lua`. The `<leader>g`
+  -- group header stays there. A side effect of the move, wanted:
   -- in embedded targets (`cond` false) these keys no longer exist at all,
   -- where before they were registered everywhere and bound to ex-commands of
   -- a plugin that never loads there.
@@ -45,8 +45,10 @@ return {
     { '<leader>gp', '<cmd>Gitsigns preview_hunk<CR>', desc = 'Preview hunk', silent = true },
     { '<leader>gr', '<cmd>Gitsigns reset_hunk<CR>', desc = 'Reset hunk', silent = true },
     { '<leader>gs', '<cmd>Gitsigns stage_hunk<CR>', desc = 'Stage hunk', silent = true },
-    -- `<leader>gtb`/`<leader>gtd` are `Snacks.toggle`s registered in
-    -- `config()` below (Phase 8, D2), not `keys =` entries.
+    -- `<leader>ub`/`<leader>ud` (blame/show-deleted toggles) are
+    -- `Snacks.toggle`s registered in `config()` below (Phase 8, D2), not
+    -- `keys =` entries; they live under the `<leader>u` toggle prefix
+    -- (Phase 9, D4) but stay in this file with the plugin that owns them.
     { '<leader>gu', '<cmd>Gitsigns undo_stage_hunk<CR>', desc = 'Undo stage hunk', silent = true },
     { '<leader>gr', ':Gitsigns reset_hunk<CR>', desc = 'Reset hunk', mode = 'v', silent = true },
     { '<leader>gs', ':Gitsigns stage_hunk<CR>', desc = 'Stage hunk', mode = 'v', silent = true },
@@ -133,7 +135,7 @@ return {
           require('gitsigns').toggle_current_line_blame(state)
         end,
       })
-      :map('<leader>gtb', { silent = true })
+      :map('<leader>ub', { silent = true })
     Snacks.toggle
       .new({
         id = 'gitsigns_deleted',
@@ -148,6 +150,6 @@ return {
           require('gitsigns').toggle_deleted(state)
         end,
       })
-      :map('<leader>gtd', { silent = true })
+      :map('<leader>ud', { silent = true })
   end,
 }

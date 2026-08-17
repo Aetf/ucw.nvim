@@ -2,7 +2,11 @@
 -- mechanism buys over the write-only keys these replace: which-key shows live
 -- state (icon, color, `Enable`/`Disable` desc re-evaluated at render time),
 -- and pressing notifies. Plugin-owned toggles live with their plugin
--- (`gitsigns.lua`); these two belong to the editor itself.
+-- (`gitsigns.lua`); these belong to the editor itself.
+--
+-- All toggles live under `<leader>u` (Phase 9, D4) - one prefix for every
+-- on/off state, which is the LazyVim namespace convention; the per-letter
+-- assignments are this config's own (only `uh` matches LazyVim's letter).
 --
 -- Called from `which-key.lua`'s `config()`: snacks is a declared dependency
 -- there, and which-key being loaded is what lets `Toggle:map`'s
@@ -34,7 +38,7 @@ function M.setup()
         vim.lsp.inlay_hint.enable(state)
       end,
     })
-    :map('<leader>lI', { silent = true })
+    :map('<leader>uh', { silent = true })
 
   -- Full diagnostic text rendered below the line, on the current line only.
   --
@@ -63,7 +67,19 @@ function M.setup()
         }
       end,
     })
-    :map('<leader>lp', { mode = { 'n', 'v' }, silent = true })
+    :map('<leader>uv', { mode = { 'n', 'v' }, silent = true })
+
+  -- Diagnostics master switch (Phase 9, D4). The built-in factory is safe
+  -- here, unlike the inlay-hint one above: `vim.diagnostic.is_enabled()` /
+  -- `enable(state)` with no filter are the *global* flag (checked in the
+  -- pinned snacks, toggle.lua:220).
+  Snacks.toggle.diagnostics():map('<leader>uD', { silent = true })
+
+  -- Window/buffer-local by design: `Snacks.toggle.option` reads and writes
+  -- with `scope = 'local'`, and wrap/spell are inherently per-window
+  -- preferences. Same shape as LazyVim's `uw`/`us`.
+  Snacks.toggle.option('wrap', { name = 'Wrap' }):map('<leader>uw', { silent = true })
+  Snacks.toggle.option('spell', { name = 'Spelling' }):map('<leader>us', { silent = true })
 end
 
 return M

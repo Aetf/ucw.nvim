@@ -36,13 +36,12 @@ local function config()
     lsp_actions.wk('<leader>cl', 'codelens_run'),
   }
 
-  -- `<leader>lI` (inlay hints) and `<leader>lp` (diagnostic virtual lines)
-  -- are `Snacks.toggle`s (Phase 8, D2) - stateful in this popup - not
-  -- `wk.add` entries. Interim state until D4: they are all that is left of
-  -- the `<leader>l` tree, and this header keeps them discoverable; both the
-  -- header and the toggles' lhs move to `<leader>u` in the D4 commit, which
-  -- is what frees `<leader>l` for `:Lazy` (D2).
-  wk.add { { '<leader>l', group = 'LSP toggles' } }
+  -- `<leader>u` = toggles/UI (Phase 9, D4): every on/off state in the
+  -- config, one prefix. The keys are `Snacks.toggle`s - stateful in this
+  -- popup - registered in `ucw.toggles` (editor-core: uh/uv/uD/uw/us) and
+  -- `gitsigns.lua` (ub/ud); `un` (dismiss notifications) is a `keys =`
+  -- entry in `noice.lua`.
+  wk.add { { '<leader>u', group = 'toggles/UI' } }
   require('ucw.toggles').setup()
 
   -- Goto prev/next diag warning/error.
@@ -93,9 +92,10 @@ local function config()
   -- `neogit.lua`, `diffview.lua` and `octo.lua` (Phase 8, D1/D3). octo's
   -- header lives here *eagerly* on purpose: its keys are lazy-load stubs, and
   -- before Phase 8 the whole subtree was invisible until the first `:Octo`.
+  -- The `<leader>gt` toggle subtree is gone (Phase 9, D4): its two members
+  -- are `<leader>ub`/`<leader>ud` now, with every other toggle.
   wk.add {
     { '<leader>g', group = 'git' },
-    { '<leader>gt', group = 'toggles' },
     { '<leader>go', group = 'octo (GitHub)' },
   }
 

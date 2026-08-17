@@ -68,7 +68,7 @@ T['sources']['the keys bound to pickers all resolve'] = function()
   -- for `<M-F>`, which does not match how which-key registered it, so
   -- converting would fail this one key while every other key passed.
   -- `<leader>` is a literal space in this config.
-  for _, lhs in ipairs { '<C-p>', '<M-S-f>', '<M-f>', ' Th', ' bb', ' nn', ' nh', ' nd' } do
+  for _, lhs in ipairs { '<C-p>', '<M-S-f>', '<M-f>', ' Th', ' bb', ' nn', ' nh', ' un' } do
     local map = child.lua_get(([[
             (function()
               local m = vim.fn.maparg(%q, 'n', false, true)

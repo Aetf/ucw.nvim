@@ -109,11 +109,10 @@ T['which-key spec']['every leader group header is registered at boot'] = functio
     '<leader>c',
     '<leader>g',
     '<leader>go',
-    '<leader>gt',
-    '<leader>l',
     '<leader>n',
     '<leader>s',
     '<leader>t',
+    '<leader>u',
     '<leader>w',
   })
 end
@@ -135,17 +134,21 @@ end
 
 T['toggles'] = new_set()
 
--- The four `Snacks.toggle`s (Phase 8, D2): each claimed id maps to a real
--- key. The inlay-hint toggle's *semantics* (global flag, not the built-in
--- per-buffer factory) are asserted where they can fail meaningfully,
--- tests/test_lsp.lua's 'inlay hint toggle' set; `<leader>lp`'s modes in
+-- The `Snacks.toggle`s (Phase 8 D2 mechanism, Phase 9 D4 placement: all
+-- under `<leader>u`): each claimed id maps to a real key. The inlay-hint
+-- toggle's *semantics* (global flag, not the built-in per-buffer factory)
+-- are asserted where they can fail meaningfully, tests/test_lsp.lua's
+-- 'inlay hint toggle' set; `<leader>uv`'s modes in
 -- tests/test_diagnostics.lua. This is just the registration census.
-T['toggles']['all four toggles are registered and mapped'] = function()
+T['toggles']['all seven toggles are registered and mapped'] = function()
   for id, lhs in pairs {
-    inlay_hints = ' lI',
-    diag_virtual_lines = ' lp',
-    gitsigns_blame = ' gtb',
-    gitsigns_deleted = ' gtd',
+    inlay_hints = ' uh',
+    diag_virtual_lines = ' uv',
+    gitsigns_blame = ' ub',
+    gitsigns_deleted = ' ud',
+    diagnostics = ' uD',
+    wrap = ' uw',
+    spell = ' us',
   } do
     -- `rawget` of the registry, NOT `Snacks.toggle.get`: `get()` on an
     -- unclaimed id falls back to calling a built-in factory of that name,
