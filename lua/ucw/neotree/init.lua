@@ -92,11 +92,22 @@ function M.config()
     },
   }
 
+  -- `<leader>e`/`E` = explorer (Phase 9, D5): the community meaning of `e`,
+  -- free since iron moved to `<leader>r`. `\` and `|` are the same two
+  -- actions' accelerators and predate the leader keys; all four stay.
   vim.keymap.set('n', '|', [[<cmd>Neotree action=focus toggle=true reveal=true<cr>]], {
     desc = 'Toggle file tree (focus)',
   })
   vim.keymap.set('n', '\\', [[<cmd>Neotree action=show toggle=true reveal=true<cr>]], {
     desc = 'Toggle file tree',
+  })
+  vim.keymap.set('n', '<leader>e', [[<cmd>Neotree action=show toggle=true reveal=true<cr>]], {
+    desc = 'Toggle file tree',
+    silent = true,
+  })
+  vim.keymap.set('n', '<leader>E', [[<cmd>Neotree action=focus toggle=true reveal=true<cr>]], {
+    desc = 'Toggle file tree (focus)',
+    silent = true,
   })
 end
 
