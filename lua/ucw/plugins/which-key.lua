@@ -44,6 +44,11 @@ local function config()
   wk.add { { '<leader>u', group = 'toggles/UI' } }
   require('ucw.toggles').setup()
 
+  -- `<leader>l` = the plugin manager (Phase 9, D2) - literally LazyVim's own
+  -- binding, on the letter the dissolved LSP tree freed. `:checkhealth ucw`
+  -- stays keyless on purpose (low frequency).
+  wk.add { { '<leader>l', '<cmd>Lazy<cr>', desc = 'Plugin manager (Lazy)' } }
+
   -- Goto prev/next diag warning/error.
   --
   -- These were dead from Phase 1 (the which-key v2 -> v3 conversion) until the
