@@ -215,6 +215,34 @@ T['eager specs']['every keys-bearing eager plugin really loads at boot'] = funct
   end
 end
 
+T['embedded contexts'] = new_set()
+
+-- Phase 9 (D9): which-key is cond-gated off under vscode-neovim and stays
+-- under firenvim. The assertion is the Phase 8 embedded-census pattern:
+-- plugin load state plus a representative key from this file's `wk.add`
+-- blocks (`<leader>ca`), because `cond = false` means neither `keys =` nor
+-- `config()` ever ran - headless `wk.add` probing would be indistinguishable
+-- from VeryLazy simply not firing (Phase 8 lesson).
+T['embedded contexts']['which-key does not load under vscode-neovim'] = function()
+  H.boot_embedded(child, 'vscode')
+  -- a cond=false plugin is dropped from `Config.plugins` entirely (measured;
+  -- indexing `._` on it is a nil error), so absence has two spellings
+  local absent = child.lua_get([[
+        (function()
+          local p = require('lazy.core.config').plugins['which-key.nvim']
+          return (p == nil or p._.loaded == nil) and package.loaded['which-key'] == nil
+        end)()
+    ]])
+  eq(absent, true)
+  eq(child.lua_get([[vim.fn.maparg(' ca', 'n')]]), '')
+end
+
+T['embedded contexts']['which-key loads under firenvim'] = function()
+  H.boot_embedded(child, 'started_by_firenvim')
+  eq(child.lua_get([[require('lazy.core.config').plugins['which-key.nvim']._.loaded ~= nil]]), true)
+  eq(child.lua_get([[vim.fn.maparg(' ca', 'n') ~= '']]), true)
+end
+
 T['which-key spec']['no entry carries a right-hand side in its description'] = function()
   local bad = child.lua_get([[
         (function()

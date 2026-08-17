@@ -154,6 +154,17 @@ end
 return {
   'folke/which-key.nvim',
   lazy = false,
+  -- Not under vscode-neovim (Phase 9, D9): it renders no nvim floats and
+  -- owns buffers/windows/tabs itself - upstream recommends disabling UI
+  -- plugins. Everything this file registers goes with it there, coherently:
+  -- the trees are pickers (no floats), buffer/window/tab lifecycle (vscode's
+  -- own), and toggles for nvim-side rendering vscode does not use. firenvim
+  -- keeps all of it - a real nvim UI where discoverability matters most.
+  -- `ucw.lsp.attach` stopped requiring which-key in D1, so LSP buffers keep
+  -- working either way.
+  cond = function()
+    return not require('ucw.targets').is_vscode()
+  end,
   -- for `ucw.toggles`: both eager, but `Snacks` must exist when `config()`
   -- runs, and lazy.nvim only guarantees order through `dependencies`
   dependencies = { 'folke/snacks.nvim' },
