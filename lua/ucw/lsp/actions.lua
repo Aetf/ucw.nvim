@@ -51,11 +51,9 @@ M.actions = {
     mode = { 'n', 'x' },
   },
   declaration = { desc = 'Go to declaration', lsp = 'buf.declaration' },
-  document_highlight = { desc = 'Highlight symbol under cursor', lsp = 'buf.document_highlight' },
-  clear_references = {
-    desc = 'Clear document highlights from current buffer',
-    lsp = 'buf.clear_references',
-  },
+  -- `document_highlight`/`clear_references` are gone (Phase 9, D2): reference
+  -- highlighting is automatic now (snacks.words, see snacks.lua), so the
+  -- manual pair stopped being an action this config exposes.
   codelens_run = { desc = 'Run codelens at current line', lsp = 'codelens.run' },
   -- diagnostics are core, not LSP, hence a plain command rather than an
   -- `lsp` path

@@ -36,6 +36,14 @@ local function config()
   require('snacks').setup {
     input = { enabled = true },
 
+    -- Automatic LSP reference highlighting (Phase 9, D2): replaces the manual
+    -- `<leader>lh` / `<leader>l<C-L>` pair - highlights update on cursor
+    -- movement (debounced) and clear by themselves. Highlight only: snacks
+    -- does not bind its `jump` function to anything by itself, and the
+    -- conventional `]]`/`[[` bindings would shadow the native section
+    -- motions (design doc §2.2, r2.1), so no jump keys are bound here.
+    words = { enabled = true },
+
     notifier = {
       enabled = true,
       -- `compact` puts the icon and title inline in the top border (3 lines per
