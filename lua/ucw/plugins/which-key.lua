@@ -139,9 +139,14 @@ local function config()
     { '<leader>to', '<cmd>tabonly<cr>', desc = 'Close other tabs' },
     { '<leader>tp', '<cmd>tabprev<cr>', desc = 'Go to previous tab' },
     { '<leader>tx', '<cmd>tabclose<cr>', desc = 'Close current tab' },
+    -- Window keys use `<C-w>`'s own letters (Phase 9, D10): ws = :split,
+    -- wv = :vsplit. `wv` used to mean the *other* split and `wh` is gone -
+    -- accepted churn for vocabulary that matches native `<C-w>s`/`<C-w>v`.
+    -- Everything else window-shaped stays on `<M-hjkl>` (navigator.lua) and
+    -- which-key's `<C-w>` preset.
     { '<leader>w', group = 'window' },
-    { '<leader>wh', '<cmd>vsplit<cr>', desc = 'Create new window horizontally' },
-    { '<leader>wv', '<cmd>split<cr>', desc = 'Create new window vertically' },
+    { '<leader>ws', '<cmd>split<cr>', desc = 'Split window horizontally' },
+    { '<leader>wv', '<cmd>vsplit<cr>', desc = 'Split window vertically' },
     { '<leader>wx', '<C-w>c', desc = 'Close current window' },
   }
 end
