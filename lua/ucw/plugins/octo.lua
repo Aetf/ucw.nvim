@@ -12,7 +12,7 @@ return {
   keys = {
     { '<leader>goo', '<cmd>Octo actions<cr>', desc = 'Pick an action', silent = true },
     { '<leader>goi', '<cmd>Octo issue search<cr>', desc = 'Search issues', silent = true },
-    { '<leader>gop', '<cmd>Octo pr search<cr>', desc = 'Search issues', silent = true },
+    { '<leader>gop', '<cmd>Octo pr search<cr>', desc = 'Search pull requests', silent = true },
   },
   dependencies = {
     'nvim-lua/plenary.nvim',

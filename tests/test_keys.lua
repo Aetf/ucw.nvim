@@ -125,7 +125,7 @@ T['lazy keys'] = new_set()
 -- Before Phase 8 (D3), `maparg` on these was empty until the first `:Octo`.
 T['lazy keys']['octo keys are live stubs before the plugin loads'] = function()
   eq(child.lua_get([[require('lazy.core.config').plugins['octo.nvim']._.loaded ~= nil]]), false)
-  for lhs, desc in pairs { [' goo'] = 'Pick an action', [' goi'] = 'Search issues', [' gop'] = 'Search issues' } do
+  for lhs, desc in pairs { [' goo'] = 'Pick an action', [' goi'] = 'Search issues', [' gop'] = 'Search pull requests' } do
     -- project out of the dict inside the child: the stub's `callback` is a
     -- function, which RPC cannot serialize whole
     local got = child.lua_get(([[vim.fn.maparg(%q, 'n', false, true).desc]]):format(lhs))

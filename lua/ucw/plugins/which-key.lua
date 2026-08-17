@@ -127,7 +127,16 @@ local function config()
   wk.add {
     { '<S-Tab>', "<cmd>lua require('ucw.keys.actions').bufprev()<cr>", desc = 'Go to previous buffer' },
     { '<Tab>', "<cmd>lua require('ucw.keys.actions').bufnext()<cr>", desc = 'Go to next buffer' },
-    { '<leader>`', '<C-^>', desc = 'Go To Alternvative Buffer' },
+    { '<leader>`', '<C-^>', desc = 'Go to alternate buffer' },
+    -- P6, searchability: the buffer-local complement to `<leader>sk` (all
+    -- keymaps, snacks picker).
+    {
+      '<leader>?',
+      function()
+        require('which-key').show { global = false }
+      end,
+      desc = 'Buffer-local keymaps (which-key)',
+    },
     { '<leader>b', group = 'buffer' },
     { '<leader>bX', "<cmd>lua require('ucw.keys.actions').bufdelete(0, true)<cr>", desc = 'Delete current buffer' },
     { '<leader>bx', "<cmd>lua require('ucw.keys.actions').bufdelete()<cr>", desc = 'Delete current buffer' },
