@@ -89,7 +89,7 @@ T['sources']['the keys bound to pickers all resolve'] = function()
       ' s ',
       ' sm',
       ' bb',
-      ' nh',
+      ' n',
       ' un',
     }
   do

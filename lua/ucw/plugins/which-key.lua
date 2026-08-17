@@ -9,15 +9,10 @@ local function config()
     },
   }
   -- Group headers for trees whose keys live with their owning plugin specs
-  -- (Phase 8, D1). The keys themselves are `keys =` entries in `snacks.lua`
-  -- (pickers, notification history), `noice.lua` (message search/dismiss),
-  -- `gitsigns.lua`, `neogit.lua`, `diffview.lua`, `bufferline.lua`,
-  -- `auto-session.lua`, `navigator.lua`, `octo.lua`, `iron.lua`. Headers stay
-  -- here, registered eagerly, so every group is discoverable at boot even
-  -- when its owner has not loaded yet.
-  wk.add {
-    { '<leader>n', group = 'notifications' },
-  }
+  -- live in this file (Phase 8, D1), registered eagerly, so every group is
+  -- discoverable at boot even when its owner has not loaded yet - see the
+  -- `wk.add` blocks below. `<leader>n` is no longer one of them (Phase 9,
+  -- D7): it is a single key now (notification history, in `snacks.lua`).
   -- `<leader>c` = code (Phase 9, D2): actions on the code under the cursor,
   -- LazyVim's letters exactly. The old 14-key `<leader>l` tree is gone -
   -- goto/list keys have no leader duplicates, the gr* shapes below are the

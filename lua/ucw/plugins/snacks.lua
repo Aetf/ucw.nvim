@@ -256,8 +256,12 @@ return {
       desc = 'Go to buffer',
       silent = true,
     },
+    -- A single key, not a tree (Phase 9, D7): the old three-key
+    -- notifications group is spread by function now - search is
+    -- `<leader>sm`, dismiss is `<leader>un` - leaving history as the only
+    -- direct member, on the LazyVim-shaped single binding.
     {
-      '<leader>nh',
+      '<leader>n',
       function()
         Snacks.notifier.show_history()
       end,
