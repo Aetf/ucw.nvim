@@ -68,7 +68,13 @@ T['sources']['the keys bound to pickers all resolve'] = function()
   -- for `<M-F>`, which does not match how which-key registered it, so
   -- converting would fail this one key while every other key passed.
   -- `<leader>` is a literal space in this config.
-  for _, lhs in ipairs { '<C-p>', '<M-S-f>', '<M-f>', ' Th', ' bb', ' nn', ' nh', ' un' } do
+  -- Phase 9 (D3): the `<leader>s` search tree replaced `<leader>T`; the
+  -- LSP-backed members (ss/sS/sd/sD) resolve through ucw.lsp.actions and are
+  -- covered by tests/test_lsp_actions.lua, so only the snacks-direct keys
+  -- are listed here. `' s '` is `<leader>s<space>`, the picker-of-pickers.
+  for _, lhs in
+    ipairs { '<C-p>', '<M-S-f>', '<M-f>', ' sg', ' sb', ' sw', ' sc', ' sk', ' sh', ' s ', ' sm', ' bb', ' nh', ' un' }
+  do
     local map = child.lua_get(([[
             (function()
               local m = vim.fn.maparg(%q, 'n', false, true)

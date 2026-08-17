@@ -84,6 +84,9 @@ M.actions = {
   -- so forces the choice; it is resolved in favour of the label that has been
   -- on screen in which-key all along.
   diagnostics = { desc = 'Diagnostics for current buffer', picker = 'diagnostics_buffer' },
+  -- The workspace-wide variant (Phase 9, D3: `<leader>sD`); what `Telescope
+  -- diagnostics` with no arguments used to be, see above.
+  diagnostics_all = { desc = 'Diagnostics for the whole workspace', picker = 'diagnostics' },
 
   -- The inlay-hint toggle (`<leader>lI`) is not here: Phase 8 (D2) made it a
   -- `Snacks.toggle` (`ucw.toggles`), which owns the enable/is_enabled pairing

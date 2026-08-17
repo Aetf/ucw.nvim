@@ -104,13 +104,13 @@ T['which-key spec']['every leader group header is registered at boot'] = functio
         end)()
     ]])
   eq(groups, {
-    '<leader>T',
     '<leader>b',
     '<leader>c',
     '<leader>g',
     '<leader>go',
     '<leader>n',
     '<leader>q',
+    '<leader>s',
     '<leader>t',
     '<leader>u',
     '<leader>w',

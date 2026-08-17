@@ -16,7 +16,6 @@ local function config()
   -- here, registered eagerly, so every group is discoverable at boot even
   -- when its owner has not loaded yet.
   wk.add {
-    { '<leader>T', group = 'picker' },
     { '<leader>n', group = 'notifications' },
   }
   -- `<leader>c` = code (Phase 9, D2): actions on the code under the cursor,
@@ -34,6 +33,20 @@ local function config()
     lsp_actions.wk('<leader>cr', 'rename'),
     lsp_actions.wk('<leader>cf', 'format'),
     lsp_actions.wk('<leader>cl', 'codelens_run'),
+  }
+
+  -- `<leader>s` = search (Phase 9, D3). Most members are `keys =` entries in
+  -- `snacks.lua` (+ `sm` in `noice.lua`); these four are LSP-backed, so
+  -- their rhs resolve through `ucw.lsp.actions` like every other LSP entry
+  -- point. `ss` and `gO` share one action on purpose - search semantics
+  -- rather than a goto duplicate - and `sS` is workspace symbols' only door
+  -- since D1 deleted `gW`.
+  wk.add {
+    { '<leader>s', group = 'search' },
+    lsp_actions.wk('<leader>ss', 'document_symbols'),
+    lsp_actions.wk('<leader>sS', 'workspace_symbols'),
+    lsp_actions.wk('<leader>sd', 'diagnostics'),
+    lsp_actions.wk('<leader>sD', 'diagnostics_all'),
   }
 
   -- `<leader>u` = toggles/UI (Phase 9, D4): every on/off state in the

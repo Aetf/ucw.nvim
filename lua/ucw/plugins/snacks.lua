@@ -124,18 +124,27 @@ return {
   'folke/snacks.nvim',
   lazy = false,
   dependencies = { 'echasnovski/mini.nvim' },
-  -- Phase 8 (D1): moved here verbatim from `which-key.lua`; the `<leader>T`
-  -- and `<leader>n` group headers stay there.
+  -- `<leader>s` = search (Phase 9, D3): every content picker under one
+  -- prefix, LazyVim's namespace. The four LSP-backed members (`ss`/`sS`/
+  -- `sd`/`sD`) are in `which-key.lua` so their rhs resolve through
+  -- `ucw.lsp.actions`; `sm` (messages) is in `noice.lua`. The `<leader>T`
+  -- tree this replaces had exactly one member (`Th`, now `sc`).
   --
-  -- `<leader>Tr` (`Telescope reloader`) is gone rather than ported - snacks
-  -- has no equivalent source.
+  -- Deliberately *not* here: a key per remaining snacks source. The
+  -- `s<space>` picker-of-pickers reaches the whole long tail, which is what
+  -- keeps this tree small (design doc §2.3).
   keys = {
     {
       '<C-p>',
       function()
-        Snacks.picker.files()
+        -- `smart` minus its `buffers` finder (Phase 9 D3, r2.1): the
+        -- frecency and cwd-bonus boosts live in the matcher and survive;
+        -- open buffers do not get a quiet second door - `<leader>bb` is the
+        -- only one. `multi` is the composition mechanism; the annotated
+        -- `finders` field on smart.Config has no consumer (measured).
+        Snacks.picker.smart { multi = { 'recent', 'files' } }
       end,
-      desc = 'Find File',
+      desc = 'Find file (frecency)',
       silent = true,
     },
     {
@@ -157,11 +166,60 @@ return {
       silent = true,
     },
     {
-      '<leader>Th',
+      '<leader>sg',
+      function()
+        Snacks.picker.grep()
+      end,
+      desc = 'Grep in CWD',
+      silent = true,
+    },
+    {
+      '<leader>sb',
+      function()
+        Snacks.picker.lines()
+      end,
+      desc = 'Search lines in file',
+      silent = true,
+    },
+    {
+      '<leader>sw',
+      function()
+        Snacks.picker.grep_word()
+      end,
+      desc = 'Grep word under cursor (or selection)',
+      mode = { 'n', 'x' },
+      silent = true,
+    },
+    {
+      '<leader>sc',
       function()
         Snacks.picker.command_history()
       end,
       desc = 'Command history',
+      silent = true,
+    },
+    {
+      '<leader>sk',
+      function()
+        Snacks.picker.keymaps()
+      end,
+      desc = 'Search keymaps',
+      silent = true,
+    },
+    {
+      '<leader>sh',
+      function()
+        Snacks.picker.help()
+      end,
+      desc = 'Search help',
+      silent = true,
+    },
+    {
+      '<leader>s<space>',
+      function()
+        Snacks.picker()
+      end,
+      desc = 'All pickers',
       silent = true,
     },
     {
