@@ -15,37 +15,41 @@
 
 local M = {}
 
--- Bare `g`-prefixed motions, buffer-local, live only while a client is
--- attached. Content is unchanged from the pre-Phase-3 `setup_keymap` (Phase 9
--- owns bindings); what changed is that they are declared against named actions
--- instead of duplicated rhs strings, and that they no longer use which-key v2's
--- deprecated `wk.register`.
+-- Buffer-local keys, live only while a client is attached. Phase 9 (D1)
+-- shrank this from eleven bare `g` keys to four: the pre-0.11 set shadowed
+-- native motions in every LSP buffer (`ge` backward word-end, `g0`
+-- display-line start, `gt` next tab) and sat `gr` on what is now the native
+-- `gr*` prefix. The native vocabulary took over - `grr`/`gri`/`grt`/`gO`
+-- get picker-backed right-hand sides globally in `which-key.lua` - leaving
+-- here only the two motions whose native meaning this config deliberately
+-- supersedes (`gd`/`gD`, P3: strictly-superseding and community-mainstream)
+-- and two accelerators. `gD` means *declaration* now, per its native
+-- reading; it used to mean implementations, which live on `gri`.
+--
+-- Bare `vim.keymap.set`, not `which-key.add` (D9): this module runs in
+-- targets where which-key is deliberately absent, and a bare require of a
+-- deliberately-absent plugin is the exact seam Phase 6's R1 broke on.
 local buffer_keys = {
-  -- `code_action` is `mode = { 'n', 'x' }`, which is why the separate
-  -- `<M-S-CR>` "range code actions" key is gone: it called
-  -- `vim.lsp.buf.range_code_action`, removed from Neovim in 0.10, so it has
-  -- only thrown errors since. `code_action()` reads the visual selection
-  -- itself. Same story for `<leader>lA` in which-key.lua.
+  -- `code_action` is `mode = { 'n', 'x' }`: `code_action()` reads the visual
+  -- selection itself since 0.10, which is why there is no separate range key.
   ['<M-CR>'] = 'code_action',
-  ['<M-S-r>'] = 'rename',
   ['<c-k>'] = 'diagnostic_float',
-  ['g0'] = 'document_symbols',
-  ['gW'] = 'workspace_symbols',
-  ['ge'] = 'diagnostics',
-  ['gD'] = 'implementations',
   ['gd'] = 'definitions',
-  ['gt'] = 'type_definitions',
-  ['gH'] = 'declaration',
-  ['gr'] = 'references',
+  ['gD'] = 'declaration',
 }
 
 local function setup_keymaps(bufnr)
   local actions = require('ucw.lsp.actions')
-  local spec = {}
   for lhs, name in pairs(buffer_keys) do
-    table.insert(spec, actions.wk(lhs, name, { buffer = bufnr }))
+    local action = actions.actions[name]
+    -- `silent = true` to match what the which-key registration had (Phase 8
+    -- acceptance review R1: which-key defaults silent, `vim.keymap.set` not)
+    vim.keymap.set(action.mode or 'n', lhs, actions.rhs(name), {
+      buffer = bufnr,
+      desc = action.desc,
+      silent = true,
+    })
   end
-  require('which-key').add(spec)
 end
 
 ---@param bufnr integer

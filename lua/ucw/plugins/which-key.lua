@@ -85,6 +85,21 @@ local function config()
     },
   }
 
+  -- The native gr* vocabulary (Phase 9, D1): the lhs are Neovim's own 0.11+
+  -- global defaults, so the *keys* need no maintenance here - only the
+  -- right-hand sides change, list-producing keys open a snacks picker
+  -- instead of the quickfix/location list. `grn`/`gra`/`grx` stay fully
+  -- native and are deliberately not restated. `gd`/`gD` are buffer-local in
+  -- `ucw.lsp.attach` (they replace native *motions*, so they exist only
+  -- where a client is attached); these four replace native *mappings* and
+  -- so are global like the defaults they shadow.
+  wk.add {
+    lsp_actions.wk('grr', 'references'),
+    lsp_actions.wk('gri', 'implementations'),
+    lsp_actions.wk('grt', 'type_definitions'),
+    lsp_actions.wk('gO', 'document_symbols'),
+  }
+
   -- Git group headers; the keys are `keys =` entries in `gitsigns.lua`,
   -- `neogit.lua`, `diffview.lua` and `octo.lua` (Phase 8, D1/D3). octo's
   -- header lives here *eagerly* on purpose: its keys are lazy-load stubs, and

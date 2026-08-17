@@ -357,6 +357,39 @@ T['attach']['handlers fire for a client started outside vim.lsp.enable'] = funct
   eq(map.desc, 'Go to definition')
 end
 
+-- Phase 9 (D1)'s buffer-local instrument (design doc §6): the keymap
+-- snapshot script reads only the global mapping table, so the post-attach
+-- buffer-local set - the largest single chunk of the Phase 9 redesign - is
+-- invisible to it. Both halves are asserted exactly: the four keys that
+-- exist (desc resolved through ucw.lsp.actions), and the seven keys D1
+-- deleted staying deleted - re-introducing any of those would shadow a
+-- native motion (`ge`, `g0`, `gt`) or sit on the native `gr*` prefix again.
+T['attach']['the buffer-local key set is exactly the D1 set'] = function()
+  start_fake('faketest')
+  for lhs, want in pairs {
+    ['gd'] = 'Go to definition',
+    ['gD'] = 'Go to declaration',
+    ['<M-CR>'] = 'Code actions',
+    ['<C-K>'] = 'Show diagnostics on the current line',
+  } do
+    local m = child.lua_get(([[
+          (function()
+            local m = vim.fn.maparg(%q, 'n', false, true)
+            return { buffer = m.buffer, desc = m.desc }
+          end)()
+      ]]):format(lhs))
+    eq({ lhs, m.buffer, m.desc }, { lhs, 1, want })
+  end
+  -- code_action is `mode = { 'n', 'x' }`; the visual half exists too
+  eq(child.lua_get([[vim.fn.maparg('<M-CR>', 'x', false, true).buffer]]), 1)
+  for _, lhs in ipairs { 'gr', 'ge', 'g0', 'gt', 'gH', 'gW', '<M-S-r>' } do
+    -- no *buffer-local* mapping may exist; `maparg` legitimately resolves
+    -- nothing for `gr` (a prefix now) and a global mapping is fine
+    local buf = child.lua_get(([[vim.fn.maparg(%q, 'n', false, true).buffer or 0]]):format(lhs))
+    eq({ lhs, buf }, { lhs, 0 })
+  end
+end
+
 -- Regression for a bug this suite did NOT catch until a real TUI was driven:
 -- the attach handlers were installed from nvim-lspconfig's `config`, but
 -- nvim-lspconfig never loads for a Rust buffer (rust is not in servers.lua -

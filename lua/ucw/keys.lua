@@ -41,9 +41,9 @@ vim.keymap.set('n', 'k', function()
   return vim.v.count > 0 and 'k' or 'gk'
 end, { expr = true, silent = true })
 
--- jump to start/end of a text object
-map('n', 'gS', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_go_start<cr>g@]], opts)
-map('n', 'gE', [[<cmd>set opfunc=v:lua.require'ucw.keys.actions'.opfunc_textobj_go_end<cr>g@]], opts)
+-- `gS`/`gE` (jump to start/end of a text object) are gone (Phase 9, D1):
+-- `gE` shadowed the native backward-WORD-end motion, and the `[al`-family
+-- jumps in `mini.lua` cover the same ground without shadowing anything.
 
 -- folding and lsp
 vim.keymap.set('n', 'K', actions.hoverK, { desc = 'Hover over symbol', silent = true })
