@@ -10,6 +10,12 @@
 > `ucw/lsp/attach.lua`'s buffer-local set read from source, plus the
 > layered `<C-i>` probes recorded in §2.6.
 >
+> **r3 — as-built (2026-08-17).** Implemented in 13 commits on top of the
+> doc commit, one namespace move per commit in the §6 dependency order,
+> each verified by TUI snapshot diff (see §7 for the enumerated deltas and
+> the divergences found during construction). 312 → 324 global mappings.
+> Real-session trial runs next; acceptance review after that.
+>
 > **r2.1 — audit amendments (2026-08-16).** An independent design audit
 > re-verified every measured claim against the live config (iron key
 > meanings, native `grx`/`grt` on 0.12.4, target prefixes free, `<M-f>`/
@@ -363,3 +369,49 @@ the census failing is the designed reminder that this table needs a row.
 - Real-session trial: run the new layout for several days before
   acceptance review; expect label/placement tweaks as their own commits.
 - `<C-i>` end-to-end re-check after any tmux/Konsole config change.
+
+## 7. As-built record (r3, 2026-08-17)
+
+Commit sequence (`c7abf52` doc, then): `ae3ceec` D1 → `d3d1b41` D2a
+(l-tree→c) → `9944d27` D2c (words) → `5b3049c` D4 (u tree) → `eff1a71`
+D2b (l=:Lazy) → `5746098` D3a (s→q) → `c9e4ef0` D3b (s=search) →
+`14533f7` D3c (f tree) → `0c85db4` D7 (n single) → `cd2f4c7` D5a
+(e→r) → `615e5e6` D5b (e=explorer) → `a6f076c` D10 → `3d96f1d` D9 →
+`b497c5f` labels/`<leader>?`. Every commit's global-snapshot diff
+contained exactly its enumerated delta (the per-commit diffs are in the
+commit messages' claims; snapshots were taken from a fresh TUI boot each
+time after one diff picked up an `i_<CR>` autopairs mapping from
+interaction history — the Phase 8 "same interaction history" caveat,
+re-confirmed). Global count: 312 → 324.
+
+Divergences and findings from construction, none changing a decision:
+
+- **D1: deleting `gS` did not free the key** — lightspeed's own
+  `<Plug>Lightspeed_gS` (cross-window jump, pairing the existing `gs`)
+  resurfaced from under the shadow. Better than a free key: it is the
+  plugin's native vocabulary (P1).
+- **D1 instrument**: the buffer-local census lives in tests/test_lsp.lua
+  ("the buffer-local key set is exactly the D1 set"), asserting both the
+  four present keys and the seven deleted ones staying gone.
+- **D2c**: snacks.words adopted highlight-only (no jump keys), per the
+  r2.1 note. Measured live: 4 reference marks on a symbol, 0 on a
+  comment line, namespace `nvim.lsp.references`.
+- **D3b**: smart.Config's annotated `finders` field has **no consumer**
+  in the pinned snacks; the composition mechanism is `multi`. `<C-p>`
+  ships `multi = { 'recent', 'files' }`, verified live
+  (`p.opts.multi`), so buffers keep their one door.
+- **D5a**: iron hardcodes identifier descs (`core.lua:832`) with no
+  override, and every `named_maps` rhs is a thin public-API wrapper — so
+  the keys are bound in the spec's `keys =` with prose descs and
+  `iron.setup` gets no `keymaps` table at all. `iron_send_block`'s
+  hardcoded `<leader>ef` feedkeys became `<leader>rs` in the same
+  commit. The gS/gE opfunc pair's now-dead functions were removed from
+  `ucw.keys.actions` with D1.
+- **D9**: a `cond = false` plugin is dropped from
+  `lazy.core.config.plugins` entirely (indexing it errors); the embedded
+  census asserts absence via both spellings plus `package.loaded`.
+- **Leftover, observed not changed**: rustaceanvim still binds
+  buffer-local `<leader>a` (grouped code actions) in Rust buffers. It
+  predates this phase and only exists per-buffer, but it sits on the
+  letter §3 reserves for AI integration — resolve it when that goal
+  lands (candidate: fold into `<leader>ca` as a buffer-local override).
