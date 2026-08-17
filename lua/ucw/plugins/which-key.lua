@@ -41,7 +41,10 @@ local function config()
   -- point. `ss` and `gO` share one action on purpose - search semantics
   -- rather than a goto duplicate - and `sS` is workspace symbols' only door
   -- since D1 deleted `gW`.
+  -- `<leader>f` = find (files; keys in snacks.lua), `<leader>s` = search
+  -- (content).
   wk.add {
+    { '<leader>f', group = 'find' },
     { '<leader>s', group = 'search' },
     lsp_actions.wk('<leader>ss', 'document_symbols'),
     lsp_actions.wk('<leader>sS', 'workspace_symbols'),

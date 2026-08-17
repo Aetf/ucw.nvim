@@ -73,7 +73,25 @@ T['sources']['the keys bound to pickers all resolve'] = function()
   -- covered by tests/test_lsp_actions.lua, so only the snacks-direct keys
   -- are listed here. `' s '` is `<leader>s<space>`, the picker-of-pickers.
   for _, lhs in
-    ipairs { '<C-p>', '<M-S-f>', '<M-f>', ' sg', ' sb', ' sw', ' sc', ' sk', ' sh', ' s ', ' sm', ' bb', ' nh', ' un' }
+    ipairs {
+      '<C-p>',
+      '<M-S-f>',
+      '<M-f>',
+      ' ff',
+      ' fr',
+      ' fg',
+      ' sg',
+      ' sb',
+      ' sw',
+      ' sc',
+      ' sk',
+      ' sh',
+      ' s ',
+      ' sm',
+      ' bb',
+      ' nh',
+      ' un',
+    }
   do
     local map = child.lua_get(([[
             (function()

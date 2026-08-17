@@ -165,6 +165,32 @@ return {
       desc = 'Find in File',
       silent = true,
     },
+    -- `<leader>f` = find *files* (Phase 9, D3); content search is
+    -- `<leader>s`. No `fb`: buffers keep exactly one door, `<leader>bb`.
+    {
+      '<leader>ff',
+      function()
+        Snacks.picker.files()
+      end,
+      desc = 'Find files',
+      silent = true,
+    },
+    {
+      '<leader>fr',
+      function()
+        Snacks.picker.recent()
+      end,
+      desc = 'Recent files',
+      silent = true,
+    },
+    {
+      '<leader>fg',
+      function()
+        Snacks.picker.git_files()
+      end,
+      desc = 'Git files',
+      silent = true,
+    },
     {
       '<leader>sg',
       function()
