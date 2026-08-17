@@ -19,41 +19,30 @@ local function config()
     { '<leader>T', group = 'picker' },
     { '<leader>n', group = 'notifications' },
   }
-  -- LSP.
-  --
-  -- `<leader>ll` ("Enable LSP") is gone: LSP comes up by itself now, on the
-  -- FileType of a supported buffer. See lua/ucw/plugins/lspconfig.lua.
-  --
-  -- The right-hand sides come from `ucw.lsp.actions` rather than being spelled
-  -- out here, because the same actions are also bound buffer-locally on bare
-  -- `g` keys by `ucw.lsp.attach`. Two copies of the same `vim.lsp.*` call is
-  -- how `<leader>lA` (range_code_action, removed from Neovim in 0.10) and
-  -- `<leader>lH` (vim.lsp.declaration, never existed) went on being bound to
-  -- nothing for years. Bindings themselves are Phase 9's business; this is
-  -- only about where they are defined.
+  -- `<leader>c` = code (Phase 9, D2): actions on the code under the cursor,
+  -- LazyVim's letters exactly. The old 14-key `<leader>l` tree is gone -
+  -- goto/list keys have no leader duplicates, the gr* shapes below are the
+  -- only door (six of those entries were pure copies; `<leader>lA` and
+  -- `<leader>lH` were bound to functions that no longer/never existed, which
+  -- is why the rhs come from `ucw.lsp.actions` by name). The manual
+  -- document-highlight pair (`lh`/`l<C-L>`) is replaced by automatic
+  -- reference highlighting (snacks.words, see snacks.lua).
   local lsp_actions = require('ucw.lsp.actions')
   wk.add {
-    { '<leader>l', group = 'LSP' },
-    lsp_actions.wk('<leader>la', 'code_action'),
-    lsp_actions.wk('<leader>l0', 'document_symbols'),
-    lsp_actions.wk('<leader>lW', 'workspace_symbols'),
-    lsp_actions.wk('<leader>le', 'diagnostics'),
-    lsp_actions.wk('<leader>lD', 'implementations'),
-    lsp_actions.wk('<leader>ld', 'definitions'),
-    lsp_actions.wk('<leader>lt', 'type_definitions'),
-    lsp_actions.wk('<leader>lH', 'declaration'),
-    lsp_actions.wk('<leader>lr', 'references'),
-    lsp_actions.wk('<leader>lh', 'document_highlight'),
-    lsp_actions.wk('<leader>l<C-L>', 'clear_references'),
-    lsp_actions.wk('<leader>lf', 'format'),
-    lsp_actions.wk('<leader>lR', 'rename'),
-    lsp_actions.wk('<leader>l<CR>', 'codelens_run'),
+    { '<leader>c', group = 'code' },
+    lsp_actions.wk('<leader>ca', 'code_action'),
+    lsp_actions.wk('<leader>cr', 'rename'),
+    lsp_actions.wk('<leader>cf', 'format'),
+    lsp_actions.wk('<leader>cl', 'codelens_run'),
   }
 
   -- `<leader>lI` (inlay hints) and `<leader>lp` (diagnostic virtual lines)
-  -- are `Snacks.toggle`s now (Phase 8, D2) - stateful in this popup - not
-  -- `wk.add` entries. They stay in this file because the `<leader>l` tree is
-  -- registered here; snacks is in `dependencies` for load order.
+  -- are `Snacks.toggle`s (Phase 8, D2) - stateful in this popup - not
+  -- `wk.add` entries. Interim state until D4: they are all that is left of
+  -- the `<leader>l` tree, and this header keeps them discoverable; both the
+  -- header and the toggles' lhs move to `<leader>u` in the D4 commit, which
+  -- is what frees `<leader>l` for `:Lazy` (D2).
+  wk.add { { '<leader>l', group = 'LSP toggles' } }
   require('ucw.toggles').setup()
 
   -- Goto prev/next diag warning/error.
