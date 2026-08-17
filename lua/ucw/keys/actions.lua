@@ -102,7 +102,8 @@ end
 function M.iron_send_block(opts)
   opts = opts or { next = false }
   -- TODO: figure out a way to directly call iron api
-  vim.api.nvim_feedkeys(t('<leader>efih'), 'mx', false)
+  -- `<leader>rs` + the `ih` cell textobject (Phase 9, D5: was `<leader>ef`)
+  vim.api.nvim_feedkeys(t('<leader>rsih'), 'mx', false)
   if opts.next then
     vim.cmd([[normal ]h]])
   end

@@ -110,6 +110,7 @@ T['which-key spec']['every leader group header is registered at boot'] = functio
     '<leader>g',
     '<leader>go',
     '<leader>q',
+    '<leader>r',
     '<leader>s',
     '<leader>t',
     '<leader>u',

@@ -37,9 +37,10 @@ local function config()
   -- rather than a goto duplicate - and `sS` is workspace symbols' only door
   -- since D1 deleted `gW`.
   -- `<leader>f` = find (files; keys in snacks.lua), `<leader>s` = search
-  -- (content).
+  -- (content), `<leader>r` = REPL (keys in iron.lua).
   wk.add {
     { '<leader>f', group = 'find' },
+    { '<leader>r', group = 'REPL' },
     { '<leader>s', group = 'search' },
     lsp_actions.wk('<leader>ss', 'document_symbols'),
     lsp_actions.wk('<leader>sS', 'workspace_symbols'),
