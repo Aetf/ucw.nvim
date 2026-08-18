@@ -244,6 +244,29 @@ T['REPL keys']['degrade to a single warning when the binary is missing'] = funct
   eq(result.level, vim.log.levels.WARN)
 end
 
+-- The other failure shape: a filetype iron has no definition for at all.
+-- iron's own resolution `error()`s there too (providers.lua:16/:29 - it has
+-- no graceful path, by its own TODO comment), which is why the guard wraps
+-- it in pcall rather than only probing the resolved binary.
+T['REPL keys']['degrade the same way when no definition exists at all'] = function()
+  local result = child.lua_get([[
+        (function()
+          vim.cmd('enew!')
+          vim.bo.filetype = 'ucwnodef'
+          local warns = {}
+          vim.notify = function(msg) table.insert(warns, msg) end
+          local cb = vim.fn.maparg(' rr', 'n', false, true).callback
+          local ok1 = pcall(cb)
+          local ok2 = pcall(cb)
+          return { ok1 = ok1, ok2 = ok2, n = #warns, msg = warns[1] or '' }
+        end)()
+    ]])
+  eq(result.ok1, true)
+  eq(result.ok2, true)
+  eq(result.n, 1)
+  eq(result.msg:find('no usable REPL') ~= nil, true)
+end
+
 T['embedded contexts'] = new_set()
 
 -- Phase 9 (D9): which-key is cond-gated off under vscode-neovim and stays
