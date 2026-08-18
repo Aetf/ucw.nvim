@@ -215,6 +215,35 @@ T['eager specs']['every keys-bearing eager plugin really loads at boot'] = funct
   end
 end
 
+T['REPL keys'] = new_set()
+
+-- Trial-period fix: on a machine without the REPL binary (measured: the
+-- kpxc distrobox has no ipython) every REPL key threw E475 with a full
+-- traceback, on every press. The guard in iron.lua probes the resolved
+-- definition's binary first: one warning per filetype per session, then
+-- silence - and no error ever reaches the user. Driven through the real
+-- ` rr` mapping so the wrapper, not just the probe, is under test.
+T['REPL keys']['degrade to a single warning when the binary is missing'] = function()
+  local result = child.lua_get([[
+        (function()
+          require('iron.config').repl_definition.ucwtest = { command = { 'ucw-definitely-not-a-binary' } }
+          vim.cmd('enew!')
+          vim.bo.filetype = 'ucwtest'
+          local warns = {}
+          vim.notify = function(msg, level) table.insert(warns, { msg = msg, level = level }) end
+          local cb = vim.fn.maparg(' rr', 'n', false, true).callback
+          local ok1 = pcall(cb)
+          local ok2 = pcall(cb)
+          return { ok1 = ok1, ok2 = ok2, n = #warns, msg = warns[1] and warns[1].msg or '', level = warns[1] and warns[1].level }
+        end)()
+    ]])
+  eq(result.ok1, true)
+  eq(result.ok2, true)
+  eq(result.n, 1)
+  eq(result.msg:find('ucw%-definitely%-not%-a%-binary') ~= nil, true)
+  eq(result.level, vim.log.levels.WARN)
+end
+
 T['embedded contexts'] = new_set()
 
 -- Phase 9 (D9): which-key is cond-gated off under vscode-neovim and stays
