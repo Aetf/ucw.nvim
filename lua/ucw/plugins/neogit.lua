@@ -9,7 +9,10 @@ return {
   },
   dependencies = {
     'nvim-lua/plenary.nvim',
-    'sindrets/diffview.nvim',
+    -- kept in sync with lua/ucw/plugins/diffview.lua's fork switch - two
+    -- copies under the same `diffview` module name would silently conflict
+    -- on rtp order.
+    'dlyongemallo/diffview-plus.nvim',
   },
   config = function()
     local neogit = require('neogit')
