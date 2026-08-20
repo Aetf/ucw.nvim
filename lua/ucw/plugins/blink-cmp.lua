@@ -43,6 +43,11 @@ return {
     -- replaces cmp-nvim-lsp-signature-help. Upstream still labels this
     -- experimental; <C-k> toggles it, LSP trigger chars show it automatically.
     signature = { enabled = true },
+    -- The prebuilt Rust matcher (`libblink_cmp_fuzzy.so`) faults inside the
+    -- FFI boundary and takes nvim down with it - an open upstream bug on the
+    -- current v1.10.2 (saghen/blink.cmp#1832, #1895, #2429). The pure-Lua
+    -- matcher has no native code to crash and ranks the same candidates.
+    fuzzy = { implementation = 'lua' },
     sources = {
       providers = {
         -- carried over from cmp-buffer's `keyword_length = 6`: buffer words are
