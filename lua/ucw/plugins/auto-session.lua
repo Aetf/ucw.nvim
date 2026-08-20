@@ -65,8 +65,10 @@ end
 -- plugin filetypes to keep up to date.
 --
 -- Three things upstream's rule does not cover, and this does:
---   * diffview - closing the window would leave diffview's own view registry
---     pointing at it, so the view has to be taken down through its API first.
+--   * codediff - closing the window would leave codediff's own session
+--     registry pointing at it, and its diff panes are decorated *real* file
+--     buffers that the rule below deliberately keeps, so the view has to be
+--     taken down through its API first.
 --   * help - a help buffer *is* backed by a readable file, so upstream
 --     deliberately leaves it open; a restored session turns it into an empty
 --     split.
@@ -105,13 +107,11 @@ local function unsupported_window(win)
 end
 
 local function close_aux_windows()
-  local has_diffview, diffview_lib = pcall(require, 'diffview.lib')
-  if has_diffview then
+  local has_codediff, codediff_lifecycle = pcall(require, 'codediff.ui.lifecycle')
+  if has_codediff then
     for _, tab in pairs(A.nvim_list_tabpages()) do
-      local view = diffview_lib.tabpage_to_view(tab)
-      if view then
-        view:close()
-        diffview_lib.dispose_view(view)
+      if codediff_lifecycle.get_session(tab) then
+        codediff_lifecycle.close(tab)
       end
     end
   end

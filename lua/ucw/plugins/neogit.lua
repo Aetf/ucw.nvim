@@ -9,10 +9,9 @@ return {
   },
   dependencies = {
     'nvim-lua/plenary.nvim',
-    -- kept in sync with lua/ucw/plugins/diffview.lua's fork switch - two
-    -- copies under the same `diffview` module name would silently conflict
-    -- on rtp order.
-    'dlyongemallo/diffview-plus.nvim',
+    -- the diff viewer neogit hands off to; see lua/ucw/plugins/codediff.lua
+    -- for why it is codediff and not diffview.
+    'esmuellert/codediff.nvim',
   },
   config = function()
     local neogit = require('neogit')
@@ -22,8 +21,11 @@ return {
       disable_builtin_notifications = true,
       disable_commit_confirmation = true,
       integrations = {
-        diffview = true,
+        codediff = true,
       },
+      -- neogit auto-detects diffview first and only then codediff; be explicit
+      -- so the choice does not depend on what else happens to be installed.
+      diff_viewer = 'codediff',
       mappings = {
         -- for the status buffer
         status = {

@@ -101,7 +101,7 @@ end
 
 local function setup_icons()
   require('mini.icons').setup {}
-  -- Needed by neotree, diffview, octo, bufferline, snacks.picker, lualine
+  -- Needed by neotree, codediff, octo, bufferline, snacks.picker, lualine
   MiniIcons.mock_nvim_web_devicons()
   -- Icons for `vim.lsp.protocol.CompletionItemKind`, used by the LSP symbol
   -- pickers. Lives here rather than in `ucw.lsp` because it is icon setup, not

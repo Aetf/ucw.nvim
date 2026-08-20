@@ -106,7 +106,7 @@ local function config()
   }
 
   -- Git group headers; the keys are `keys =` entries in `gitsigns.lua`,
-  -- `neogit.lua`, `diffview.lua` and `octo.lua` (Phase 8, D1/D3). octo's
+  -- `neogit.lua`, `codediff.lua` and `octo.lua` (Phase 8, D1/D3). octo's
   -- header lives here *eagerly* on purpose: its keys are lazy-load stubs, and
   -- before Phase 8 the whole subtree was invisible until the first `:Octo`.
   -- The `<leader>gt` toggle subtree is gone (Phase 9, D4): its two members
