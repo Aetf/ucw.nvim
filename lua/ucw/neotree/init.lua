@@ -92,22 +92,21 @@ function M.config()
     },
   }
 
-  -- `<leader>e`/`E` = explorer (Phase 9, D5): the community meaning of `e`,
-  -- free since iron moved to `<leader>r`. `\` and `|` are the same two
-  -- actions' accelerators and predate the leader keys; all four stay.
+  -- `\` = toggle+reveal, `|` = the same but focus the tree. These predate the
+  -- leader keys and are what the muscle memory actually uses.
+  --
+  -- Phase 9's D5 added `<leader>e`/`E` as leader-space duplicates of these two
+  -- (the community meaning of `e`, free since iron moved to `<leader>r`). The
+  -- trial period removed them again: two doors to one action, and the one
+  -- nobody presses is the one that costs a `<leader>` letter and a line in
+  -- every `<leader>` popup. `\`/`|` are the surviving door - this is the same
+  -- "one door per thing" call D3 made when it declined `<leader>fb` next to
+  -- `<leader>bb`.
   vim.keymap.set('n', '|', [[<cmd>Neotree action=focus toggle=true reveal=true<cr>]], {
     desc = 'Toggle file tree (focus)',
   })
   vim.keymap.set('n', '\\', [[<cmd>Neotree action=show toggle=true reveal=true<cr>]], {
     desc = 'Toggle file tree',
-  })
-  vim.keymap.set('n', '<leader>e', [[<cmd>Neotree action=show toggle=true reveal=true<cr>]], {
-    desc = 'Toggle file tree',
-    silent = true,
-  })
-  vim.keymap.set('n', '<leader>E', [[<cmd>Neotree action=focus toggle=true reveal=true<cr>]], {
-    desc = 'Toggle file tree (focus)',
-    silent = true,
   })
 end
 
