@@ -38,10 +38,13 @@ local function config()
 
     -- Automatic LSP reference highlighting (Phase 9, D2): replaces the manual
     -- `<leader>lh` / `<leader>l<C-L>` pair - highlights update on cursor
-    -- movement (debounced) and clear by themselves. Highlight only: snacks
-    -- does not bind its `jump` function to anything by itself, and the
+    -- movement (debounced) and clear by themselves. Highlight only *here*:
+    -- snacks does not bind its `jump` function to anything by itself, and the
     -- conventional `]]`/`[[` bindings would shadow the native section
-    -- motions (design doc §2.2, r2.1), so no jump keys are bound here.
+    -- motions (design doc §2.2, r2.1). The jump keys are `[r`/`]r`, declared
+    -- as `reference_prev`/`reference_next` in `ucw.lsp.actions` and bound
+    -- buffer-locally in `ucw.lsp.attach` - a reference list exists only where
+    -- a client is attached (Phase 9.5, T6).
     words = { enabled = true },
 
     notifier = {

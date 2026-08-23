@@ -55,6 +55,24 @@ M.actions = {
   -- highlighting is automatic now (snacks.words, see snacks.lua), so the
   -- manual pair stopped being an action this config exposes.
   codelens_run = { desc = 'Run codelens at current line', lsp = 'codelens.run' },
+  -- The navigation half of that same snacks.words highlighting (Phase 9.5,
+  -- T6): highlighting the other occurrences of the symbol under the cursor is
+  -- only half a feature if nothing walks them. `[r`/`]r` rather than
+  -- LazyVim's `[[`/`]]`, which would shadow the native section motions (the
+  -- reason snacks.lua declined to bind any jump key at all) - and rather than
+  -- a `g`-prefixed pair, because this is previous/next in a sequence, which is
+  -- what the bracket family means. `cycle = true`: the last reference wraps to
+  -- the first instead of stopping.
+  reference_prev = {
+    desc = 'Go to previous reference',
+    fn = { mod = 'snacks.words', fn = 'jump' },
+    args = { -1, true },
+  },
+  reference_next = {
+    desc = 'Go to next reference',
+    fn = { mod = 'snacks.words', fn = 'jump' },
+    args = { 1, true },
+  },
   -- diagnostics are core, not LSP, hence a plain command rather than an
   -- `lsp` path
   diagnostic_float = {

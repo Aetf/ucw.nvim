@@ -92,9 +92,9 @@ local function config()
   -- The two first-level entries whose *keys* live in another spec, here only
   -- for their icon (rule 2 at the top of this file). A `wk.add` entry with no
   -- rhs and no desc adds nothing to the popup on its own - it merges into the
-  -- node the real mapping already created - which is exactly the "label for a
-  -- key that is not mapped" shape the `g[`/`g]` comment below warns about,
-  -- used on purpose this time. `<leader>n`'s own icon was snacks.nvim's
+  -- node the real mapping already created - a "label for a key that is not
+  -- mapped" on purpose, the one shape tests/test_keys.lua's fingerprint scans
+  -- exist to catch everywhere else. `<leader>n`'s own icon was snacks.nvim's
   -- plugin icon (which-key credits a key to the plugin that owns it, so every
   -- snacks-owned key wants to look the same); `\`'s file-tree accelerators
   -- are not under `<leader>` at all and keep neo-tree's.
@@ -107,34 +107,12 @@ local function config()
   -- stays keyless on purpose (low frequency).
   wk.add { { '<leader>l', '<cmd>Lazy<cr>', desc = 'Plugin manager (Lazy)', icon = { icon = '󰒲', color = 'blue' } } }
 
-  -- Goto prev/next diag warning/error.
-  --
-  -- These were dead from Phase 1 (the which-key v2 -> v3 conversion) until the
-  -- Phase 3 acceptance review: the v2 form was `{ rhs, "description" }`, and
-  -- the conversion put the *rhs* in `desc` and gave the entry no rhs at all.
-  -- which-key accepts that happily - it just registers a label for a key that
-  -- is not mapped - so `maparg('g[', 'n')` was empty and pressing the key did
-  -- nothing, silently, for a month. Exactly what `ucw.lsp.actions` exists to
-  -- prevent, three lines below the block it guards. tests/test_keys.lua now
-  -- asserts these two really jump, and - generically - that no entry anywhere
-  -- carries a right-hand side in its `desc`, which is the fingerprint of this
-  -- mistake.
-  wk.add {
-    {
-      'g[',
-      function()
-        require('ucw.keys.actions').diag_prev()
-      end,
-      desc = 'Go to previous diagnostic',
-    },
-    {
-      'g]',
-      function()
-        require('ucw.keys.actions').diag_next()
-      end,
-      desc = 'Go to next diagnostic',
-    },
-  }
+  -- Diagnostic navigation is not bound here: Neovim's own `[d`/`]d` (and
+  -- `[D`/`]D` for the first/last in the buffer) are the whole feature since
+  -- 0.11. The `g[`/`g]` pair that used to live here was a duplicate door on a
+  -- lhs that put the *direction* in the suffix, against the rule the rest of
+  -- the bracket family follows, and it sat on mini.ai's own goto keys - which
+  -- own them again (mini.lua, Phase 9.5 T6).
 
   -- The native gr* vocabulary (Phase 9, D1): the lhs are Neovim's own 0.11+
   -- global defaults, so the *keys* need no maintenance here - only the
@@ -242,7 +220,7 @@ local function config()
   --
   -- Modes are per key, matching where the mapping actually exists, because a
   -- label on a mode that has no such mapping is a row for a key that does
-  -- nothing - the `g[`/`g]` bug in popup form. `lightspeed` and `neoscroll`
+  -- nothing. `lightspeed` and `neoscroll`
   -- are both `lazy = false` with no `cond`, so their keys are never absent
   -- while these labels are present.
   local nxo = { 'n', 'x', 'o' }

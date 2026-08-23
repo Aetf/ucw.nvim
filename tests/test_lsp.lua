@@ -360,10 +360,13 @@ end
 -- Phase 9 (D1)'s buffer-local instrument (design doc §6): the keymap
 -- snapshot script reads only the global mapping table, so the post-attach
 -- buffer-local set - the largest single chunk of the Phase 9 redesign - is
--- invisible to it. Both halves are asserted exactly: the four keys that
--- exist (desc resolved through ucw.lsp.actions), and the seven keys D1
--- deleted staying deleted - re-introducing any of those would shadow a
--- native motion (`ge`, `g0`, `gt`) or sit on the native `gr*` prefix again.
+-- invisible to it. Both halves are asserted exactly: the keys that exist
+-- (desc resolved through ucw.lsp.actions), and the seven keys D1 deleted
+-- staying deleted - re-introducing any of those would shadow a native motion
+-- (`ge`, `g0`, `gt`) or sit on the native `gr*` prefix again. `[r`/`]r`
+-- (Phase 9.5, T6) join the positive half: they are buffer-local for the same
+-- reason, and a reference walk with nothing bound to it is the shape of
+-- feature this file exists to keep honest.
 T['attach']['the buffer-local key set is exactly the D1 set'] = function()
   start_fake('faketest')
   for lhs, want in pairs {
@@ -371,6 +374,8 @@ T['attach']['the buffer-local key set is exactly the D1 set'] = function()
     ['gD'] = 'Go to declaration',
     ['<M-CR>'] = 'Code actions',
     ['<C-K>'] = 'Show diagnostics on the current line',
+    ['[r'] = 'Go to previous reference',
+    [']r'] = 'Go to next reference',
   } do
     local m = child.lua_get(([[
           (function()

@@ -65,9 +65,10 @@ else
   map('n', '<c-_>', 'gcc', { noremap = false, desc = 'Toggle comment on this line' })
 end
 
--- common pairs
-vim.keymap.set('n', ']q', [[<cmd>cnext<cr>]], { desc = 'Go to next quickfix item' })
-vim.keymap.set('n', '[q', [[<cmd>cprevious<cr>]], { desc = 'Go to previous quickfix item' })
+-- No quickfix pair here: Neovim's own `[q`/`]q` (and `[Q`/`]Q`,
+-- `[<C-Q>`/`]<C-Q>`) are a strict superset of the `<cmd>cnext<cr>` pair this
+-- file used to bind: they take a count (`3]q`) and print a failure as a plain
+-- error message rather than through the Lua error path (Phase 9.5, T6).
 
 -- For mouse. The side buttons are the jumplist, the same pair a browser puts
 -- them on.

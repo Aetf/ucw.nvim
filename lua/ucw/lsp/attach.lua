@@ -16,7 +16,8 @@
 local M = {}
 
 -- Buffer-local keys, live only while a client is attached. Phase 9 (D1)
--- shrank this from eleven bare `g` keys to four: the pre-0.11 set shadowed
+-- shrank this from eleven bare `g` keys to four (Phase 9.5 T6 added the
+-- reference pair, which is not `g`-shaped and is described at its entry): the pre-0.11 set shadowed
 -- native motions in every LSP buffer (`ge` backward word-end, `g0`
 -- display-line start, `gt` next tab) and sat `gr` on what is now the native
 -- `gr*` prefix. The native vocabulary took over - `grr`/`gri`/`grt`/`gO`
@@ -36,6 +37,13 @@ local buffer_keys = {
   ['<c-k>'] = 'diagnostic_float',
   ['gd'] = 'definitions',
   ['gD'] = 'declaration',
+  -- Buffer-local for the same reason as the rest of this table: a reference
+  -- list exists only where a client does. snacks.words builds it from
+  -- `textDocument/documentHighlight`; on a client without that capability
+  -- there is nothing to walk and the jump is a no-op, the same self-filtering
+  -- the capability block below relies on.
+  ['[r'] = 'reference_prev',
+  [']r'] = 'reference_next',
 }
 
 local function setup_keymaps(bufnr)

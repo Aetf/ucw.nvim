@@ -4,8 +4,9 @@
 -- headers, core editor keys, the `<leader>l` tree), and `Snacks.toggle`
 -- objects (`ucw.toggles` + `gitsigns.lua`) for the four toggles.
 --
--- The founding bug: the Phase 3 acceptance review found `g[` / `g]`
--- (previous / next diagnostic) had not been mapped at all since Phase 1 -
+-- The founding bug: the Phase 3 acceptance review found `g[` / `g]` - the
+-- config's own diagnostic pair at the time, retired in Phase 9.5 (T6) in
+-- favour of Neovim's `[d`/`]d` - had not been mapped at all since Phase 1 -
 -- the which-key v2 form was `{ rhs, "description" }`, and the v2 -> v3
 -- conversion put the *rhs* string into `desc` and left the entry with no
 -- rhs. which-key accepts that without complaint, so the popup showed the
@@ -25,9 +26,13 @@ local T, child = H.new_integration_test()
 
 T['diagnostic navigation'] = new_set()
 
--- The regression itself.
-T['diagnostic navigation']['g[ and g] are really mapped'] = function()
-  for _, lhs in ipairs { 'g[', 'g]' } do
+-- The regression itself, on the keys that carry the feature now: Neovim's
+-- own `[d`/`]d`/`[D`/`]D`. Asserting the defaults is not asserting upstream -
+-- it is asserting that nothing in this config has shadowed them with an
+-- entry of the broken shape, which is exactly how the feature was lost the
+-- first time.
+T['diagnostic navigation']['[d and ]d are really mapped'] = function()
+  for _, lhs in ipairs { '[d', ']d', '[D', ']D' } do
     local map = child.lua_get(([[
             (function()
               local m = vim.fn.maparg(%q, 'n', false, true)
@@ -62,12 +67,62 @@ T['diagnostic navigation']['they jump to the next/previous diagnostic'] = functi
 
   -- `:normal` without `!` goes through mappings, so this exercises the real
   -- binding rather than calling ucw.keys.actions directly
-  child.cmd('normal g]')
+  child.cmd('normal ]d')
   eq(line(), 2)
-  child.cmd('normal g]')
+  child.cmd('normal ]d')
   eq(line(), 4)
-  child.cmd('normal g[')
+  child.cmd('normal [d')
   eq(line(), 2)
+end
+
+-- The other half of T6: `g[`/`g]` are mini.ai's again (left/right edge of a
+-- textobject, its upstream default keys), not a second diagnostic door.
+T['diagnostic navigation']['g[ and g] belong to mini.ai, not diagnostics'] = function()
+  for lhs, desc in pairs { ['g['] = 'Move to left "around"', ['g]'] = 'Move to right "around"' } do
+    for _, mode in ipairs { 'n', 'x', 'o' } do
+      local got = child.lua_get(([[vim.fn.maparg(%q, %q, false, true).desc]]):format(lhs, mode))
+      eq({ lhs, mode, got }, { lhs, mode, desc })
+    end
+  end
+end
+
+T['cell navigation'] = new_set()
+
+-- `[h`/`]h` (Phase 9.5, T6). Two things are asserted together because either
+-- alone would have passed before this existed: that the keys jump, and that
+-- they are *buffer-local to python*. The advance half of `<S-Enter>` used to
+-- run `:normal ]h` against a mapping nothing had created since mini.ai's
+-- `goto_*` keys were disabled, so it did nothing at all - a real file is
+-- opened rather than assigning `vim.bo.filetype`, because an error out of an
+-- ftplugin is swallowed on the option-assignment path.
+T['cell navigation']['[h and ]h walk cells, in python buffers only'] = function()
+  local path = vim.fn.tempname() .. '.py'
+  vim.fn.writefile({ '# %%', 'a = 1', '# %%', 'b = 2', '# %%', 'c = 3' }, path)
+  child.cmd('edit ' .. path)
+
+  local function line()
+    return child.lua_get([==[vim.api.nvim_win_get_cursor(0)[1]]==])
+  end
+
+  for _, lhs in ipairs { '[h', ']h' } do
+    eq({ lhs, child.lua_get(([[vim.fn.maparg(%q, 'n', false, true).buffer]]):format(lhs)) }, { lhs, 1 })
+  end
+
+  child.lua([[vim.api.nvim_win_set_cursor(0, { 2, 0 })]])
+  child.cmd('normal ]h')
+  eq(line(), 3)
+  child.cmd('normal ]h')
+  eq(line(), 5)
+  child.cmd('normal [h')
+  eq(line(), 3)
+
+  -- and nowhere else: no buffer-local mapping, and none leaked to the global
+  -- table either (`maparg().buffer` is 0 for a global one, absent for none)
+  child.cmd('enew!')
+  for _, lhs in ipairs { '[h', ']h' } do
+    eq({ lhs, child.lua_get(([[vim.fn.maparg(%q, 'n')]]):format(lhs)) }, { lhs, '' })
+  end
+  vim.fn.delete(path)
 end
 
 T['which-key spec'] = new_set()

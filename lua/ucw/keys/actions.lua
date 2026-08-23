@@ -4,45 +4,7 @@
 local utils = require('ucw.utils')
 local t = utils.t
 
-_G.UCW = {}
 local M = {}
-local H = {}
-
-H.echo = function(msg, is_important)
-  -- Construct message chunks
-  msg = type(msg) == 'string' and { { msg } } or msg
-  table.insert(msg, 1, { '(mini.ai) ', 'WarningMsg' })
-
-  -- Avoid hit-enter-prompt
-  local max_width = vim.o.columns * math.max(vim.o.cmdheight - 1, 0) + vim.v.echospace
-  local chunks, tot_width = {}, 0
-  for _, ch in ipairs(msg) do
-    local new_ch = { vim.fn.strcharpart(ch[1], 0, max_width - tot_width), ch[2] }
-    table.insert(chunks, new_ch)
-    tot_width = tot_width + vim.fn.strdisplaywidth(new_ch[1])
-    if tot_width >= max_width then
-      break
-    end
-  end
-
-  -- Echo. Force redraw to ensure that it is effective (`:h echo-redraw`)
-  vim.cmd([[echo '' | redraw]])
-  vim.api.nvim_echo(chunks, is_important, {})
-end
-
-H.unecho = function()
-  if H.cache.msg_shown then
-    vim.cmd([[echo '' | redraw]])
-  end
-end
-
-H.message = function(msg)
-  H.echo(msg, true)
-end
-
-H.error = function(msg)
-  error(string.format('(ucw.keys.actions) %s', msg), 0)
-end
 
 function M.bufdelete(bufnr, force)
   return utils.bufdelete(bufnr, force)
@@ -71,30 +33,21 @@ function M.bufprev()
   end
 end
 
--- `vim.diagnostic.goto_next`/`goto_prev`, which these used to call, are
--- deprecated for removal in 0.13 (runtime/lua/vim/diagnostic.lua:1562). Nobody
--- noticed because `g[`/`g]` were not actually mapped between Phase 1 and the
--- Phase 3 acceptance review (P3), so the line had not run in a month.
---
--- The old pair also defaulted to opening a float on arrival. Not restored:
--- Phase 4 made `virtual_lines = { current_line = true }` the way full
--- diagnostic text is shown, so the float would render the same message a second
--- time on top of it. `jump()`'s `opts.float` is itself deprecated in favour of
--- `on_jump`, so if that turns out to be wanted, that is where it goes.
---
--- What was here until now: a `pcall(require, 'trouble')` branch that preferred
--- trouble.nvim's own next/previous when its list had items. trouble is not a
--- spec in `lua/ucw/plugins/` and is not in `lazy-lock.json` - measured, the
--- `pcall` returns false - so the branch had been unreachable since long before
--- this config's Phase 0, which was supposed to delete exactly this kind of
--- thing (second-round review, Q4).
+-- Diagnostic navigation lives on Neovim's own `[d`/`]d`/`[D`/`]D` (Phase 9.5,
+-- T6). The wrappers that were here are gone: the defaults call the same
+-- `vim.diagnostic.jump()` and additionally honour a count. No float on arrival
+-- in either version, which is what this config wants - Phase 4 made
+-- `virtual_lines = { current_line = true }` the way full diagnostic text is
+-- shown, so a float would render the same message a second time on top of it.
 
-function M.diag_next()
-  return vim.diagnostic.jump { count = 1 }
-end
-
-function M.diag_prev()
-  return vim.diagnostic.jump { count = -1 }
+-- Previous / next ipython cell, the `[`/`]` form every other sequence in this
+-- config uses. Bound buffer-locally in `ftplugin/python.lua`: the `# %%` mark
+-- these jump between is a Python comment, and the textobject that finds it
+-- (`ucw.textobjects.ipython`, registered as mini.ai's `h`/`H`) has nothing to
+-- match in any other filetype.
+---@param dir 'prev'|'next'
+function M.cell_jump(dir)
+  require('mini.ai').move_cursor('left', 'a', 'h', { n_times = vim.v.count1, search_method = dir })
 end
 
 -- Send ipython cell under the current cursor to iron REPL.
@@ -105,7 +58,12 @@ function M.iron_send_block(opts)
   -- `<leader>rs` + the `ih` cell textobject (Phase 9, D5: was `<leader>ef`)
   vim.api.nvim_feedkeys(t('<leader>rsih'), 'mx', false)
   if opts.next then
-    vim.cmd([[normal ]h]])
+    -- `M.cell_jump`, not `:normal ]h`: this is bound to `<S-Enter>` globally,
+    -- and `]h` only exists in a python buffer. The mapping was never there to
+    -- press either - it was written against mini.ai's `goto_*` keys after
+    -- those had been disabled, so the advance half of `<S-Enter>` had been a
+    -- no-op ever since (Phase 9.5, T6).
+    M.cell_jump('next')
   end
 end
 
@@ -152,52 +110,5 @@ function M.clear()
     require('noice').cmd('dismiss')
   end)
 end
-
--- Jump between text objects
-function H.user_textobject_id(ai_type)
-  -- Get from user single character textobject identifier
-  local needs_help_msg = true
-  vim.defer_fn(function()
-    if not needs_help_msg then
-      return
-    end
-
-    local msg = string.format('Enter `%s` textobject identifier (single character) ', ai_type)
-    H.echo(msg)
-    H.cache.msg_shown = true
-  end, 1000)
-  local ok, char = pcall(vim.fn.getcharstr)
-  needs_help_msg = false
-  H.unecho()
-
-  -- Terminate if couldn't get input (like with <C-c>) or it is `<Esc>`
-  if not ok or char == '\27' then
-    return nil
-  end
-
-  if char:find('^[%w%p%s]$') == nil then
-    H.error('Input must be single character: alphanumeric, punctuation, or space.')
-    return nil
-  end
-
-  return char
-end
-function M.jump_textobject(prev_next, left_right, ai_type)
-  H.cache = {}
-
-  local ok, ai = pcall(require, 'mini.ai')
-  if not ok then
-    H.error('No mini-ai found')
-  end
-  -- Get user input
-  local tobj_id = H.user_textobject_id('a')
-  if tobj_id == nil then
-    return
-  end
-
-  -- Jump!
-  ai.move_cursor(left_right, ai_type, tobj_id, { n_times = vim.v.count1, search_method = prev_next })
-end
-_G.UCW.jump_textobject = M.jump_textobject
 
 return M

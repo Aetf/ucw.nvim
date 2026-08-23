@@ -18,9 +18,18 @@ local function setup_ai()
       around_last = 'al',
       inside_last = 'il',
 
-      -- will define our own
-      goto_left = '',
-      goto_right = '',
+      -- mini.ai's own goto keys, kept (Phase 9.5, T6). They mean *left /
+      -- right edge of a textobject*, not previous / next - so they belong on
+      -- `g`, and the `[`/`]` prefix stays free for the one thing it means
+      -- everywhere else in this config: previous / next in some sequence.
+      -- What used to be here instead was `[al`/`]al`/`[an`/`]an`/`[il`/`]il`/
+      -- `[in`/`]in`, a hand-rolled rebuild of these two that spent the bracket
+      -- prefix on the edge and squeezed direction into a third character, and
+      -- it forced the diagnostic pair onto `g[`/`g]`. Cost of going back to
+      -- upstream: no explicit "previous/next object" selection - `search_method`
+      -- below picks the object and a count reaches further ones.
+      goto_left = 'g[',
+      goto_right = 'g]',
     },
 
     custom_textobjects = {
@@ -41,27 +50,6 @@ local function setup_ai()
     -- 'cover_or_nearest', 'next', 'previous', 'nearest'.
     search_method = 'cover_or_next',
   }
-
-  -- Move cursor to corresponding edge of `a` textobject
-  local gen_action = function(seq)
-    local edge = ({ ['['] = 'left', [']'] = 'right' })[seq:sub(1, 1)]
-    local ai_type = seq:sub(2, 2)
-    local prev_next = ({ l = 'prev', n = 'next' })[seq:sub(3, 3)]
-    vim.keymap.set({ 'n', 'v' }, seq, function()
-      return string.format([[<Cmd>lua UCW.jump_textobject('%s', '%s', '%s')<CR>]], prev_next, edge, ai_type)
-    end, {
-      expr = true,
-      desc = string.format('Jump to %s edge of %s `%s` text object', edge, ai_type, prev_next),
-    })
-  end
-  gen_action('[al')
-  gen_action(']al')
-  gen_action('[an')
-  gen_action(']an')
-  gen_action('[in')
-  gen_action(']in')
-  gen_action('[il')
-  gen_action(']il')
 end
 
 local function setup_surround()
