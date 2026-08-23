@@ -181,19 +181,28 @@ vim.diagnostic.config {
     prefix = '●',
     --prefix = 'Hahaha:',
   },
-  -- Full diagnostic text under the cursor's line only, toggled by `<leader>lp`
-  -- (a `Snacks.toggle` in `ucw.toggles`, whose on-state must match this).
+  -- Full diagnostic text rendered under the cursor's line. Off by default,
+  -- turned on on demand with `<leader>uv` (a `Snacks.toggle` in `ucw.toggles`,
+  -- whose on-state must match the shape written there).
+  --
+  -- Off rather than on for the current line: `virtual_text` above already puts
+  -- the message on screen, and the extra two or three lines this inserts
+  -- reflow everything below the cursor on every cursor move, which costs more
+  -- attention than the wrapped text buys. The toggle is what makes that
+  -- affordable - reach for it on the rare diagnostic virtual_text truncates.
+  -- Trial-period tuning after Phase 9; it used to default on in the full UI.
   --
   -- This used to be lsp_lines.nvim, which replaced core's `virtual_lines`
   -- handler with its own. Core absorbed the same rendering (measured: same
   -- box drawing, same multi-line indentation), so the plugin is gone. Note the
   -- option is `current_line`; lsp_lines called it `only_current_line`.
   --
-  -- Off in the embedded contexts, the same branch (and the same reason) as
-  -- 'foldlevel' above: a browser textarea or a VSCode editor pane cannot spare
-  -- two or three lines under the cursor. lsp_lines was `cond = is_full_ui`, so
-  -- this is where that condition went rather than a new restriction.
-  virtual_lines = targets.is_full_ui() and { current_line = true } or false,
+  -- No target branch left. It used to read
+  -- `targets.is_full_ui() and { current_line = true } or false`, carrying
+  -- lsp_lines' `cond = is_full_ui` (a browser textarea or a VSCode editor pane
+  -- cannot spare two or three lines under the cursor) - see 'foldlevel' above
+  -- for the same shape. Off everywhere subsumes off in the embedded contexts.
+  virtual_lines = false,
   -- display higher severity signs over lower ones
   severity_sort = true,
 }

@@ -11,6 +11,18 @@
 -- its visual mode. The option name is the third trap - lsp_lines spelled it
 -- `only_current_line`, and core silently ignores that, so a toggle that "did
 -- not error" proved nothing.
+--
+-- Trial-period tuning after Phase 9 flipped the default to off everywhere (the
+-- rendering moves every line below the cursor on every cursor step), so the
+-- toggle is now the only way it ever turns on - which makes its first press,
+-- and the exact `{ current_line = true }` shape it writes, the thing under
+-- test rather than a detail.
+--
+-- The "off in the embedded contexts" case that used to sit here went with it:
+-- once the default is `false` unconditionally, booting `ucw.options` with the
+-- firenvim marker asserts the same `false` every other case asserts, so it
+-- could no longer fail for the reason it claimed to cover. `tests/test_fold.lua`
+-- still exercises that technique on 'foldlevel', which does still branch.
 
 local H = require('helpers')
 local new_set = MiniTest.new_set
@@ -20,8 +32,11 @@ local T, child = H.new_integration_test()
 
 T['virtual_lines'] = new_set()
 
-T['virtual_lines']['is on for the current line in the full UI'] = function()
-  eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), { current_line = true })
+T['virtual_lines']['is off by default'] = function()
+  -- Off in the full UI too, not just in the embedded targets below: this is
+  -- the deliberate default from `ucw.options`, not an accident of the target.
+  eq(child.lua_get([[require('ucw.targets').is_full_ui()]]), true)
+  eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), false)
 end
 
 T['virtual_lines']['is rendered by Neovim, not by a plugin'] = function()
@@ -37,31 +52,16 @@ T['virtual_lines']['is rendered by Neovim, not by a plugin'] = function()
   )
 end
 
-T['virtual_lines']['is off in the embedded contexts'] = function()
-  -- Same technique as tests/test_fold.lua: the helper's `pre_case` boots the
-  -- config before any test code runs, so the target is already decided by
-  -- then. Boot only `ucw.options`, with the firenvim marker set.
-  child.restart {}
-  child.o.rtp = vim.fn.getcwd() .. ',' .. child.o.rtp
-  child.g.started_by_firenvim = true
-  child.lua([[require('ucw.options')]])
-
-  eq(child.lua_get([[require('ucw.targets').is_full_ui()]]), false)
-  -- A browser textarea cannot spare two or three lines under the cursor.
-  -- lsp_lines was `cond = is_full_ui`; this is where that condition went.
-  eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), false)
-end
-
 T['<leader>uv'] = new_set()
 
-T['<leader>uv']['toggles the rendering off and back on'] = function()
-  child.lua([[Snacks.toggle.get('diag_virtual_lines'):toggle()]])
-  eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), false)
-
+T['<leader>uv']['toggles the rendering on and back off'] = function()
   child.lua([[Snacks.toggle.get('diag_virtual_lines'):toggle()]])
   -- Spelled `current_line`, not lsp_lines' `only_current_line`, which core
   -- accepts and ignores.
   eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), { current_line = true })
+
+  child.lua([[Snacks.toggle.get('diag_virtual_lines'):toggle()]])
+  eq(child.lua_get([[vim.diagnostic.config().virtual_lines]]), false)
 end
 
 T['<leader>uv']['is bound in normal and visual mode'] = function()

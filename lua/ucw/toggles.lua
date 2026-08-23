@@ -47,8 +47,9 @@ function M.setup()
   -- (as `ucw.keys.actions.toggle_virtual_lines` until Phase 8 made it this
   -- object). The option is `current_line` - lsp_lines spelled it
   -- `only_current_line`, and the old toggle kept writing that name, which
-  -- core silently ignores. The on-state `{ current_line = true }` matches
-  -- `options.lua`'s full-UI default, so the first press turns rendering off.
+  -- core silently ignores. `options.lua` now defaults this off everywhere, so
+  -- the first press turns rendering *on*; the on-state written here
+  -- (`{ current_line = true }`) is the only place that shape still lives.
   --
   -- lsp_lines bound this for normal + visual/select + operator-pending;
   -- operator-pending is meaningless for a toggle, the other two are kept.
