@@ -17,8 +17,9 @@ the record of what the trial changed afterwards.
 
 T1–T5 reopen no Phase 9 decision: what the trial found there was one duplicate
 door, a presentation layer nobody had looked at as a whole, and two editor
-behaviours that were quietly broken. T6 does reopen one — D2's "no jump key for
-snacks.words" — and states the rule the whole `[`/`]` family now follows.
+behaviours that were quietly broken. T6 and T7 each reopen one — D2's "no jump
+key for snacks.words", and which view `<CR>` opens on a commit — and each
+states the rule its family now follows.
 
 ## 1. T1 — `<leader>e`/`E` dropped (supersedes §2.5, §3)
 
@@ -278,7 +279,130 @@ mappings: the 16 `[al`-family entries gone, `[q`/`]q` reading `:cprevious`/
 `x` as well as `n`. `[h`/`]h` and `[r`/`]r` are buffer-local and so correctly
 invisible to it — which is why they have the instrumented cases above.
 
-## 7. What this changes in earlier documents
+## 7. T7 — `<CR>` on a commit, and one key to close a window
+
+Two independent findings from the same session, both about which key does what
+in a window this config did not write.
+
+### 7.1 `<CR>` opens codediff, everywhere a commit can be under the cursor
+
+neogit's commit view renders the message well and the diff poorly: one inline
+unified hunk list, no file tree, no side-by-side, none of the character-level
+highlighting codediff's engine produces. `dd` already reached codediff through
+the diff popup (`DiffPopup` → `this` → `integrations/codediff`), so the good
+view was two keys away while `<CR>`, the key the hand goes to, opened the poor
+one.
+
+`<CR>` is now the same door in both the log view **and** the status buffer, on
+commit rows only. Three things make that work, and none of them are obvious
+from the code they touch:
+
+- **neogit has no `log_view` mapping table.** The log view binds its own
+  functions onto whatever lhs `mappings.status` gave each *action name*
+  (`[status_maps["GoToFile"]] = function() … end`), so moving `<cr>` in
+  `neogit.setup` would move it in the status buffer too, where it means "open
+  the file under the cursor" and has to keep meaning that. The override is
+  therefore buffer-local.
+- **`FileType` is too early.** `lib/buffer.lua` sets the filetype (:766), then
+  the mappings (:785), then shows the window (:807). A `FileType` callback runs
+  before neogit's own mapping exists and is overwritten by it — measured, the
+  override simply had no effect. `BufWinEnter` is the first event upstream
+  guarantees is after the mapping, which is why it is used: an event, not a
+  delay standing in for one.
+- **"Is there a commit here" is not "is there a yankable here".** The status
+  buffer gives *file* rows a `yankable` too — their filename
+  (`buffers/status/ui.lua:343`) — so the test has to be the one neogit's own
+  `n_goto_file` makes: a row carrying an `absolute_path` is a file, and only a
+  row carrying none is a commit. Everything else on the status buffer falls
+  through to the callback neogit bound, captured at wrap time. That capture is
+  guarded by its own `desc`: `BufWinEnter` fires again every time the buffer is
+  shown, and re-reading `maparg` there would capture the wrapper as its own
+  fallback.
+
+Reaching codediff through its `commit` section rather than `log`: the `commit`
+path resolves through `git rev-parse` and so takes any commit-ish, while the
+`log` path only pattern-matches a hex oid out of the string. That is what makes
+the same key work on the `Head:` line, on a stash entry, and on a row under
+`Recent Commits`.
+
+### 7.2 `<leader>gm` — the commit message, which codediff has nowhere
+
+A codediff tab shows a diff and nothing else: not the subject, not the body,
+not even which commit it is. Nor is the message reachable by going back — the
+status buffer never had `<S-CR>`, because neogit declares `PeekFile` in the
+default mappings and `buffers/status/init.lua` never wires it up. So removing
+the commit view from `<CR>` removed the only door to the message.
+
+`<leader>gm` is that door, and it answers from wherever it is pressed: the
+commit under the cursor in a neogit buffer, or the revision the current
+codediff tab is diffing (`codediff.ui.lifecycle.session`'s per-tabpage
+`modified_revision`). `git show --no-patch --format=fuller` into a
+`Snacks.win` float — `fuller` because author and committer differ on anything
+rebased or cherry-picked, which is exactly what the commit view showed.
+
+The resolver lives in `lua/ucw/git.lua` rather than either plugin spec because
+both ends need it: `neogit.lua` rebinds `<CR>` through it, `codediff.lua` binds
+`<leader>gm` to it.
+
+### 7.3 `q` closes a window; `<Esc>` does not
+
+Measured across every window this config can open, in a real TUI:
+
+| closes on `q` | lazy, mason, checkhealth, neo-tree, snacks picker, snacks notification history, noice split and popup views, every codediff tab, all four neogit buffers, `man`, the native LSP hover float, gitsigns' preview float |
+| --- | --- |
+| **also closes on `<Esc>`** | neogit (upstream binds it in the log, commit and popup buffers; the status buffer's is this config's, added so neogit is internally consistent), mason, the snacks picker |
+| **`<Esc>` cancels, `q` is a literal character** | the picker's input, `vim.ui.input`, which-key |
+| **neither — `:q` was the only way out** | **help, quickfix/loclist** |
+
+So `q` was already the convention, in 11 window kinds out of 13, and `<Esc>`
+was a close key in two places only: neogit, and things you type into. The rules
+this settles on are a description of that, not a redesign:
+
+1. A window you only read or navigate closes on **`q`**.
+2. A window you type into cancels on **`<Esc>`** — native insert-mode
+   semantics, where `q` is a character.
+3. A terminal (toggleterm, the iron REPL) closes with the key that opened it:
+   `q` in normal mode is a macro register and cannot be taken.
+4. `<Esc>` keeps its global meaning everywhere else — "clear search highlight
+   and dismiss notifications" (`ucw.keys`). Giving it a second, window-shaped
+   job would mean pressing it in the many windows where it does not close and
+   watching nothing happen.
+
+neogit is a documented exception rather than a thing to fix: upstream binds
+`<esc>` in three of its four buffers, and the status buffer's entry in
+`neogit.lua` exists so the fourth agrees with them.
+
+The change is one autocmd: `q` → `<C-w>q` in `help` and `qf`, buffer-local,
+verbatim from Neovim's own `man` mapping. Everything else already had it.
+
+### 7.4 Guards
+
+`tests/test_git.lua` is new and drives a real `:Neogit` on a throwaway
+repository, because both halves of 7.1 read correct and are not: it asserts the
+wrap exists and is buffer-local, that a commit row resolves to an oid while a
+modified-file row and a section header resolve to nothing, that `<CR>` on the
+file row still opens that file, and that `<leader>gm` renders body and
+`AuthorDate` for the commit under the cursor and warns where there is no commit.
+`tests/test_keys.lua` gains the `q` case, which asserts both halves — mapped in
+those two windows, and still unmapped (so still a macro register) in an
+ordinary buffer.
+
+One lesson is worth keeping out of the helper's docstring: **neogit paints a
+status skeleton before its git calls return** (`Head: 0000000 (no commits)`,
+four lines). Waiting on filetype plus a line count caught that skeleton, and
+every case then asserted against an empty repository — a green helper and a
+meaningless test. The wait is on a `Recent Commits` section existing.
+
+Every case was reverse-verified by reinstating the bug it covers: `FileType`
+instead of `BufWinEnter`, the `absolute_path` test removed, the fallback call
+removed, `help` without `qf`, and the float's filetype changed — each failed
+exactly the cases it should and no others.
+
+The global keymap snapshot moves by exactly one line, 310 → 311: `<leader>gm`.
+The `<CR>` override and the `q` mappings are buffer-local and correctly
+invisible to it, which is why they have the instrumented cases above.
+
+## 8. What this changes in earlier documents
 
 | document | passage | now |
 |---|---|---|
@@ -286,12 +410,12 @@ invisible to it — which is why they have the instrumented cases above.
 | `phase9-keybindings.md` | §5 extension rule | a new namespace also needs a lowercase label, an explicit icon, and `mode = { 'n', 'x' }` (T2) |
 | `phase4-folding-comments.md` | §3.2 diagnostic default | `virtual_lines` defaults to `false` (T4) |
 | `phase9-keybindings.md` | §2.2 r2.1 (no jump key for snacks.words) | jumps are `[r`/`]r`, buffer-local (T6) |
-| `phase9-keybindings.md` | §5 extension rule | previous/next is `[`/`]` + a category letter, and nothing else (T6) |
+| `phase9-keybindings.md` | §5 extension rule | previous/next is `[`/`]` + a category letter, and nothing else (T6); a read-only window closes on `q` (T7) |
 
 Phase 8's documents are not amended: they record the Phase 8 tree, which Phase 9
 already superseded.
 
-## 8. As-built
+## 9. As-built
 
 `9252521` T4 → `ab3c8e6` T1 → `3716ee1` T2 → `044920f` T5 → `7430074` T3 →
 `c492113` T5 fixes (self-review) → `a88ac1a` label nit → `0f74c1f` T6. Outside
@@ -311,7 +435,7 @@ leaf Sentence-case), the visual-mode header census, "gq/gw map nothing", the
 unlabelled-key scan over `n`/`x`/`o`, mini.ai's ownership of `g[`/`g]`, and the
 `cell navigation` set.
 
-## 9. Open
+## 10. Open
 
 - **`<leader>e`/`E` are free.** So are `a d h i j k m o p v x y z` and most
   capitals (§3 of Phase 9); `d` and `a` stay reserved for the debugger and AI
