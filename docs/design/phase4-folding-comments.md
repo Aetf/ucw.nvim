@@ -322,6 +322,13 @@ unchanged (§2.1).
 
 ### 3.2 Diagnostics: delete `lsp_lines.nvim`
 
+> **Superseded in one part (2026-08-22).** The plugin deletion, the rendering
+> parity and the toggle all stand, but the *default* below no longer holds:
+> `virtual_lines` is `false` everywhere now, and the toggle (`<leader>uv` since
+> Phase 9 D4) is what turns it on. `virtual_text` already carries the message,
+> and the two or three inserted lines move everything below the cursor on every
+> cursor step. See `phase9.5-trial-period.md` §4.
+
 Delete `lua/ucw/plugins/lsp_lines.lua`. Move the two things it owned into code
 that already exists:
 
@@ -552,7 +559,7 @@ All measured in a real TUI or a real headless boot, not inferred:
 | Insert mode on expr folds, `InsertNoFold` removed | `foldmethod` stays `expr`, `w:oldfdm` never set, cursor and viewport unchanged across `A…<Esc>` |
 | Core `gc` in markdown | `--` inside a ```` ```lua ```` fence, `<!-- -->` outside, `3gcc` honours the count, blank line becomes `<!---->` |
 | `<c-_>` → `gcc` | mapped; `gcc` resolves to `vim/_core/defaults`, not a plugin |
-| `virtual_lines` handler | `$VIMRUNTIME/lua/vim/diagnostic.lua`, config `{ current_line = true }` |
+| `virtual_lines` handler | `$VIMRUNTIME/lua/vim/diagnostic.lua`, config `{ current_line = true }` (the *default* is `false` since 2026-08-22, see §3.2) |
 | `<leader>lp` | toggles off and back on, rendering matches the old plugin |
 | `just unit` / `just int` | 28 + 53 cases, 0 failures |
 

@@ -16,6 +16,14 @@
 > the divergences found during construction). 312 → 324 global mappings.
 > Real-session trial runs next; acceptance review after that.
 >
+> **r4 — superseded in places by the trial period (2026-08-22/23).** The
+> real-session trial r3 called for is done, and it changed four things this
+> document describes: `<leader>e`/`E` are gone, two group labels were renamed,
+> every first-level entry now carries an explicit icon, and group headers
+> register for visual mode as well. The passages below are marked **(r4)**
+> where that applies; the reasoning, the mechanisms behind it and the guards
+> live in **`phase9.5-trial-period.md`**. Decisions D1–D10 themselves stand.
+>
 > **r2.1 — audit amendments (2026-08-16).** An independent design audit
 > re-verified every measured claim against the live config (iron key
 > meanings, native `grx`/`grt` on 0.12.4, target prefixes free, `<M-f>`/
@@ -206,7 +214,12 @@ Implementation note: inlay hints keeps Phase 8's custom global toggle —
 snacks' built-in factory is per-buffer (P1 regression risk, census
 guards it).
 
-### 2.5 D5 — iron → `<leader>r` (REPL); explorer takes `<leader>e`/`E` ✔
+**(r4)** The group label is `toggle/ui`, not `toggles/UI`
+(`phase9.5-trial-period.md` §2). `uv`'s key is unchanged, but what it toggles
+*from* is not: diagnostic virtual lines now default to off
+(`phase9.5-trial-period.md` §4).
+
+### 2.5 D5 — iron → `<leader>r` (repl); explorer takes `<leader>e`/`E` ✔ (explorer half reverted in r4)
 
 | new | was | action |
 |---|---|---|
@@ -223,6 +236,14 @@ guards it).
 All descs rewritten as prose (R5b). `<C-CR>`/`<S-CR>` unchanged.
 `<leader>e` = neo-tree toggle+reveal (=`\`), `<leader>E` = focus (=`|`);
 both accelerators stay.
+
+**(r4)** The explorer half did not survive the trial: `\`/`|` are what the
+hands actually use, so `<leader>e`/`E` were duplicates and are gone — the
+letters are free. The iron move (the table above) stands, under the label
+`repl`. See `phase9.5-trial-period.md` §1.
+
+**(r4)** The `<leader>r` group label is `repl`, not `REPL` — group labels are
+lowercase (`phase9.5-trial-period.md` §2).
 
 ### 2.6 D6 — `<Tab>`/`<S-Tab>` stay; `<C-i>` recovered via environment ✔
 
@@ -289,26 +310,31 @@ keys rejected (`|`/`\` are neo-tree accelerators here).
 |---|---|---|
 | `<leader>b` | buffer | `bb` picker, `bd` pick-close, `bx`/`bX` (unchanged) |
 | `<leader>c` | code | `ca` `cr` `cf` `cl` |
-| `<leader>e`/`E` | explorer | toggle / focus (accel `\`, `|`) |
 | `<leader>f` | find | `ff` `fr` `fg` |
 | `<leader>g` | git | unchanged minus `gt*`; octo desc fixed |
 | `<leader>l` | plugin manager | `:Lazy` |
 | `<leader>n` | notifications | single key: history |
 | `<leader>q` | quit/session | `qs` `qr` `ql` `qq` |
-| `<leader>r` | REPL | `rr` `rf` `rl` `rs` `rc` `rx` `rq` `r<CR>` |
+| `<leader>r` | repl | `rr` `rf` `rl` `rs` `rc` `rx` `rq` `r<CR>` |
 | `<leader>s` | search | `sg` `sb` `sw` `sc` `sm` `ss` `sS` `sd` `sD` `sk` `sh` `s<space>` |
 | `<leader>t` | tab | unchanged |
-| `<leader>u` | toggles+UI | `uh` `uv` `ub` `ud` `uD` `uw` `us` `un` |
+| `<leader>u` | toggle/ui | `uh` `uv` `ub` `ud` `uD` `uw` `us` `un` |
 | `<leader>w` | window | `ws` `wv` `wx` |
 | `<leader>?` | searchability | which-key buffer popup |
 | `<leader>`` | alternate buffer | unchanged (typo fixed) |
 
 Dissolved: `<leader>T`, `<leader>gt`, `<leader>n` (as tree), old
 `<leader>l`/`<leader>e`/`<leader>s` meanings.
-Freed for the future: `a d h i j k m o p v x y z` + most capitals —
+Freed for the future: `e E a d h i j k m o p v x y z` + most capitals —
 of which `d` is earmarked for the debugger goal and `a` for the optional
 AI-integration goal (both still ahead in this project, both LazyVim's
 letters; r2.1).
+
+**(r4)** The table is current, not the r3 original: the `<leader>e`/`E`
+explorer row is gone (T1, which is why `e`/`E` are back in the freed list) and
+the two lowercase labels are the trial's spelling. Every prefix in it also
+carries an explicit icon and a header registered for `n` and `x` — see
+`phase9.5-trial-period.md` §2, which is where the naming rule lives.
 
 Non-leader deltas: `<C-p>` → smart files (buffers excluded, §2.3);
 buffer-local LSP set per §2.1 (signature help stays blink's `<C-k>`,
@@ -344,6 +370,14 @@ comes from this table, not from the plugin's README defaults:
 New namespace ⇒ claim a free prefix (§3), add the eager group header in
 which-key.lua, and add it to the group census in `tests/test_keys.lua` —
 the census failing is the designed reminder that this table needs a row.
+
+**(r4)** That header has three required parts, each with its own guard, because
+each fails silently and only in the popup: a **lowercase** group label, an
+**explicit `icon`** (which-key otherwise guesses one by keyword-matching the
+description), and **`mode = { 'n', 'x' }`** (`wk.add` defaults to `n`, which is
+what left visual mode rendering `+N keymaps`). A new key of this config's own
+also needs a real `desc` at its definition site — a mapping without one renders
+as its own right-hand side. `phase9.5-trial-period.md` §2–§3.
 
 ## 6. Verification plan (when implementation is approved)
 
