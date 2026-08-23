@@ -60,41 +60,66 @@ au.group('RestoreLastWindow', {
 
 -- The other half of 'autoread' (see `ucw.options`): the option only says what
 -- to do when nvim notices a file changed on disk, and nvim only looks when
--- `:checktime` runs. In a terminal that is buffer-entry, `:!cmd`, and focus
--- events - so a file rewritten by a formatter, a `git checkout`, or the other
--- half of a split tmux session goes unnoticed for as long as the cursor stays
--- put. Measured before this existed: an externally rewritten buffer still
--- showed the old text minutes later.
+-- `:checktime` runs. Two things run it by themselves - entering a buffer, and
+-- a terminal focus event (core does that one, no config involved) - so what
+-- is left uncovered is a buffer you are sitting in, in a focused window,
+-- while a formatter or a `git checkout` rewrites the file. Measured before
+-- this existed: the buffer still showed the old text minutes later.
+--
+-- (The focus path was dead here for another reason entirely: tmux's
+-- `focus-events` was set without a value, which tmux reads as *off*, so
+-- Konsole's focus reporting stopped at tmux. Fixed in the tmux config; this
+-- autocmd is not a workaround for it.)
 --
 -- `CursorHold` is the idle hook, not a delay standing in for an event: nvim
 -- has no "file changed" notification to hook (`FileChangedShell` fires *from*
 -- the check), so the check has to be scheduled, and 'updatetime' (300ms here)
 -- is the interval the editor already uses for that.
 --
--- `:checktime` is a no-op for a modified buffer - it sets the "changed on
--- disk" flag and prompts instead of overwriting - so unsaved work is never at
--- risk. The `mode()`/`getcmdwintype()` guard is the known crash-shaped case:
--- running it from the command-line window raises E11.
-au.group('AutoReadChanged', {
-  {
-    { 'FocusGained', 'BufEnter', 'CursorHold', 'CursorHoldI', 'TermLeave' },
-    '*',
-    function()
-      if vim.fn.mode() ~= 'c' and vim.fn.getcmdwintype() == '' then
-        vim.cmd('checktime')
-      end
-    end,
-  },
-})
+-- Not in the embedded targets, the same call `conform.lua`'s `format_on_save`
+-- makes and for the same reason: a reload rewrites the buffer's text, and
+-- neither host is a place for this config to do that unasked. vscode-neovim
+-- mirrors documents VSCode itself owns and reloads; firenvim's buffers are a
+-- browser textarea, where there is no file to be out of date with.
+--
+-- Unsaved work is never at risk, and that is measured rather than assumed: with
+-- the buffer modified, `:checktime` raises the W12 prompt and does not reload,
+-- and `FileChangedShellPost` never fires. The `mode()`/`getcmdwintype()` guard
+-- is the known crash-shaped case: running it from the command-line window
+-- raises E11.
+if require('ucw.targets').is_full_ui() then
+  au.group('AutoReadChanged', {
+    {
+      { 'FocusGained', 'BufEnter', 'CursorHold', 'CursorHoldI', 'TermLeave' },
+      '*',
+      function()
+        if vim.fn.mode() ~= 'c' and vim.fn.getcmdwintype() == '' then
+          vim.cmd('checktime')
+        end
+      end,
+    },
+  })
 
--- Say so when the reload actually happened. 'autoread' is silent, which makes
--- a buffer changing under the cursor look like nvim losing the edit.
-au.group('AutoReadNotify', {
-  {
-    'FileChangedShellPost',
-    '*',
-    function()
-      vim.notify('Reloaded from disk (changed externally)', vim.log.levels.INFO)
-    end,
-  },
-})
+  -- Say so when the reload happened. 'autoread' is silent, which makes a
+  -- buffer changing under the cursor look like nvim losing an edit rather
+  -- than picking one up.
+  --
+  -- `FileChangedShellPost` also fires for a file that was *deleted* outside
+  -- nvim, where nothing was reloaded and the buffer still holds the only copy
+  -- - saying "reloaded" there is simply false, and nvim has already said the
+  -- true thing (`E211: File ... no longer available`). Measured: `v:fcs_reason`
+  -- is `deleted` in that case and empty on a real reload; the conflict case
+  -- does not reach this event at all.
+  au.group('AutoReadNotify', {
+    {
+      'FileChangedShellPost',
+      '*',
+      function()
+        if vim.v.fcs_reason == 'deleted' then
+          return
+        end
+        vim.notify('Reloaded from disk (changed externally)', vim.log.levels.INFO)
+      end,
+    },
+  })
+end
