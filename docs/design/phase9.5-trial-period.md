@@ -418,8 +418,9 @@ already superseded.
 ## 9. As-built
 
 `9252521` T4 → `ab3c8e6` T1 → `3716ee1` T2 → `044920f` T5 → `7430074` T3 →
-`c492113` T5 fixes (self-review) → `a88ac1a` label nit → `0f74c1f` T6. Outside
-this repo: yadm `9098ba4` (tmux `focus-events`).
+`c492113` T5 fixes (self-review) → `a88ac1a` label nit → `0f74c1f` T6 →
+`97b9b71` T7.1/7.2 → `ba3d4ed` T7.3. Outside this repo: yadm `9098ba4`
+(tmux `focus-events`).
 
 Every behaviour change carries a guard, and every guard was reverse-verified by
 reinstating the bug it covers — including one that was not deliberate: a
@@ -433,7 +434,9 @@ autocmd group exists under firenvim, and both exist in the full UI). New cases
 in `tests/test_keys.lua`: the first-level census (icon present, group lowercase,
 leaf Sentence-case), the visual-mode header census, "gq/gw map nothing", the
 unlabelled-key scan over `n`/`x`/`o`, mini.ai's ownership of `g[`/`g]`, and the
-`cell navigation` set.
+`cell navigation` set, and the `close with q` set. `tests/test_git.lua` is new
+(T7): a real `:Neogit` on a throwaway repository, both halves of the `<CR>`
+divert and both halves of `<leader>gm`.
 
 ## 10. Open
 
