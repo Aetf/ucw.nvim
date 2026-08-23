@@ -118,6 +118,118 @@ T['which-key spec']['every leader group header is registered at boot'] = functio
   })
 end
 
+-- The two rules `ucw.plugins.which-key`'s header states for `<leader>`'s first
+-- level, asserted rather than trusted, because both fail *silently* and only
+-- in the popup: which-key renders a blank column for a missing icon, and a
+-- stray `REPL` next to `find` reads as a typo, not as a bug. Neither shows up
+-- in `maparg`, so no other test here can see them.
+--
+-- Only `wk.add` entries are visible in `Config.mappings` - a lazy `keys =`
+-- entry never lands there - which is why `<leader>n`'s icon is registered in
+-- which-key.lua as an entry with an icon and nothing else. That makes this
+-- census exactly the first level: ten group headers plus the four leaves.
+T['which-key spec']['every <leader> first-level entry follows the label/icon rules'] = function()
+  local entries = child.lua_get([[
+        (function()
+          local Config = require('which-key.config')
+          local seen = {}
+          for _, m in ipairs(Config.mappings or {}) do
+            -- exactly one key after the prefix. `<leader>go` is a subtree
+            -- header one level down and rides on `<leader>g`'s icon.
+            local rest = (m.lhs or ''):match('^<leader>(.*)$')
+            if rest and vim.fn.strchars(rest) == 1 then
+              local e = seen[m.lhs] or {}
+              local icon = type(m.icon) == 'table' and m.icon.icon or m.icon
+              e.icon = icon or e.icon
+              e.desc = m.desc or e.desc
+              e.group = e.group or (m.group and true or false)
+              seen[m.lhs] = e
+            end
+          end
+          local out = {}
+          for lhs, e in pairs(seen) do
+            local label = e.desc or ''
+            local case = 'n/a'
+            if e.group then
+              -- rule 1: group labels are lowercase nouns
+              case = label == label:lower() and 'lower' or 'MIXED'
+            elseif label ~= '' then
+              -- rule 1: leaf labels are Sentence-case verb phrases
+              case = label:sub(1, 1):match('%u') and 'Sentence' or 'lower'
+            end
+            table.insert(out, table.concat({
+              lhs,
+              e.group and 'group' or 'leaf',
+              (e.icon and e.icon ~= '') and 'icon' or 'NO-ICON',
+              case,
+            }, ' '))
+          end
+          table.sort(out)
+          return out
+        end)()
+    ]])
+  eq(entries, {
+    '<leader>? leaf icon Sentence',
+    '<leader>` leaf icon Sentence',
+    '<leader>b group icon lower',
+    '<leader>c group icon lower',
+    '<leader>f group icon lower',
+    '<leader>g group icon lower',
+    '<leader>l leaf icon Sentence',
+    '<leader>n leaf icon n/a',
+    '<leader>q group icon lower',
+    '<leader>r group icon lower',
+    '<leader>s group icon lower',
+    '<leader>t group icon lower',
+    '<leader>u group icon lower',
+    '<leader>w group icon lower',
+  })
+end
+
+-- Visual mode used to render `c -> +2 keymaps`: `wk.add` defaults to mode `n`,
+-- so the group *headers* were normal-mode only while their members were not.
+-- Only the five headers with a visual-mode member are asserted - the others
+-- are registered for `x` too but have nothing to head there, and which-key
+-- does not draw an empty group.
+T['which-key spec']['leader group headers exist in visual mode too'] = function()
+  local groups = child.lua_get([[
+        (function()
+          local Config = require('which-key.config')
+          local groups = {}
+          for _, m in ipairs(Config.mappings or {}) do
+            if m.group and m.mode == 'x' and vim.startswith(m.lhs or '', '<leader>') then
+              table.insert(groups, m.lhs)
+            end
+          end
+          table.sort(groups)
+          return groups
+        end)()
+    ]])
+  eq(groups, {
+    '<leader>b',
+    '<leader>c',
+    '<leader>f',
+    '<leader>g',
+    '<leader>q',
+    '<leader>r',
+    '<leader>s',
+    '<leader>t',
+    '<leader>u',
+    '<leader>w',
+  })
+end
+
+-- `gq`/`gw` are labelled in which-key (the `operators` preset is off and has
+-- no `gq` anyway) - labels *only*. If either ever acquires a right-hand side,
+-- this config has silently taken over a built-in operator.
+T['which-key spec']['the reflow labels map nothing'] = function()
+  for _, lhs in ipairs { 'gq', 'gw' } do
+    for _, mode in ipairs { 'n', 'x', 'o' } do
+      eq({ lhs, mode, child.lua_get(('vim.fn.maparg(%q, %q)'):format(lhs, mode)) }, { lhs, mode, '' })
+    end
+  end
+end
+
 T['lazy keys'] = new_set()
 
 -- The other half of the octo fix: the keys themselves exist at boot as

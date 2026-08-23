@@ -3,11 +3,44 @@ local function config()
   wk.setup {
     plugins = {
       presets = {
+        -- Inherited from the pre-lazy config and kept deliberately in the
+        -- trial period. `operators` labels `d`/`c`/`y`/`gw`/... and `motions`
+        -- labels `hjkl`/`w`/`b`/`f`/`t`: rows for keys nobody in this config
+        -- has to look up, on triggers that fire in the middle of typing an
+        -- operator. What is genuinely forgettable up there is the reflow pair,
+        -- and `gq` is not in either preset anyway - so it is labelled by hand
+        -- at the bottom of this file, at zero cost to every other key.
         operators = false,
         motions = false,
       },
     },
   }
+
+  -- `<leader>`'s first level, the one popup that is always one keypress away,
+  -- follows two rules (trial-period cleanup):
+  --
+  -- 1. **Labels.** Group labels are lowercase nouns naming the space
+  --    (`buffer`, `code`, `repl`, `toggle/ui`); proper nouns keep their own
+  --    spelling (`Lazy`, `GitHub`). Leaf labels are Sentence-case verb
+  --    phrases (`Plugin manager (Lazy)`). So the `+` prefix and the case both
+  --    say "group" vs "action", instead of `REPL` and `toggles/UI` standing
+  --    out for no reason.
+  --
+  -- 2. **Icons are explicit.** which-key otherwise picks them by matching
+  --    keywords against the *description* (`which-key/icons.lua`'s `rules`),
+  --    which is luck, not design: `repl` matched no rule at all and rendered
+  --    blank, while `Go to alternate buffer` and `Buffer-local keymaps` both
+  --    matched `buffer` and came out as file icons. Every first-level entry
+  --    below carries its own `icon`, including the ones whose keys are owned
+  --    by another spec. tests/test_keys.lua asserts both rules so a new entry
+  --    cannot quietly go back to guessing.
+  --
+  -- Group headers are registered for normal *and* visual mode. `wk.add`
+  -- defaults to `n` only, which is why visual-mode `<leader>` used to render
+  -- `c -> +2 keymaps` with no name and no icon; the members were always
+  -- there (`<leader>ca`, `<leader>sw`, `<leader>r*`, ...), only their headers
+  -- were not. Headers whose subtree has no visual-mode member simply do not
+  -- appear there.
   -- Group headers for trees whose keys live with their owning plugin specs
   -- live in this file (Phase 8, D1), registered eagerly, so every group is
   -- discoverable at boot even when its owner has not loaded yet - see the
@@ -23,7 +56,7 @@ local function config()
   -- reference highlighting (snacks.words, see snacks.lua).
   local lsp_actions = require('ucw.lsp.actions')
   wk.add {
-    { '<leader>c', group = 'code' },
+    { '<leader>c', group = 'code', mode = { 'n', 'x' }, icon = { icon = '', color = 'orange' } },
     lsp_actions.wk('<leader>ca', 'code_action'),
     lsp_actions.wk('<leader>cr', 'rename'),
     lsp_actions.wk('<leader>cf', 'format'),
@@ -39,9 +72,9 @@ local function config()
   -- `<leader>f` = find (files; keys in snacks.lua), `<leader>s` = search
   -- (content), `<leader>r` = REPL (keys in iron.lua).
   wk.add {
-    { '<leader>f', group = 'find' },
-    { '<leader>r', group = 'REPL' },
-    { '<leader>s', group = 'search' },
+    { '<leader>f', group = 'find', mode = { 'n', 'x' }, icon = { icon = '', color = 'green' } },
+    { '<leader>r', group = 'repl', mode = { 'n', 'x' }, icon = { icon = '', color = 'red' } },
+    { '<leader>s', group = 'search', mode = { 'n', 'x' }, icon = { icon = '', color = 'green' } },
     lsp_actions.wk('<leader>ss', 'document_symbols'),
     lsp_actions.wk('<leader>sS', 'workspace_symbols'),
     lsp_actions.wk('<leader>sd', 'diagnostics'),
@@ -53,13 +86,26 @@ local function config()
   -- popup - registered in `ucw.toggles` (editor-core: uh/uv/uD/uw/us) and
   -- `gitsigns.lua` (ub/ud); `un` (dismiss notifications) is a `keys =`
   -- entry in `noice.lua`.
-  wk.add { { '<leader>u', group = 'toggles/UI' } }
+  wk.add { { '<leader>u', group = 'toggle/ui', mode = { 'n', 'x' }, icon = { icon = '', color = 'yellow' } } }
   require('ucw.toggles').setup()
+
+  -- The two first-level entries whose *keys* live in another spec, here only
+  -- for their icon (rule 2 at the top of this file). A `wk.add` entry with no
+  -- rhs and no desc adds nothing to the popup on its own - it merges into the
+  -- node the real mapping already created - which is exactly the "label for a
+  -- key that is not mapped" shape the `g[`/`g]` comment below warns about,
+  -- used on purpose this time. `<leader>n`'s own icon was snacks.nvim's
+  -- plugin icon (which-key credits a key to the plugin that owns it, so every
+  -- snacks-owned key wants to look the same); `\`'s file-tree accelerators
+  -- are not under `<leader>` at all and keep neo-tree's.
+  wk.add {
+    { '<leader>n', icon = { icon = '󰵅', color = 'blue' } },
+  }
 
   -- `<leader>l` = the plugin manager (Phase 9, D2) - literally LazyVim's own
   -- binding, on the letter the dissolved LSP tree freed. `:checkhealth ucw`
   -- stays keyless on purpose (low frequency).
-  wk.add { { '<leader>l', '<cmd>Lazy<cr>', desc = 'Plugin manager (Lazy)' } }
+  wk.add { { '<leader>l', '<cmd>Lazy<cr>', desc = 'Plugin manager (Lazy)', icon = { icon = '󰒲', color = 'blue' } } }
 
   -- Goto prev/next diag warning/error.
   --
@@ -112,8 +158,8 @@ local function config()
   -- The `<leader>gt` toggle subtree is gone (Phase 9, D4): its two members
   -- are `<leader>ub`/`<leader>ud` now, with every other toggle.
   wk.add {
-    { '<leader>g', group = 'git' },
-    { '<leader>go', group = 'octo (GitHub)' },
+    { '<leader>g', group = 'git', mode = { 'n', 'x' }, icon = { icon = '󰊢', color = 'orange' } },
+    { '<leader>go', group = 'octo (GitHub)', icon = { icon = '', color = 'purple' } },
   }
 
   -- Window and Buffer: core-editor keys only. Plugin-owned ones moved to
@@ -127,7 +173,7 @@ local function config()
   wk.add {
     { '<S-Tab>', "<cmd>lua require('ucw.keys.actions').bufprev()<cr>", desc = 'Go to previous buffer' },
     { '<Tab>', "<cmd>lua require('ucw.keys.actions').bufnext()<cr>", desc = 'Go to next buffer' },
-    { '<leader>`', '<C-^>', desc = 'Go to alternate buffer' },
+    { '<leader>`', '<C-^>', desc = 'Go to alternate buffer', icon = { icon = '󰬲', color = 'cyan' } },
     -- P6, searchability: the buffer-local complement to `<leader>sk` (all
     -- keymaps, snacks picker).
     {
@@ -136,13 +182,14 @@ local function config()
         require('which-key').show { global = false }
       end,
       desc = 'Buffer-local keymaps (which-key)',
+      icon = { icon = '󰌌', color = 'cyan' },
     },
-    { '<leader>b', group = 'buffer' },
+    { '<leader>b', group = 'buffer', mode = { 'n', 'x' }, icon = { icon = '󰈔', color = 'cyan' } },
     { '<leader>bX', "<cmd>lua require('ucw.keys.actions').bufdelete(0, true)<cr>", desc = 'Delete current buffer' },
     { '<leader>bx', "<cmd>lua require('ucw.keys.actions').bufdelete()<cr>", desc = 'Delete current buffer' },
-    { '<leader>q', group = 'quit/session' },
+    { '<leader>q', group = 'quit/session', mode = { 'n', 'x' }, icon = { icon = '', color = 'azure' } },
     { '<leader>qq', '<cmd>qa<cr>', desc = 'Quit all' },
-    { '<leader>t', group = 'tab' },
+    { '<leader>t', group = 'tab', mode = { 'n', 'x' }, icon = { icon = '󰓩', color = 'purple' } },
     { '<leader>tc', '<cmd>tabnew<cr>', desc = 'Open new tab page' },
     { '<leader>tn', '<cmd>tabnext<cr>', desc = 'Go to next tab' },
     { '<leader>to', '<cmd>tabonly<cr>', desc = 'Close other tabs' },
@@ -153,10 +200,32 @@ local function config()
     -- accepted churn for vocabulary that matches native `<C-w>s`/`<C-w>v`.
     -- Everything else window-shaped stays on `<M-hjkl>` (navigator.lua) and
     -- which-key's `<C-w>` preset.
-    { '<leader>w', group = 'window' },
+    { '<leader>w', group = 'window', mode = { 'n', 'x' }, icon = { icon = '', color = 'blue' } },
     { '<leader>ws', '<cmd>split<cr>', desc = 'Split window horizontally' },
     { '<leader>wv', '<cmd>vsplit<cr>', desc = 'Split window vertically' },
     { '<leader>wx', '<C-w>c', desc = 'Close current window' },
+  }
+
+  -- Labels only, for two *built-in* operators this config never remaps: they
+  -- have no rhs here, so nothing is mapped and the keymap snapshot does not
+  -- move - the entries exist so `g` lists them. This is the one place the
+  -- `operators` preset was wanted (it is off, see `wk.setup` above), and it
+  -- would not have covered `gq`, which is in no preset at all.
+  --
+  -- The two are not interchangeable, which is the reason to spell out the
+  -- distinction where it is read rather than in `:h gq`:
+  --
+  -- * `gq` runs 'formatexpr' when one is set. Neovim's own LSP client sets
+  --   `formatexpr=v:lua.vim.lsp.formatexpr()` on attach whenever the server
+  --   offers range formatting (`runtime/lua/vim/lsp.lua`), and `ftplugin/tex.lua`
+  --   sets its own sentence-per-line one - so in those buffers `gq` is "ask
+  --   the formatter", not "wrap at 'textwidth'".
+  -- * `gw` ignores 'formatexpr'/'formatprg' (`:h gw`) and always does the
+  --   built-in wrap at 'textwidth' (80 here), keeping the cursor put. For
+  --   prose, this is the one that does what "reflow" means.
+  wk.add {
+    { 'gq', desc = "Reflow (via 'formatexpr': LSP/ftplugin, else wrap)", mode = { 'n', 'x' } },
+    { 'gw', desc = "Reflow at 'textwidth', keep cursor", mode = { 'n', 'x' } },
   }
 end
 
