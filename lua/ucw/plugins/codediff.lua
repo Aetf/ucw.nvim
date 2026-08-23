@@ -15,6 +15,18 @@ return {
   -- The plugin is already lazy on `cmd`, so this is an additional trigger.
   keys = {
     { '<leader>gh', '<cmd>CodeDiff history %<cr>', desc = 'History for current buffer', silent = true },
+    -- The half codediff does not have (Phase 9.5, T7): a codediff tab shows
+    -- the diff and never says which commit it is, let alone the message. The
+    -- resolver is in `ucw.git` because the same key answers for a neogit
+    -- buffer too, where the commit is the one under the cursor.
+    {
+      '<leader>gm',
+      function()
+        require('ucw.git').show_message()
+      end,
+      desc = 'Commit message for this diff',
+      silent = true,
+    },
   },
   config = function()
     require('codediff').setup {}
