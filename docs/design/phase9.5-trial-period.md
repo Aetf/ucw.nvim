@@ -5,9 +5,9 @@ Status: **as-built record, written as the changes landed (2026-08-22/23).**
 Phase 9 (`phase9-keybindings.md` r3) ended with "real-session trial runs next".
 This is that trial: the config in daily use, each thing that turned out wrong
 fixed in its own commit with its own guard. It is a *design* document rather
-than a changelog because three of the five changes rest on mechanisms that are
-not obvious from the code they touch, and the next person to add a `<leader>`
-key or an autocmd needs them.
+than a changelog because several of the changes rest on mechanisms that are not
+obvious from the code they touch, and the next person to add a `<leader>` key,
+a bracket pair or an autocmd needs them.
 
 **Where this supersedes an earlier phase document, that document now says so
 inline and points here.** Phase 10 (the as-built rewrite of `AGENTS.md` and
@@ -15,9 +15,10 @@ inline and points here.** Phase 10 (the as-built rewrite of `AGENTS.md` and
 until then, a phase document is the record of its own phase, and this one is
 the record of what the trial changed afterwards.
 
-Nothing here reopens a Phase 9 decision. D1–D10 all stand; what the trial found
-was one duplicate door, a presentation layer nobody had looked at as a whole,
-and two editor behaviours that were quietly broken.
+T1–T5 reopen no Phase 9 decision: what the trial found there was one duplicate
+door, a presentation layer nobody had looked at as a whole, and two editor
+behaviours that were quietly broken. T6 does reopen one — D2's "no jump key for
+snacks.words" — and states the rule the whole `[`/`]` family now follows.
 
 ## 1. T1 — `<leader>e`/`E` dropped (supersedes §2.5, §3)
 
@@ -182,22 +183,119 @@ the embedded hosts and for the same reason: vscode-neovim mirrors documents
 VSCode owns and reloads itself, and firenvim's buffer is a browser textarea with
 no file behind it.
 
-## 6. What this changes in earlier documents
+## 6. T6 — one grammar for "previous / next"
+
+Three unrelated shapes had accumulated for the same idea, and the config's own
+keys were the ones out of line:
+
+- `[`/`]` + a category letter, direction in the **prefix**, capital = first /
+  last. Neovim 0.11 shipped a whole unimpaired-style set in this shape (`[q`,
+  `[l`, `[b`, `[a`, `[t`, `[d`, `[<Space>`, `[n` in visual), gitsigns' `[c`/`]c`
+  matches it, and it is the only shape that scales: a new category is a new
+  letter, and the direction needs no thought.
+- `g` + a character, direction in the **suffix** or in the case: `g[`/`g]` for
+  diagnostics (this config's own).
+- A dedicated key pair: `<Tab>`/`<S-Tab>`, `<C-o>`/`<C-i>`, `n`/`N`, `;`/`,`.
+
+The rules, stated once so the next binding has somewhere to look:
+
+1. **`[`/`]` + a letter is the only spelling of previous / next.** Direction is
+   the prefix, the letter is the category, a capital letter is first / last.
+2. **`g` does not carry direction.** It is goto and operators (`gr*`, `gd`,
+   `gO`, `gc`, `gq`/`gw`). `g[`/`g]` are the exception that proves it: they mean
+   left / right *edge*, which is a position, not a direction through a list.
+3. **Case means first / last, never direction**, inside the bracket family.
+   `n`/`N`, `f`/`F`, `s`/`S`, `gs`/`gS` are native or lightspeed vocabulary and
+   are exempt as themselves, not as a pattern to copy.
+4. **One category, one door.** `<Tab>`/`<S-Tab>` stay as an accelerator for
+   `[b`/`]b`, not as a second vocabulary.
+
+### 6.1 Two duplicate doors removed
+
+`g[`/`g]` (diagnostics) and this config's `[q`/`]q` both restated a Neovim
+default on worse terms. `[d`/`]d`/`[D`/`]D` and `[q`/`]q`/`[Q`/`]Q`/`[<C-Q>`/
+`]<C-Q>` take a count, and the quickfix ones print a failure as a plain error
+message rather than through the Lua error path; neither opens a float on
+arrival, which is what this config wants (`virtual_lines` already shows the
+text). `ucw.keys.actions.diag_next`/`diag_prev` are gone with them.
+
+### 6.2 mini.ai's goto keys are mini.ai's again
+
+The `g[`/`g]` those two occupied are mini.ai's **upstream default** for
+`goto_left`/`goto_right`. This config had blanked them and hand-rolled a
+replacement on `[al`/`]al`/`[an`/`]an`/`[il`/`]il`/`[in`/`]in`: 16 global
+mappings (`n` and `v`) in which `[`/`]` meant the *edge*, `a`/`i` the textobject
+kind, and a third character `l`/`n` the direction — the exact inversion that
+made the whole family unreadable next to `[q`. Both halves are put back where
+upstream has them, which is also the move Phase 9 (D1) made for lightspeed's
+`gS`: restore the plugin's own vocabulary rather than invent a local one.
+
+What is lost: no explicit "previous object" / "next object" selection. mini.ai's
+`search_method = 'cover_or_next'` picks the object and a count reaches further
+ones. If the trial finds that insufficient, the direction goes *inside* the `g`
+namespace on mini.ai's own `n`/`l` letters — never back onto the bracket prefix.
+
+### 6.3 `[h`/`]h` — ipython cells (a key that was never there)
+
+`ucw.keys.actions.iron_send_block({next=true})`, the advance half of
+`<S-Enter>`, ran `:normal ]h`. Nothing has mapped `]h` since mini.ai's `goto_*`
+keys were blanked, so the advance had been a silent no-op: `<S-Enter>` sent the
+cell and stayed put. It calls `M.cell_jump('next')` directly now — the send key
+is global, and going through a mapping that exists in one filetype was the bug.
+
+The keys themselves are **buffer-local to python** (`ftplugin/python.lua`):
+`# %%` is a Python comment and the textobject that finds it
+(`ucw.textobjects.ipython`, mini.ai's `h`/`H`) has nothing to match anywhere
+else, so a global pair would be two dead rows in every other buffer's popup.
+`h` is the letter the textobject already carries, so this needs no new
+vocabulary either.
+
+### 6.4 `[r`/`]r` — references (the other half of snacks.words)
+
+Phase 9 (D2) enabled `snacks.words` for automatic reference highlighting and
+deliberately bound no jump key, because the conventional `]]`/`[[` would shadow
+the native section motions. Highlighting without navigation is half a feature;
+`[r`/`]r` is the same capability in the shape rule 1 asks for, and it shadows
+nothing. Declared as `reference_prev`/`reference_next` in `ucw.lsp.actions` (so
+`snacks.words.jump` is resolved by name at press time like every other action)
+and bound buffer-locally in `ucw.lsp.attach`, for the T6.3 reason: a reference
+list exists only where a client is attached. `cycle = true` — the last reference
+wraps to the first. A count is not honoured; the action table takes static args.
+
+### 6.5 Guards
+
+`tests/test_keys.lua`: the founding-bug case now asserts `[d`/`]d`/`[D`/`]D`
+(that nothing shadows them with an entry of the broken shape), a new case pins
+`g[`/`g]` to mini.ai's descs in `n`/`x`/`o`, and a new `cell navigation` set
+opens a real `.py` file, walks three cells and then asserts the keys are absent
+in a plain buffer. `tests/test_lsp.lua`'s buffer-local census gains `[r`/`]r`.
+All three were reverse-verified by breaking the lhs and watching exactly those
+three cases fail.
+
+The global keymap snapshot moved by exactly the intended set, 322 → 310
+mappings: the 16 `[al`-family entries gone, `[q`/`]q` reading `:cprevious`/
+`:cnext` (Neovim's own descs), and `g[`/`g]` reading mini.ai's, now in `o` and
+`x` as well as `n`. `[h`/`]h` and `[r`/`]r` are buffer-local and so correctly
+invisible to it — which is why they have the instrumented cases above.
+
+## 7. What this changes in earlier documents
 
 | document | passage | now |
 |---|---|---|
 | `phase9-keybindings.md` | §2.5 D5, §3 layout | `<leader>e`/`E` gone (T1); group labels renamed (T2) |
 | `phase9-keybindings.md` | §5 extension rule | a new namespace also needs a lowercase label, an explicit icon, and `mode = { 'n', 'x' }` (T2) |
 | `phase4-folding-comments.md` | §3.2 diagnostic default | `virtual_lines` defaults to `false` (T4) |
+| `phase9-keybindings.md` | §2.2 r2.1 (no jump key for snacks.words) | jumps are `[r`/`]r`, buffer-local (T6) |
+| `phase9-keybindings.md` | §5 extension rule | previous/next is `[`/`]` + a category letter, and nothing else (T6) |
 
 Phase 8's documents are not amended: they record the Phase 8 tree, which Phase 9
 already superseded.
 
-## 7. As-built
+## 8. As-built
 
 `9252521` T4 → `ab3c8e6` T1 → `3716ee1` T2 → `044920f` T5 → `7430074` T3 →
-`c492113` T5 fixes (self-review) → `a88ac1a` label nit. Outside this repo:
-yadm `9098ba4` (tmux `focus-events`).
+`c492113` T5 fixes (self-review) → `a88ac1a` label nit → `0f74c1f` T6. Outside
+this repo: yadm `9098ba4` (tmux `focus-events`).
 
 Every behaviour change carries a guard, and every guard was reverse-verified by
 reinstating the bug it covers — including one that was not deliberate: a
@@ -209,10 +307,11 @@ New test file: `tests/test_autoread.lua` (reload happens; modified buffer is
 left alone; the notice speaks on reload and stays quiet on delete; neither
 autocmd group exists under firenvim, and both exist in the full UI). New cases
 in `tests/test_keys.lua`: the first-level census (icon present, group lowercase,
-leaf Sentence-case), the visual-mode header census, "gq/gw map nothing", and the
-unlabelled-key scan over `n`/`x`/`o`.
+leaf Sentence-case), the visual-mode header census, "gq/gw map nothing", the
+unlabelled-key scan over `n`/`x`/`o`, mini.ai's ownership of `g[`/`g]`, and the
+`cell navigation` set.
 
-## 8. Open
+## 9. Open
 
 - **`<leader>e`/`E` are free.** So are `a d h i j k m o p v x y z` and most
   capitals (§3 of Phase 9); `d` and `a` stay reserved for the debugger and AI
