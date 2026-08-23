@@ -58,6 +58,36 @@ au.group('RestoreLastWindow', {
   },
 })
 
+-- `q` closes the two read-only windows that had no way out but `:q`
+-- (Phase 9.5, T7). Everything else this config opens already closes on `q` -
+-- measured across lazy, mason, checkhealth, neo-tree, the snacks picker and
+-- notification history, noice's split and popup views, every codediff tab,
+-- neogit, `man`, and the native LSP hover and gitsigns preview floats - which
+-- makes `q` the convention rather than an invention, and these two the
+-- outliers. `<Esc>` is deliberately not given the same job: it already means
+-- "clear search highlight and dismiss notifications" globally (`ucw.keys`),
+-- and it is the *cancel* key in anything that takes typed input.
+--
+-- `<C-w>q` verbatim from Neovim's own `man` mapping, which is the same idea
+-- in the runtime: quit this window, and behave like `:q` when it is the last
+-- one. Buffer-local, so `q` keeps recording macros everywhere else.
+au.group('CloseWithQ', {
+  {
+    'FileType',
+    { 'help', 'qf' },
+    function()
+      -- `buffer = 0`, not an event argument: `ucw.au` registers through the
+      -- `:autocmd` string form, so the callback takes none. `FileType` fires
+      -- with the buffer it is about already current.
+      vim.keymap.set('n', 'q', '<C-w>q', {
+        buffer = 0,
+        silent = true,
+        desc = 'Close this window',
+      })
+    end,
+  },
+})
+
 -- The other half of 'autoread' (see `ucw.options`): the option only says what
 -- to do when nvim notices a file changed on disk, and nvim only looks when
 -- `:checktime` runs. Two things run it by themselves - entering a buffer, and

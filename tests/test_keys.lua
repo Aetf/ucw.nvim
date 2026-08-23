@@ -125,6 +125,32 @@ T['cell navigation']['[h and ]h walk cells, in python buffers only'] = function(
   vim.fn.delete(path)
 end
 
+T['close with q'] = new_set()
+
+-- The two windows that had no way out but `:q` (Phase 9.5, T7). Both halves
+-- matter: that `q` is mapped there, and that it is *only* mapped there - a
+-- global `q` would take macro recording away from every buffer.
+T['close with q']['help and quickfix close on q, and nothing else does'] = function()
+  for _, open in ipairs { 'help', 'copen' } do
+    child.cmd(open)
+    local m = child.lua_get([[
+          (function()
+            local m = vim.fn.maparg('q', 'n', false, true)
+            return { buffer = m.buffer or 0, desc = m.desc, wins = #vim.api.nvim_tabpage_list_wins(0) }
+          end)()
+      ]])
+    eq({ open, m.buffer, m.desc }, { open, 1, 'Close this window' })
+    eq({ open, m.wins }, { open, 2 })
+
+    child.cmd('normal q')
+    eq({ open, child.lua_get([[#vim.api.nvim_tabpage_list_wins(0)]]) }, { open, 1 })
+  end
+
+  -- back in an ordinary buffer `q` is Neovim's own again (unmapped, so it
+  -- records a macro)
+  eq(child.lua_get([[vim.fn.maparg('q', 'n')]]), '')
+end
+
 T['which-key spec'] = new_set()
 
 -- The general form of the same mistake, caught by its fingerprint: a `desc`
