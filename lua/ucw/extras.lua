@@ -57,3 +57,44 @@ au.group('RestoreLastWindow', {
     end,
   },
 })
+
+-- The other half of 'autoread' (see `ucw.options`): the option only says what
+-- to do when nvim notices a file changed on disk, and nvim only looks when
+-- `:checktime` runs. In a terminal that is buffer-entry, `:!cmd`, and focus
+-- events - so a file rewritten by a formatter, a `git checkout`, or the other
+-- half of a split tmux session goes unnoticed for as long as the cursor stays
+-- put. Measured before this existed: an externally rewritten buffer still
+-- showed the old text minutes later.
+--
+-- `CursorHold` is the idle hook, not a delay standing in for an event: nvim
+-- has no "file changed" notification to hook (`FileChangedShell` fires *from*
+-- the check), so the check has to be scheduled, and 'updatetime' (300ms here)
+-- is the interval the editor already uses for that.
+--
+-- `:checktime` is a no-op for a modified buffer - it sets the "changed on
+-- disk" flag and prompts instead of overwriting - so unsaved work is never at
+-- risk. The `mode()`/`getcmdwintype()` guard is the known crash-shaped case:
+-- running it from the command-line window raises E11.
+au.group('AutoReadChanged', {
+  {
+    { 'FocusGained', 'BufEnter', 'CursorHold', 'CursorHoldI', 'TermLeave' },
+    '*',
+    function()
+      if vim.fn.mode() ~= 'c' and vim.fn.getcmdwintype() == '' then
+        vim.cmd('checktime')
+      end
+    end,
+  },
+})
+
+-- Say so when the reload actually happened. 'autoread' is silent, which makes
+-- a buffer changing under the cursor look like nvim losing the edit.
+au.group('AutoReadNotify', {
+  {
+    'FileChangedShellPost',
+    '*',
+    function()
+      vim.notify('Reloaded from disk (changed externally)', vim.log.levels.INFO)
+    end,
+  },
+})

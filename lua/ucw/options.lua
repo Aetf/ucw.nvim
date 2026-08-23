@@ -124,7 +124,12 @@ vim.opt.sessionoptions:append('winpos,terminal,localoptions')
 -- saving options may interference with packer.nvim lazy loading
 vim.opt.sessionoptions:remove('options')
 
--- auto reload externally changed file
+-- Reload a file changed outside nvim, as long as it has no unsaved changes
+-- here. Half the mechanism: 'autoread' only decides what happens *when* nvim
+-- notices, and nvim only notices when something runs `:checktime` - entering
+-- the buffer, a shell command, terminal focus. Sitting in a buffer while the
+-- file changes underneath is exactly the case it does not cover, so
+-- `ucw.extras` puts the `:checktime` on an idle timer.
 vim.opt.autoread = true
 -- always reserve 3 lines ahead the cursor - when moving vertically using j/k
 vim.opt.scrolloff = 3
