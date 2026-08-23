@@ -227,6 +227,73 @@ local function config()
     { 'gq', desc = "Reflow (via 'formatexpr': LSP/ftplugin, else wrap)", mode = { 'n', 'x' } },
     { 'gw', desc = "Reflow at 'textwidth', keep cursor", mode = { 'n', 'x' } },
   }
+
+  -- Labels for keys owned by a plugin or by Neovim itself, which is the other
+  -- half of the same problem the `<leader>` rules above solve: which-key
+  -- renders a mapping's `desc`, and when there is none it falls back to
+  -- *displaying the rhs*. Entering visual mode therefore drew a wall of
+  -- `Lightspeed_f`, `MatchitVisualForward)`, `help v_star-default` and six
+  -- blank rows (neoscroll's scroll keys, which are Lua functions - nothing to
+  -- print at all).
+  --
+  -- Labels only, exactly like `gq`/`gw` above: no rhs, so nothing is mapped or
+  -- remapped and the keymap snapshot does not move. The plugin keeps owning
+  -- the behaviour; this only names it.
+  --
+  -- Modes are per key, matching where the mapping actually exists, because a
+  -- label on a mode that has no such mapping is a row for a key that does
+  -- nothing - the `g[`/`g]` bug in popup form. `lightspeed` and `neoscroll`
+  -- are both `lazy = false` with no `cond`, so their keys are never absent
+  -- while these labels are present.
+  local nxo = { 'n', 'x', 'o' }
+  wk.add {
+    -- lightspeed: `s`/`gs` are remapped to the bidirectional variants in
+    -- lightspeed.lua, the rest are the plugin's own defaults. `x`/`X`/`z`/`Z`
+    -- exist in operator-pending only, where `s`/`S` would collide with the
+    -- native operators.
+    { 'f', desc = 'Jump to char (lightspeed)', mode = nxo },
+    { 'F', desc = 'Jump back to char (lightspeed)', mode = nxo },
+    { 't', desc = 'Jump before char (lightspeed)', mode = nxo },
+    { 'T', desc = 'Jump back before char (lightspeed)', mode = nxo },
+    { 's', desc = 'Jump to 2-char match (lightspeed)', mode = { 'n', 'x' } },
+    { 'S', desc = 'Jump back to 2-char match (lightspeed)', mode = { 'n', 'x' } },
+    { 'z', desc = 'Jump to 2-char match (lightspeed)', mode = 'o' },
+    { 'Z', desc = 'Jump back to 2-char match (lightspeed)', mode = 'o' },
+    { 'x', desc = 'Jump to 2-char match, inclusive (lightspeed)', mode = 'o' },
+    { 'X', desc = 'Jump back to 2-char match, inclusive (lightspeed)', mode = 'o' },
+    { 'gs', desc = 'Jump to 2-char match across windows (lightspeed)', mode = 'n' },
+    { 'gS', desc = 'Jump back to 2-char match across windows (lightspeed)', mode = 'n' },
+    { ';', desc = 'Repeat jump (lightspeed)', mode = nxo },
+    { ',', desc = 'Repeat jump backwards (lightspeed)', mode = nxo },
+
+    -- matchit (a Neovim runtime plugin). `%` is the native key it extends
+    -- from brackets to language keywords; the rest are matchit's own.
+    { '%', desc = 'Go to matching bracket or keyword', mode = nxo },
+    { 'g%', desc = 'Go to previous match in the group', mode = nxo },
+    { '[%', desc = 'Go to start of the enclosing group', mode = nxo },
+    { ']%', desc = 'Go to end of the enclosing group', mode = nxo },
+    { 'a%', desc = 'around matching group', mode = { 'x', 'o' } },
+
+    -- neoscroll: the same six scroll keys and three `z` placements as the
+    -- built-ins, animated. In visual mode all nine drew as blank rows.
+    { '<C-b>', desc = 'Scroll page up (smooth)', mode = { 'n', 'x' } },
+    { '<C-f>', desc = 'Scroll page down (smooth)', mode = { 'n', 'x' } },
+    { '<C-u>', desc = 'Scroll half page up (smooth)', mode = { 'n', 'x' } },
+    { '<C-d>', desc = 'Scroll half page down (smooth)', mode = { 'n', 'x' } },
+    { '<C-y>', desc = 'Scroll one line up (smooth)', mode = { 'n', 'x' } },
+    { '<C-e>', desc = 'Scroll one line down (smooth)', mode = { 'n', 'x' } },
+    { 'zt', desc = 'This line to top (smooth)', mode = { 'n', 'x' } },
+    { 'zz', desc = 'This line to centre (smooth)', mode = { 'n', 'x' } },
+    { 'zb', desc = 'This line to bottom (smooth)', mode = { 'n', 'x' } },
+
+    -- Neovim's own visual-mode defaults. Their descs are deliberately written
+    -- as help tags (`:help v_star-default`), which is a fine thing for
+    -- `:map` to print and a poor row in a popup.
+    { '*', desc = 'Search forward for the selection', mode = 'x' },
+    { '#', desc = 'Search backward for the selection', mode = 'x' },
+    { '@', desc = 'Run a register on the selected lines', mode = 'x' },
+    { 'Q', desc = 'Run the last recorded register on the selected lines', mode = 'x' },
+  }
 end
 
 return {

@@ -222,6 +222,64 @@ end
 -- `gq`/`gw` are labelled in which-key (the `operators` preset is off and has
 -- no `gq` anyway) - labels *only*. If either ever acquires a right-hand side,
 -- this config has silently taken over a built-in operator.
+-- The complement to the fingerprint scan further down. That one catches a rhs
+-- written *into* a desc; this catches the other way to get the same row, which
+-- is what actually filled the visual-mode popup: a mapping with **no** desc at
+-- all, for which which-key falls back to displaying the rhs (`Lightspeed_f`,
+-- `MatchitVisualForward)`, `<Esc><Cmd>w<CR>`) or, for a Lua rhs, nothing.
+--
+-- Scoped to normal/visual/operator-pending, the three modes with a popup, and
+-- to keys that popup can reach: `<Plug>` lhs are internal, and `<Snr>`/mouse
+-- drags never render. A key counts as labelled if the *mapping* carries a
+-- desc or `ucw.plugins.which-key` registers one for that mode - which is the
+-- same union which-key itself displays.
+T['which-key spec']['no key in a popup mode shows its rhs instead of a label'] = function()
+  local unlabelled = child.lua_get([[
+        (function()
+          local Config = require('which-key.config')
+          -- lhs as which-key stores it, per mode, for label-only entries
+          local labelled = {}
+          for _, m in ipairs(Config.mappings or {}) do
+            if m.desc and m.desc ~= '' then
+              labelled[(m.mode or 'n') .. ' ' .. vim.fn.keytrans(vim.keycode(m.lhs or ''))] = true
+            end
+          end
+          local bad = {}
+          for _, mode in ipairs { 'n', 'x', 'o' } do
+            for _, m in ipairs(vim.api.nvim_get_keymap(mode)) do
+              local lhs = vim.fn.keytrans(vim.keycode(m.lhs))
+              local hidden = lhs:match('^<Plug>') or lhs:match('^<SNR>') or lhs:lower():match('mouse')
+              local desc = m.desc or ''
+              -- `:help x-default` is Neovim's own desc convention for its
+              -- default mappings: fine in `:map`, a poor popup row, so those
+              -- count as unlabelled too and get a real label or an exemption.
+              if not hidden and (desc == '' or desc:match('^:help ')) and not labelled[mode .. ' ' .. lhs] then
+                table.insert(bad, mode .. ' ' .. lhs)
+              end
+            end
+          end
+          table.sort(bad)
+          return bad
+        end)()
+    ]])
+  -- What is left is Neovim's own normal-mode defaults, none of which reach
+  -- the visual-mode popup this cleanup was about. Listed rather than filtered
+  -- so that an unlabelled mapping of this config's own still fails here.
+  --
+  -- nvim-ufo's `zR`/`zM` are unlabelled too but absent from this list: ufo is
+  -- `cond = is_full_ui` and the test child is headless, so they do not exist
+  -- here. A headless census cannot speak for the full-UI-only plugins - the
+  -- same limit `tests/test_fold.lua` works around by asserting the config
+  -- rather than the live mapping.
+  eq(unlabelled, {
+    'n &',
+    'n <BS>',
+    'n <C-L>',
+    'n <CR>',
+    'n Y',
+  })
+end
+
 T['which-key spec']['the reflow labels map nothing'] = function()
   for _, lhs in ipairs { 'gq', 'gw' } do
     for _, mode in ipairs { 'n', 'x', 'o' } do
