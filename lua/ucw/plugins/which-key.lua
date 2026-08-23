@@ -81,7 +81,7 @@ local function config()
     lsp_actions.wk('<leader>sD', 'diagnostics_all'),
   }
 
-  -- `<leader>u` = toggles/UI (Phase 9, D4): every on/off state in the
+  -- `<leader>u` = toggle/ui (Phase 9, D4): every on/off state in the
   -- config, one prefix. The keys are `Snacks.toggle`s - stateful in this
   -- popup - registered in `ucw.toggles` (editor-core: uh/uv/uD/uw/us) and
   -- `gitsigns.lua` (ub/ud); `un` (dismiss notifications) is a `keys =`
