@@ -335,6 +335,22 @@ local function start_fake(name, capabilities, root_dir, opts)
     ]]):format(name, capabilities or '{}', root_dir and ('%q'):format(root_dir) or 'nil'))
 end
 
+-- ruff answers `textDocument/hover` with nothing at nearly every position, and
+-- `vim.lsp.buf.hover()` notifies "No information available" once per empty
+-- answer - so every `K` in a python buffer drew basedpyright's float and ruff's
+-- "found nothing" next to each other. Asserted on a fake client *named* ruff,
+-- because what decides this is the name in the attach handler, not anything
+-- ruff's binary does; both halves are here because taking the capability from
+-- every client would be the same bug with the sign flipped.
+T['attach']["ruff's hover is declined, and only ruff's"] = function()
+  start_fake('ruff', '{ hoverProvider = true }')
+  eq(child.lua_get([[vim.lsp.get_clients({ name = 'ruff' })[1].server_capabilities.hoverProvider]]), false)
+  eq(child.lua_get([[vim.lsp.get_clients({ name = 'ruff' })[1]:supports_method('textDocument/hover')]]), false)
+
+  start_fake('basedpyright', '{ hoverProvider = true }')
+  eq(child.lua_get([[vim.lsp.get_clients({ name = 'basedpyright' })[1].server_capabilities.hoverProvider]]), true)
+end
+
 -- The claim the whole "rustaceanvim is not a special case" argument rests on:
 -- attach behaviour reaches a client that never went through `vim.lsp.enable()`.
 T['attach']['handlers fire for a client started outside vim.lsp.enable'] = function()

@@ -60,6 +60,32 @@ local function setup_keymaps(bufnr)
   end
 end
 
+-- Capabilities taken away from a client because another client on the same
+-- buffer covers the same ground and having both is worse than having either.
+--
+-- ruff answers `textDocument/hover` with nothing at nearly every position - it
+-- documents `noqa` codes and little else - and `vim.lsp.buf.hover()` asks
+-- every hover-capable client, notifying "No information available" for each
+-- empty answer. In a python buffer that is basedpyright's float *and* ruff's
+-- notification on every `K`, which reads as "the hover found nothing" sitting
+-- next to the thing it found. Ruff's own editor documentation says to turn
+-- this off wherever a type checker is attached.
+--
+-- Written on `server_capabilities` rather than declined in
+-- `after/lsp/ruff.lua`: the initialize response is where it is decided, so
+-- this is the earliest point that can see it and the only one that does not
+-- need a second copy of ruff's config.
+local disabled_capabilities = {
+  ruff = { 'hoverProvider' },
+}
+
+---@param client vim.lsp.Client
+local function trim_capabilities(client)
+  for _, capability in ipairs(disabled_capabilities[client.name] or {}) do
+    client.server_capabilities[capability] = false
+  end
+end
+
 ---@param bufnr integer
 local function setup_capabilities(bufnr)
   -- No `supports_method` guard on either of these, deliberately: both native
@@ -114,6 +140,7 @@ function M.setup()
       if not client then
         return
       end
+      trim_capabilities(client)
       setup_keymaps(args.buf)
       setup_capabilities(args.buf)
       require('ucw.lsp.vscode').attach(client)
