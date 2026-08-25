@@ -151,6 +151,98 @@ T['close with q']['help and quickfix close on q, and nothing else does'] = funct
   eq(child.lua_get([[vim.fn.maparg('q', 'n')]]), '')
 end
 
+T['file-granular jumplist'] = new_set()
+
+-- `<C-S-o>`/`<C-S-i>` (Phase 9.5, T9). The assertion that carries the feature
+-- is the *contrast* with the native pair from the same position: `<C-o>` goes
+-- to the previous entry, which after a few edits in one file is that same
+-- file, while `<C-S-o>` goes to the previous file. Both halves are needed -
+-- a `<C-S-o>` that simply forwarded to `<C-o>` would pass a landing-place
+-- assertion on its own whenever the two happen to agree.
+--
+-- Real files on disk, because a jumplist entry is a buffer number and the
+-- landing rule filters on `buflisted`/`buftype`. `clearjumps` first: the
+-- child boots the real config, and shada restores a jumplist from whatever
+-- the last session was.
+T['file-granular jumplist']['Shift steps a whole file where <C-o> steps one entry'] = function()
+  local files, names = {}, {}
+  for i = 1, 3 do
+    files[i] = vim.fn.tempname() .. '.txt'
+    names[i] = vim.fn.fnamemodify(files[i], ':t')
+    local lines = {}
+    for n = 1, 20 do
+      lines[n] = 'line ' .. n
+    end
+    vim.fn.writefile(lines, files[i])
+  end
+
+  local function where()
+    return child.lua_get([[
+        { vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ':t'), vim.api.nvim_win_get_cursor(0)[1] }
+      ]])
+  end
+
+  -- jumplist: f1:1 f1:5 f1:15 | f2:1 f2:4 f2:12 | f3:1, cursor at f3:7
+  child.cmd('edit ' .. files[1])
+  child.cmd('clearjumps')
+  child.cmd('normal! 5G')
+  child.cmd('normal! 15G')
+  child.cmd('edit ' .. files[2])
+  child.cmd('normal! 4G')
+  child.cmd('normal! 12G')
+  child.cmd('edit ' .. files[3])
+  child.cmd('normal! 7G')
+  eq(where(), { names[3], 7 })
+
+  -- The native pair moves one entry, and stays in the file. Driven through
+  -- `normal!` rather than `type_keys`: `<C-i>` is byte 0x09 and so is `<Tab>`,
+  -- which this config cycles buffers with (Phase 9, D6) - over RPC there is no
+  -- terminal in the way to tell them apart, so `nvim_input('<C-i>')` lands in
+  -- another buffer entirely. `normal!` ignores mappings and gets the motion,
+  -- and the `1` is not decoration either: `<C-i>` *is* a tab, and `:normal!`
+  -- eats the whitespace between itself and its argument.
+  child.cmd([[execute "normal! 1\<C-o>"]])
+  eq(where(), { names[3], 1 })
+  child.cmd([[execute "normal! 1\<C-i>"]])
+  eq(where(), { names[3], 7 })
+
+  -- ours moves one file, and a count is in files
+  child.type_keys('2<C-S-o>')
+  eq(where(), { names[1], 15 })
+
+  -- forward stops at the first entry of the next file, which is where holding
+  -- `<C-i>` down until the name changes stops too
+  child.type_keys('<C-S-i>')
+  eq(where(), { names[2], 1 })
+  child.type_keys('<C-S-i>')
+  eq(where(), { names[3], 1 })
+
+  -- and the far end is a no-op rather than a jump to nowhere
+  child.type_keys('<C-S-i>')
+  eq(where(), { names[3], 1 })
+
+  for _, path in ipairs(files) do
+    vim.fn.delete(path)
+  end
+end
+
+-- Both pairs are global and labelled: `<C-S-o>`/`<C-S-i>` and the mouse side
+-- buttons with Shift, all four on the same two actions.
+T['file-granular jumplist']['both doors are registered, globally and labelled'] = function()
+  for _, lhs in ipairs { '<C-S-o>', '<S-X1Mouse>' } do
+    eq({ lhs, child.lua_get(([[vim.fn.maparg(%q, 'n', false, true).desc]]):format(lhs)) }, {
+      lhs,
+      'Jump back to the previous file (jumplist)',
+    })
+  end
+  for _, lhs in ipairs { '<C-S-i>', '<S-X2Mouse>' } do
+    eq({ lhs, child.lua_get(([[vim.fn.maparg(%q, 'n', false, true).desc]]):format(lhs)) }, {
+      lhs,
+      'Jump forward to the next file (jumplist)',
+    })
+  end
+end
+
 T['which-key spec'] = new_set()
 
 -- The general form of the same mistake, caught by its fingerprint: a `desc`

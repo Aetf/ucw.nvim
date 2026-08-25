@@ -75,5 +75,34 @@ end
 map({ 'n', 'i', 'v' }, '<X2Mouse>', '<c-i>', { noremap = true, silent = true, desc = 'Jump forward (jumplist)' })
 map({ 'n', 'i', 'v' }, '<X1Mouse>', '<c-o>', { noremap = true, silent = true, desc = 'Jump back (jumplist)' })
 
+-- Shift is one notch coarser on the same list: `<C-o>`/`<C-i>` step through
+-- every entry, and a handful of edits in one file put a dozen of them there, so
+-- "back to where I was before this file" is the native key pressed until the
+-- name changes. These do that in one press, and take a count in files
+-- (`3<C-S-o>`). `ucw.keys.actions.jump_file` still jumps by handing
+-- `{steps}<C-o>` to Neovim, so the jumplist stays Neovim's to maintain.
+--
+-- Terminal prerequisite, the same one `<C-i>` itself has (Phase 9, D6): Ctrl
+-- and Ctrl+Shift are one byte to a terminal unless it speaks CSI-u. tmux is
+-- configured for it; Konsole gets there through the user's keytab, which needs
+-- an entry per key. Nothing here breaks without them - the keys simply arrive
+-- as `<C-o>`/`<C-i>` and do the fine-grained jump.
+--
+-- Normal mode only, unlike the mouse pair above: `jump_file` runs `normal!`,
+-- which has no meaning from insert mode, and `<C-o>` there is Neovim's own
+-- one-shot normal command.
+vim.keymap.set('n', '<C-S-o>', function()
+  actions.jump_file(-1)
+end, { silent = true, desc = 'Jump back to the previous file (jumplist)' })
+vim.keymap.set('n', '<C-S-i>', function()
+  actions.jump_file(1)
+end, { silent = true, desc = 'Jump forward to the next file (jumplist)' })
+vim.keymap.set('n', '<S-X1Mouse>', function()
+  actions.jump_file(-1)
+end, { silent = true, desc = 'Jump back to the previous file (jumplist)' })
+vim.keymap.set('n', '<S-X2Mouse>', function()
+  actions.jump_file(1)
+end, { silent = true, desc = 'Jump forward to the next file (jumplist)' })
+
 -- term navigation
 map('t', '<esc><esc>', [[<c-\><c-n>]], { noremap = true, silent = true, desc = 'Leave terminal mode' })

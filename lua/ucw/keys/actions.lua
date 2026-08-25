@@ -50,6 +50,28 @@ function M.cell_jump(dir)
   require('mini.ai').move_cursor('left', 'a', 'h', { n_times = vim.v.count1, search_method = dir })
 end
 
+-- One `<C-o>`/`<C-i>` step at file granularity: go to the nearest jumplist
+-- entry that is in another file, which is what holding the native key down
+-- until the name in the statusline changes does by hand. Bound to the same
+-- keys with Shift (`ucw.keys`).
+--
+-- The jump itself is Neovim's - this only works out *how many* presses reach
+-- that entry and hands `{steps}<C-o>` back to `normal!`. Anything that moved
+-- the cursor directly (`nvim_win_set_cursor`, `:buffer`) would leave the
+-- jumplist describing a history that never happened.
+---@param dir -1|1 backward (`<C-o>`) or forward (`<C-i>`)
+function M.jump_file(dir)
+  local steps = utils.win_jump_other_buf(0, nil, dir, vim.v.count1)
+  if steps == nil then
+    return vim.notify(
+      dir < 0 and 'No earlier file in the jumplist' or 'No later file in the jumplist',
+      vim.log.levels.INFO,
+      { title = 'jumplist' }
+    )
+  end
+  vim.cmd.normal { steps .. vim.keycode(dir < 0 and '<C-o>' or '<C-i>'), bang = true }
+end
+
 -- Send ipython cell under the current cursor to iron REPL.
 -- If opts.next == true, move cursor to next cell.
 function M.iron_send_block(opts)
