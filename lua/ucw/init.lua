@@ -1,17 +1,35 @@
 local M = {}
 
 -- bootstrap lazy.nvim itself (clone on first run)
+-- The commit `lazy-lock.json` pins lazy.nvim itself to, or nil if there is no
+-- lockfile yet (a first boot on a fresh checkout).
+local function locked_lazy_commit()
+  local ok, lock = pcall(function()
+    local path = vim.fs.joinpath(vim.fn.stdpath('config'), 'lazy-lock.json')
+    return vim.json.decode(table.concat(vim.fn.readfile(path), '\n'))
+  end)
+  local entry = ok and type(lock) == 'table' and lock['lazy.nvim'] or nil
+  return type(entry) == 'table' and type(entry.commit) == 'string' and entry.commit or nil
+end
+
 local function bootstrap_lazy()
   local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
   if not (vim.uv or vim.loop).fs_stat(lazypath) then
-    vim.fn.system {
-      'git',
-      'clone',
-      '--filter=blob:none',
-      'https://github.com/folke/lazy.nvim.git',
-      '--branch=stable',
-      lazypath,
-    }
+    -- Checked out at the commit in the lockfile, not at whatever `stable`
+    -- points to today. lazy.nvim manages itself like any other plugin and
+    -- records its own commit in `lazy-lock.json`, but it is the one plugin it
+    -- cannot *install* - so cloning a moving branch made every fresh install
+    -- write a different commit than the one checked in, which is the CI
+    -- "lazy-lock.json did not drift" gate failing on a lockfile nobody
+    -- touched. Updating lazy.nvim goes through `:Lazy update` and lands in the
+    -- lockfile, same as everything else.
+    vim.fn.system { 'git', 'clone', '--filter=blob:none', 'https://github.com/folke/lazy.nvim.git', lazypath }
+    local commit = locked_lazy_commit()
+    if commit then
+      vim.fn.system { 'git', '-C', lazypath, 'checkout', '--detach', commit }
+    else
+      vim.fn.system { 'git', '-C', lazypath, 'checkout', '--detach', 'origin/stable' }
+    end
   end
   vim.opt.rtp:prepend(lazypath)
 end
