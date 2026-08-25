@@ -46,6 +46,14 @@ return {
   config = function()
     require('noice').setup {
       lsp = {
+        -- The progress spinner is lualine's (`lua/ucw/plugins/lsp_progress.lua`,
+        -- lsp-progress.nvim). noice renders `$/progress` too, and its default is
+        -- on, so every server report was drawn twice - once in the statusline and
+        -- once as a notification card. basedpyright emits a begin/report/end
+        -- triple per analysis pass, so opening a Python buffer stacked several
+        -- `basedpyright` cards over the buffer text (measured: 27 LspProgress
+        -- events in the six seconds after one `:edit`).
+        progress = { enabled = false },
         -- override markdown rendering so that **cmp** and other plugins use **Treesitter**
         override = {
           ['vim.lsp.util.convert_input_to_markdown_lines'] = true,
