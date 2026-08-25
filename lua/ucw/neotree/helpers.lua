@@ -270,4 +270,11 @@ function M.commands.move_in(state)
   end
 end
 
+-- Toggle hidden files. Overrides the builtin only to drop its `log.info`
+-- notification: the redrawn tree already shows whether dotfiles are in it.
+function M.commands.toggle_hidden(state)
+  state.filtered_items.visible = not state.filtered_items.visible
+  require('neo-tree.sources.filesystem')._navigate_internal(state, nil, nil, nil, false)
+end
+
 return M
