@@ -20,13 +20,15 @@ local T, child = H.new_integration_test()
 
 T['neo-tree'] = new_set()
 
--- Level rather than text, so the next breakage is caught too. Known to
--- discriminate: on `NVIM v0.13.0-dev` this fails with
--- `E216: No such group or event: BufModifiedSet`. That event was removed
--- upstream in 0.13 (|OptionSet| with pattern `modified` replaces it); neo-tree
--- fixed it on `main` and not on the `v2.x` branch this config pins, so it is a
--- real incompatibility to resolve when 0.13 lands - see
--- docs/design/phase7-ci.md §9.8 - and not something this test should paper over.
+-- Level rather than text, so the next breakage is caught too. This is the case
+-- that found the 0.13 incompatibility and the one that closed it: on
+-- `NVIM v0.13.0-dev` it failed with `E216: No such group or event:
+-- BufModifiedSet`, an event Neovim removed (|OptionSet| with pattern
+-- `modified` replaces it) and that neo-tree kept registering unconditionally
+-- on the `v2.x` branch this config used to pin. `v3.x` picks between the two
+-- at runtime, so the assertion holds on both Neovims now - see
+-- docs/design/phase9.5-trial-period.md §11, which supersedes phase7-ci.md
+-- §9.8's "moving off v2.x is a plugin decision".
 T['neo-tree']['opening the tree raises no error notification'] = function()
   child.lua([[pcall(function() vim.cmd('Neotree show') end)]])
 

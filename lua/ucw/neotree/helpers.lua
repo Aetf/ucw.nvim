@@ -10,8 +10,18 @@ function M.width_fit_content(state)
 end
 
 -- Expand a node and load filesystem info if needed.
+--
+-- `path_to_reveal` is nil on purpose - "reveal nothing" - and neo-tree v3
+-- annotates that third parameter `string` rather than `string?`, which its own
+-- code contradicts twice over: `toggle_directory` forwards the value to
+-- `fs_scan.get_items`, whose wrappers annotate it `string?` and whose reveal
+-- step is `if path_to_reveal then` (`lib/fs_scan.lua:533/541/618`), and
+-- upstream's own caller passes nothing after the node
+-- (`common/commands.lua:797`). Same annotation, same evidence, at both
+-- `toggle_directory` calls in `move_out`/`move_in` below.
 local function open_dir(state, dir_node)
   local fs = require('neo-tree.sources.filesystem')
+  ---@diagnostic disable-next-line: param-type-mismatch
   fs.toggle_directory(state, dir_node, nil, true, false)
 end
 
@@ -92,13 +102,21 @@ end
 -- @bool stay Keep the current node revealed and selected
 local function redraw_after_depthlevel_change(state, stay)
   local node = state.tree:get_node()
+  -- Not every line in the tree is a node: neo-tree renders `(N hidden items)`
+  -- at the end of a directory, and a collapse leaves the cursor on one often
+  -- enough that `zm`/`zx` raised "attempt to index local 'node'" as a routine
+  -- part of using them. Nothing to re-focus in that case, so redraw and stop.
+  -- Same for a parent lookup that walks off the root.
+  if not node then
+    return renderer.redraw(state)
+  end
 
   if stay then
     require('neo-tree.ui.renderer').expand_to_node(state.tree, node)
   else
     -- Find the closest parent that is still visible.
     local parent = state.tree:get_node(node:get_parent_id())
-    while not parent:is_expanded() and parent:get_depth() > 1 do
+    while parent and not parent:is_expanded() and parent:get_depth() > 1 do
       node = parent
       parent = state.tree:get_node(node:get_parent_id())
     end
@@ -252,6 +270,7 @@ end
 function M.commands.move_out(state)
   local node = state.tree:get_node()
   if node.type == 'directory' and node:is_expanded() then
+    ---@diagnostic disable-next-line: missing-parameter
     require('neo-tree.sources.filesystem').toggle_directory(state, node)
   else
     require('neo-tree.ui.renderer').focus_node(state, node:get_parent_id())
@@ -263,6 +282,7 @@ function M.commands.move_in(state)
   local node = state.tree:get_node()
   if node.type == 'directory' then
     if not node:is_expanded() then
+      ---@diagnostic disable-next-line: missing-parameter
       require('neo-tree.sources.filesystem').toggle_directory(state, node)
     elseif node:has_children() then
       require('neo-tree.ui.renderer').focus_node(state, node:get_child_ids()[1])

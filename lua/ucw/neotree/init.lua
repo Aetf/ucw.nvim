@@ -1,9 +1,5 @@
 local M = {}
 
-function M.setup()
-  vim.g.neo_tree_remove_legacy_commands = 1
-end
-
 function M.config()
   local helpers = require('ucw.neotree.helpers')
   -- Termcode escaping for the two lightspeed mappings below. This used to be
@@ -42,12 +38,18 @@ function M.config()
     filesystem = {
       -- This will find and focus the file in the active buffer every
       -- time the current file is changed while the tree is open.
-      follow_current_file = true,
+      follow_current_file = { enabled = true },
       -- This will use the OS level file watchers
       -- to detect changes instead of relying on nvim autocmd events.
       use_libuv_file_watcher = false,
       window = {
-        -- dynamic width fitting the content
+        -- Dynamic width fitting the content. v3 annotates `window.width` as
+        -- `integer?` (`types/config.lua:79`) and still resolves it through
+        -- `utils.resolve_config_option`, which calls a function value with
+        -- `state` (`utils/init.lua:901-914`). Measured rather than assumed:
+        -- opened in a directory whose `:~` root name is longer than the
+        -- default, the tree comes up at the computed width, not at 40.
+        ---@diagnostic disable-next-line: assign-type-mismatch
         width = helpers.width_fit_content,
 
         mappings = {
