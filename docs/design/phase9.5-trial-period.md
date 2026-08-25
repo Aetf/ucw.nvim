@@ -20,7 +20,9 @@ door, a presentation layer nobody had looked at as a whole, and two editor
 behaviours that were quietly broken. T6 and T7 each reopen one — D2's "no jump
 key for snacks.words", and which view `<CR>` opens on a commit — and each
 states the rule its family now follows. T8 reopens nothing either: it is a
-notification the trial found saying the same thing four times.
+notification the trial found saying the same thing four times. T9 reopens T6's
+own rule 1, and says where the line between the bracket family and a native
+vocabulary falls.
 
 ## 1. T1 — `<leader>e`/`E` dropped (supersedes §2.5, §3)
 
@@ -466,7 +468,96 @@ to prove it adds nothing. It asserts exactly one `Reloaded config:` notice and
 that the message names both servers. Reverse-verified: with the per-client
 watchers reinstated it reports 2.
 
-## 9. What this changes in earlier documents
+## 9. T9 — one notch coarser on the same jumplist
+
+`<C-o>`/`<C-i>` step one *entry*, and a handful of edits in one file put a dozen
+entries there, so "back to the file I came from" is the native key held down
+until the name in the statusline changes. `<C-S-o>`/`<C-S-i>` do that in one
+press, and take a count in files (`3<C-S-o>`). The mouse side buttons get the
+same pair with Shift, matching the plain ones already bound next to them.
+
+**Why this is not `[f`/`]f`.** T6 rule 1 says previous/next is `[`/`]` plus a
+category letter and nothing else, and this is deliberately outside it. The
+jumplist's door has never been in that family: it is `<C-o>`/`<C-i>`, which rule
+3 lists among the native vocabularies that are exempt as themselves. What is
+being added is not a new category — it is a coarser step through *the same
+list*, so it belongs on the same keys with a modifier. Spelling it `[f`/`]f`
+would give one list two vocabularies, which is the thing rule 4 exists to
+prevent.
+
+**The jump is Neovim's.** `ucw.keys.actions.jump_file` works out how many
+presses reach the landing entry and runs `{steps}<C-o>`; it never moves the
+cursor itself. Anything that did (`nvim_win_set_cursor`, `:buffer`) would leave
+the jumplist describing a history that never happened, and the next native
+`<C-i>` would go somewhere the user never was. Running out of entries in that
+direction is a no-op with a notification, the same shape Neovim's own `[q`/`]q`
+have at the end of a list.
+
+### 9.1 Terminal prerequisite
+
+The same one `<C-i>` itself has (Phase 9, D6): Ctrl and Ctrl+Shift are one byte
+to a terminal unless it speaks CSI-u. tmux is already configured for it; Konsole
+gets there through the user's keytab, and that keytab needs an entry per key —
+**an unlisted modifier in a keytab rule means "don't care"**, so the existing
+`key I+Ctrl` was matching Ctrl+Shift+I as well and emitting the Ctrl+I sequence
+for both. Split, plus the missing half for O:
+
+```
+key I+Ctrl-Shift : "\E[105;5u"
+key I+Ctrl+Shift : "\E[105;6u"
+key O+Ctrl+Shift : "\E[111;6u"
+```
+
+Measured against a real TUI by injecting the bytes and reading back which
+mapping fired, because how Neovim folds Shift into a control character is not
+something to assume: `\E[105;5u` → `<C-I>`, `\E[105;6u` → `<C-S-I>`,
+`\E[111;6u` → `<C-S-O>`, `0x0f` → `<C-O>`, `0x09` → `<Tab>`, all distinct. The
+shifted codepoint (`\E[73;6u`) arrives as `<C-S-I>` too, so either spelling
+works; the unshifted one matches the entry that was already there.
+
+Nothing here breaks without the keytab. The keys simply arrive as `<C-o>`/`<C-i>`
+and do the fine-grained jump, which is what they did before.
+
+### 9.2 `win_backward_buf` answered nothing
+
+`ucw.utils.win_backward_buf` — "find backward in jumplist until the buf is
+different" — already computed this, and had never once returned an answer.
+`getjumplist()` returns `{list, idx}` together; the function took the list out
+of the pair and then indexed *that* as if it were still the pair, so what it
+called the jumplist was a single jump entry, `#jumplist` was 0, and it bailed
+out for every window that had one. Nothing showed: `bufdelete`'s next-buffer
+choice falls through to the alternate buffer and then to the buffer list, both
+of which look like a deliberate policy from the outside.
+
+It is one function with the direction and the file count as parameters now, and
+`win_backward_buf` is the backward-by-one wrapper over it, so the buffer
+`bufdelete` lands on and the entry `<C-S-o>` lands on are the same rule rather
+than two implementations of it.
+
+### 9.3 Guards
+
+New test file `tests/test_utils.lua`: the landing rule directly, asserting the
+step count next to the buffer (a right buffer reached by the wrong number of
+presses lands somewhere else), and `bufdelete` going through it with a decoy
+buffer in the list that the fallback would have reached first.
+
+New `file-granular jumplist` set in `tests/test_keys.lua`: three real files, and
+the assertion is the *contrast* — from one position `<C-o>` stays in the file
+while `<C-S-o>` leaves it — because a `<C-S-o>` that simply forwarded to `<C-o>`
+would pass a landing-place assertion whenever the two happen to agree. Plus the
+count, the far end being a no-op, and all four lhs being global and labelled.
+
+One trap that cost a run: **`<C-i>` cannot be driven through `type_keys` here.**
+It is byte 0x09 and so is `<Tab>`, which this config cycles buffers with — over
+RPC there is no terminal in the way to tell them apart, so `nvim_input('<C-i>')`
+lands in another buffer entirely. The native half of the contrast goes through
+`:normal!`, with a `1` count because `:normal!` eats the whitespace between
+itself and an argument that *is* a tab.
+
+The global keymap snapshot moved by exactly the intended set, 311 → 315: the two
+Ctrl+Shift keys and the two Shift+mouse ones, all four labelled.
+
+## 10. What this changes in earlier documents
 
 | document | passage | now |
 |---|---|---|
@@ -476,16 +567,18 @@ watchers reinstated it reports 2.
 | `phase9-keybindings.md` | §2.2 r2.1 (no jump key for snacks.words) | jumps are `[r`/`]r`, buffer-local (T6) |
 | `phase9-keybindings.md` | §5 extension rule | previous/next is `[`/`]` + a category letter, and nothing else (T6); a read-only window closes on `q` (T7) |
 | `phase3-settings-composition.md` | §5 "the only per-client state left is the base snapshot and the watchers" | watchers are per settings directory, shared by the clients that read it (T8) |
+| `phase9.5-trial-period.md` | §6 rule 1 (previous/next is `[`/`]` + a letter, and nothing else) | a coarser step through a list a native vocabulary already owns stays on that vocabulary's keys (T9) |
 
 Phase 8's documents are not amended: they record the Phase 8 tree, which Phase 9
 already superseded.
 
-## 10. As-built
+## 11. As-built
 
 `9252521` T4 → `ab3c8e6` T1 → `3716ee1` T2 → `044920f` T5 → `7430074` T3 →
 `c492113` T5 fixes (self-review) → `a88ac1a` label nit → `0f74c1f` T6 →
-`97b9b71` T7.1/7.2 → `ba3d4ed` T7.3 → `7bc16a5` T8 → `3af3df7` T8.1. Outside
-this repo: yadm `9098ba4` (tmux `focus-events`).
+`97b9b71` T7.1/7.2 → `ba3d4ed` T7.3 → `7bc16a5` T8 → `3af3df7` T8.1 →
+`3d733b0` T9.2 → `9ad7de4` T9. Outside this repo: yadm `9098ba4` (tmux
+`focus-events`) and the Konsole keytab entries T9.1 lists.
 
 Every behaviour change carries a guard, and every guard was reverse-verified by
 reinstating the bug it covers — including one that was not deliberate: a
@@ -496,6 +589,9 @@ run.
 `tests/test_lsp.lua` gains the T8 case (one directory change is one
 notification).
 
+`tests/test_utils.lua` is new (T9): the jumplist landing rule, and `bufdelete`
+going through it.
+
 New test file: `tests/test_autoread.lua` (reload happens; modified buffer is
 left alone; the notice speaks on reload and stays quiet on delete; neither
 autocmd group exists under firenvim, and both exist in the full UI). New cases
@@ -504,9 +600,10 @@ leaf Sentence-case), the visual-mode header census, "gq/gw map nothing", the
 unlabelled-key scan over `n`/`x`/`o`, mini.ai's ownership of `g[`/`g]`, and the
 `cell navigation` set, and the `close with q` set. `tests/test_git.lua` is new
 (T7): a real `:Neogit` on a throwaway repository, both halves of the `<CR>`
-divert and both halves of `<leader>gm`.
+divert and both halves of `<leader>gm`. The `file-granular jumplist` set in
+`tests/test_keys.lua` is T9's.
 
-## 11. Open
+## 12. Open
 
 - **`<leader>e`/`E` are free.** So are `a d h i j k m o p v x y z` and most
   capitals (§3 of Phase 9); `d` and `a` stay reserved for the debugger and AI
