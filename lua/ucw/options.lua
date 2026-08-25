@@ -95,10 +95,19 @@ au.group('UnfoldCursorLine', {
 vim.opt.inccommand = 'split'
 
 -- diff mode
+--
+-- Through a typed local rather than `vim.opt.diffopt:append(...)` twice.
+-- lua_ls infers the type of a `vim.opt` field from every assignment it can
+-- reach, and the lint gate reaches the installed plugins' sources - one
+-- plugin doing `vim.opt.diffopt = { ... }` is enough to make the field a list
+-- everywhere and `:append` an undefined field on a line that is correct. The
+-- annotation states what `vim.opt.X` always is; it suppresses nothing.
+---@type vim.Option
+local diffopt = vim.opt.diffopt
 -- do a second diff stage to match lines in hunk
-vim.opt.diffopt:append('linematch:120')
+diffopt:append('linematch:120')
 -- generate minimal diff
-vim.opt.diffopt:append('algorithm:histogram')
+diffopt:append('algorithm:histogram')
 
 -- Program beheavior
 
