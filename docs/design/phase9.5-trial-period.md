@@ -22,7 +22,8 @@ key for snacks.words", and which view `<CR>` opens on a commit — and each
 states the rule its family now follows. T8 reopens nothing either: it is a
 notification the trial found saying the same thing four times. T9 reopens T6's
 own rule 1, and says where the line between the bracket family and a native
-vocabulary falls.
+vocabulary falls. T10 is not a keybinding at all: two gates and one
+notification that had each been failing long enough to read as scenery.
 
 ## 1. T1 — `<leader>e`/`E` dropped (supersedes §2.5, §3)
 
@@ -557,7 +558,84 @@ itself and an argument that *is* a tab.
 The global keymap snapshot moved by exactly the intended set, 311 → 315: the two
 Ctrl+Shift keys and the two Shift+mouse ones, all four labelled.
 
-## 10. What this changes in earlier documents
+## 10. T10 — three things that were red and one that was noisy
+
+Not keybindings. Grouped because each is a gate or a daily annoyance that had
+been failing long enough to read as background.
+
+### 10.1 The lint gate was checking a plugin that is not installed
+
+`scripts/luarc-lint-config.lua` globbed `<lazy-root>/*/lua`. That is every
+plugin directory **on disk**, which is not the plugin set: lazy deletes a
+plugin dropped from the spec only on `:Lazy clean`, which nothing here runs.
+`diffview-plus.nvim`, swapped out for codediff in `6f341e6`, was still there
+and still in the library.
+
+A library entry is not inert. lua_ls types a `vim.opt` field from every
+assignment it can reach, and diffview assigns a list to `vim.opt.diffopt`
+(`vim.opt.diffopt = vim.deepcopy(orig_diffopt)`), which makes the field a list
+everywhere and `:append` an undefined field — in *this* repo's `options.lua`,
+on two lines untouched since 2022. Diffview carries a
+`---@diagnostic disable-next-line: undefined-field` over its own
+`vim.opt.eventignore:prepend` for the same reason, with the comment
+"`vim.opt.X` is magic; LuaLS doesn't see it as `vim.Option`".
+
+§12's earlier entry called the warnings bogus and the cause unisolated. Half
+right: the warnings are false, and the cause is exactly one directory. The
+isolation attempt that failed had checked a single file rather than the repo,
+where the workspace is different enough to hide it.
+
+The library is named from `lazy-lock.json` now, which is also the set CI
+installs, so the two gates see one library. `options.lua` additionally takes
+`diffopt` through a `---@type vim.Option` local: the annotation states what
+`vim.opt.X` always is, and with the poisoned directory forced back into the
+library the diagnostic is gone — so a future plugin doing the same cannot
+reopen this.
+
+### 10.2 CI was red on a pin outside the lockfile's reach
+
+`test (stable)`'s "lazy-lock.json did not drift" step, on every push since the
+gate existed. The drift was one line, always the same one: `lazy.nvim`'s own.
+
+lazy.nvim manages itself like any other plugin and records its commit in the
+lockfile, but it is the one plugin it cannot *install* — the config clones it
+before lazy exists. `bootstrap_lazy()` cloned `--branch=stable`, so every
+fresh install got whatever `stable` pointed at that day and lazy wrote that
+commit into the lockfile. A moving pin, in the one place the lockfile could
+not cover, failing the gate whose whole job is to notice moving pins.
+
+It clones the default branch and checks out the locked commit now (reachable:
+`stable` is cut from `main`), falling back to `stable` when there is no
+lockfile entry at all. Reproduced both ways against a scratch `XDG_DATA_HOME`
+with every plugin installed from nothing: the old spelling reproduces the exact
+CI diff, the new one leaves the lockfile untouched.
+
+### 10.3 `K` in a python buffer always said it found nothing
+
+`vim.lsp.buf.hover()` asks every hover-capable client and notifies "No
+information available" once per empty answer. ruff advertises the capability
+and then answers with nothing at nearly every position — it documents `noqa`
+codes and little else — so every `K` drew basedpyright's float and, beside it,
+a report that the hover had found nothing.
+
+The capability is taken away at attach, from a table keyed by client name in
+`ucw.lsp.attach`, rather than declined in `after/lsp/ruff.lua`: the initialize
+response is where it is decided, and `after/lsp/` files here are table-only by
+rule. Ruff's own editor documentation says to decline it wherever a type
+checker is attached. A genuine "nothing here" still reports, once.
+
+### 10.4 Guards
+
+`tests/test_lsp.lua` gains the ruff case, on a fake client *named* ruff —
+what decides this is the name in the attach handler, not anything the binary
+does — with the basedpyright half next to it, because taking the capability
+from every client would be the same bug with the sign flipped.
+
+The other two are gates rather than behaviour, and their guard is the gate:
+`just lint` is clean, and the drift check was reverse-verified by restoring
+the old bootstrap and watching the same one-line diff come back.
+
+## 11. What this changes in earlier documents
 
 | document | passage | now |
 |---|---|---|
@@ -568,16 +646,19 @@ Ctrl+Shift keys and the two Shift+mouse ones, all four labelled.
 | `phase9-keybindings.md` | §5 extension rule | previous/next is `[`/`]` + a category letter, and nothing else (T6); a read-only window closes on `q` (T7) |
 | `phase3-settings-composition.md` | §5 "the only per-client state left is the base snapshot and the watchers" | watchers are per settings directory, shared by the clients that read it (T8) |
 | `phase9.5-trial-period.md` | §6 rule 1 (previous/next is `[`/`]` + a letter, and nothing else) | a coarser step through a list a native vocabulary already owns stays on that vocabulary's keys (T9) |
+| `phase9.5-trial-period.md` | §12 "`just lint` fails locally … which library entry is responsible was not isolated" | it is `diffview-plus.nvim`, left on disk by the codediff swap; the library is named from the lockfile now (T10.1) |
+| `phase7-ci.md` | §1.5a the lint library is every plugin directory on disk | it is every *locked* plugin; a leftover is not a plugin (T10.1) |
 
 Phase 8's documents are not amended: they record the Phase 8 tree, which Phase 9
 already superseded.
 
-## 11. As-built
+## 12. As-built
 
 `9252521` T4 → `ab3c8e6` T1 → `3716ee1` T2 → `044920f` T5 → `7430074` T3 →
 `c492113` T5 fixes (self-review) → `a88ac1a` label nit → `0f74c1f` T6 →
 `97b9b71` T7.1/7.2 → `ba3d4ed` T7.3 → `7bc16a5` T8 → `3af3df7` T8.1 →
-`3d733b0` T9.2 → `9ad7de4` T9. Outside this repo: yadm `9098ba4` (tmux
+`3d733b0` T9.2 → `9ad7de4` T9 → `8e3804d`/`62f9a85` T10.1 → `18d14f3` T10.3 →
+`630e79f`/`2d15b98` T10.2. Outside this repo: yadm `9098ba4` (tmux
 `focus-events`) and the Konsole keytab entries T9.1 lists.
 
 Every behaviour change carries a guard, and every guard was reverse-verified by
@@ -603,23 +684,19 @@ unlabelled-key scan over `n`/`x`/`o`, mini.ai's ownership of `g[`/`g]`, and the
 divert and both halves of `<leader>gm`. The `file-granular jumplist` set in
 `tests/test_keys.lua` is T9's.
 
-## 12. Open
+## 13. Open
 
 - **`<leader>e`/`E` are free.** So are `a d h i j k m o p v x y z` and most
   capitals (§3 of Phase 9); `d` and `a` stay reserved for the debugger and AI
   goals.
-- **`just lint` fails locally, and did before any of this.** Two bogus
-  `undefined-field: append` warnings on `vim.opt.diffopt` (`options.lua:99/101`,
-  lines untouched since 2022). What is measured: it is the *library set*, not
-  the source. The generator (`scripts/luarc-lint-config.lua`) globs
-  `<lazy-root>/*/lua` — every plugin directory **on disk** — and this machine's
-  root holds two that a fresh one does not (`firenvim`, plus `diffview-plus.nvim`
-  left over from the codediff swap `6f341e6`). Checking a *clean* tree with this
-  machine's generated config reproduces the warnings; checking this tree at the
-  pre-trial commit reproduces them too; a worktree, which gets its own data root
-  from `NVIM_APPNAME`, is clean, and so is CI. Which library entry is
-  responsible was not isolated — removing `diffview-plus.nvim` alone changes the
-  finding set in a way that suggests lua_ls resolution order, not one bad
-  directory.
+- **The `nightly` CI leg is red, for something real.** neo-tree is pinned to
+  `branch = 'v2.x'`, two majors behind, and registers `BufModifiedSet`, which
+  Neovim removed on master — `runtime/doc/news.txt` says to use `OptionSet`
+  with pattern `modified` instead. Upstream neo-tree's `main`
+  already picks between the two at runtime; `v2.x` never will. So this is not
+  a nightly quirk to wait out — it is the advisory leg doing its job, and the
+  deadline is Neovim 0.13. The choice phase7-ci.md §5 leaves open (migrate to
+  v3.x, or delete a leg nobody reads) is still open, but only one of the two
+  answers keeps the file explorer working.
 - **rustaceanvim's buffer-local `<leader>a`** is still squatting the reserved AI
   letter (carried over from Phase 9 §7).

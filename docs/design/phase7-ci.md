@@ -428,6 +428,12 @@ exists):
 
 ### 1.5a How much of the lint config can be checked in (measured against a discriminating probe)
 
+> **Superseded in one detail** by `phase9.5-trial-period.md` §10.1: the
+> generated library is every plugin in `lazy-lock.json`, not every directory
+> under the lazy root. A plugin dropped from the spec stays on disk until
+> `:Lazy clean`, and one of those was making a correct line in `options.lua`
+> fail this gate. Everything else below still holds.
+
 The gate is only worth having if the same rules apply while editing, so the
 question is how much of the lua_ls config can be a checked-in file that both
 the editor and `just lint` read. Four things measured — each with a probe
