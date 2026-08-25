@@ -57,33 +57,63 @@ local function is_normal_buffer(buf)
   return vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buflisted and vim.bo[buf].buftype == ''
 end
 
--- find backward in jumplist until the buf is different
-local function win_backward_buf(win, current_buf)
+-- Walk a window's jumplist away from the current position until landing in a
+-- *different* normal buffer, and report how far that is.
+--
+-- `dir` is -1 for backward (the direction `<C-o>` moves) and 1 for forward
+-- (`<C-i>`); `count` is how many distinct files to cross. Returns the number of
+-- `<C-o>`/`<C-i>` presses that reach the landing entry, plus its buffer -
+-- nothing if that direction runs out first.
+--
+-- The step count is the whole point: it is what lets a caller hand the jump
+-- back to Neovim (`{steps}<C-o>`) instead of moving the cursor itself, so the
+-- jumplist keeps being maintained by the code that owns it. Entries in the
+-- current buffer and in non-normal buffers (terminals, quickfix, wiped ones)
+-- are stepped over, not landed on, and still cost a press each.
+---@param dir -1|1
+---@return integer? steps, integer? target_buf
+local function win_jump_other_buf(win, current_buf, dir, count)
   if current_buf == nil then
     current_buf = vim.api.nvim_win_get_buf(win)
   end
+  count = count or 1
 
-  local getjumplist = vim.fn.getjumplist(win)[1]
-  if getjumplist == nil or #getjumplist == 0 then
+  -- `getjumplist()` returns `{list, idx}` - both at once, which is why this
+  -- reads the pair rather than indexing twice. Doing the latter took `list[1]`
+  -- (a single jump entry) for the list, so `#jumplist` was 0 for every window
+  -- with a jumplist and this returned nothing at all.
+  local jl = vim.fn.getjumplist(win)
+  local jumps, idx = jl[1], jl[2]
+  if jumps == nil or #jumps == 0 then
     return
   end
-  local jumplist = getjumplist[1]
-  if #jumplist == 0 then
-    return
-  end
 
-  -- plus one because of one index
-  local i = getjumplist[2] + 1
-  local j = i
-  local target_buf = current_buf
+  -- `idx` is 0-based and is where `<C-o>`/`<C-i>` count from, so `steps`
+  -- presses land on `jumps[idx + 1 + dir * steps]` in Lua's 1-based indexing.
+  -- When the cursor sits past the newest entry, `idx` == `#jumps`, and one
+  -- `<C-o>` reaches the last one.
+  local remaining = count
+  local last_buf = current_buf
+  for steps = 1, #jumps do
+    local i = idx + 1 + dir * steps
+    if i < 1 or i > #jumps then
+      return
+    end
+    local buf = jumps[i].bufnr
+    if buf ~= last_buf and is_normal_buffer(buf) then
+      remaining = remaining - 1
+      if remaining == 0 then
+        return steps, buf
+      end
+      last_buf = buf
+    end
+  end
+end
 
-  while j > 1 and (current_buf == target_buf or not is_normal_buffer(target_buf)) do
-    j = j - 1
-    target_buf = jumplist[j].bufnr
-  end
-  if target_buf ~= current_buf and is_normal_buffer(target_buf) then
-    return target_buf
-  end
+-- find backward in jumplist until the buf is different
+local function win_backward_buf(win, current_buf)
+  local _, target_buf = win_jump_other_buf(win, current_buf, -1, 1)
+  return target_buf
 end
 
 -- given a list of buffers, and current buffer's index in the list,
@@ -180,6 +210,8 @@ local function buf_kill(kill_cmd, bufnr, force)
     vim.cmd(string.format('%s %d', kill_cmd, bufnr))
   end
 end
+
+M.win_jump_other_buf = win_jump_other_buf
 
 M.bufdelete = function(bufnr, force)
   return buf_kill('bd', bufnr, force)
