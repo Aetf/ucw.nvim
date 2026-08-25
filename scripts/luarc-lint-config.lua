@@ -66,19 +66,22 @@ local locked =
 local names = vim.tbl_keys(locked)
 table.sort(names)
 
-local libs, missing = {}, {}
+local libs, absent = {}, {}
 for _, name in ipairs(names) do
   local dir = vim.fs.joinpath(lazy_root, name)
   if vim.fn.isdirectory(dir) == 0 then
-    table.insert(missing, name)
+    -- Locked but not on disk. Not an error and not fixable by installing:
+    -- a `cond`-gated spec (firenvim) is in the lockfile and is only ever
+    -- installed in the environment it is gated on, so this is the one way
+    -- the local library and CI's legitimately differ. Named in the summary
+    -- line rather than swallowed - the whole argument for this script is that
+    -- a quietly smaller library reads exactly like a working one.
+    table.insert(absent, name)
   elseif vim.fn.isdirectory(vim.fs.joinpath(dir, 'lua')) == 1 then
     -- A plugin with no `lua/` (vimscript, or data like friendly-snippets)
-    -- contributes nothing to check against and is not an error.
+    -- contributes nothing to check against and is not an error either.
     table.insert(libs, vim.fs.joinpath(dir, 'lua'))
   end
-end
-if #missing > 0 then
-  die(('locked but not installed: %s - run `just plugins`'):format(table.concat(missing, ' ')))
 end
 if #libs == 0 then
   die(('no plugin `lua/` directories under %s - run `just plugins`'):format(lazy_root))
@@ -87,4 +90,12 @@ end
 vim.list_extend(conf.workspace.library, libs)
 
 vim.fn.writefile(vim.split(vim.json.encode(conf), '\n'), dst)
-io.write(('%s: %d library entries (%d plugins)\n'):format(dst, #conf.workspace.library, #libs))
+io.write(
+  ('%s: %d library entries (%d of %d locked plugins%s)\n'):format(
+    dst,
+    #conf.workspace.library,
+    #libs,
+    #names,
+    #absent > 0 and (', not installed here: ' .. table.concat(absent, ' ')) or ''
+  )
+)
