@@ -343,6 +343,10 @@ handler for three off-spec server commands that **write files**.
 (derivable from `client.workspace_folders`); the only per-client state left is
 the base snapshot and the watchers.
 
+> **Superseded on the watchers** by `phase9.5-trial-period.md` T8: they are keyed
+> by settings directory and shared by every client that reads it, so per-client
+> state is the base snapshot alone, and one directory change is one notification.
+
 `AGENTS.md` loses "anything writing `client.settings` re-applies on
 `UcwLspSettingsReloaded`" and gains "`ucw.lsp.vscode` is the only writer of
 `client.settings`; a file that contributes to settings is a sidecar key, not a

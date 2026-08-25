@@ -1,6 +1,6 @@
 # Phase 9.5 — trial-period tuning
 
-Status: **as-built record, written as the changes landed (2026-08-22/23).**
+Status: **as-built record, written as the changes landed (2026-08-22/24).**
 
 Phase 9 (`phase9-keybindings.md` r3) ended with "real-session trial runs next".
 This is that trial: the config in daily use, each thing that turned out wrong
@@ -19,7 +19,8 @@ T1–T5 reopen no Phase 9 decision: what the trial found there was one duplicate
 door, a presentation layer nobody had looked at as a whole, and two editor
 behaviours that were quietly broken. T6 and T7 each reopen one — D2's "no jump
 key for snacks.words", and which view `<CR>` opens on a commit — and each
-states the rule its family now follows.
+states the rule its family now follows. T8 reopens nothing either: it is a
+notification the trial found saying the same thing four times.
 
 ## 1. T1 — `<leader>e`/`E` dropped (supersedes §2.5, §3)
 
@@ -402,7 +403,70 @@ The global keymap snapshot moves by exactly one line, 310 → 311: `<leader>gm`.
 The `<CR>` override and the `q` mappings are buffer-local and correctly
 invisible to it, which is why they have the instrumented cases above.
 
-## 8. What this changes in earlier documents
+## 8. T8 — one edit, one notification
+
+Adding a word to the ltex dictionary in a project with a few files open answered
+with a stack of identical `Reloaded config` cards — four in a git repo holding
+one markdown, one lua, one json and one toml buffer. Neither the count nor the
+subject was ltex's.
+
+**Where the copies came from.** `ucw.lsp.vscode` built its watchers in
+`M.attach`, i.e. **per client**: every client rooted in the project got its own
+`FileWatcher` on the root and its own on `.vscode`, all four pairs on the same
+two paths. A dictionary write is one directory change, so each pair found it
+separately, each called `M.reload` for its own client, and each announced its
+own success — with a message whose only variable part was the directory, and
+whose client name lived in the notification *title*. ltex itself is silent
+throughout: `ltex_dict`'s command handler calls `vscode.reload(client)`
+synchronously after writing the file, so by the time any watcher fires that
+client is already up to date and the push-when-changed guard returns false.
+
+**What it is now.** Watchers are keyed by settings directory (`watched[dir]`),
+with the set of client ids that read it. A client attaching to a directory that
+is already watched joins the group instead of starting a second pair. `refresh`
+reloads every member — they still compose over different bases, so the reload
+stays per client — collects the ones that actually changed, and sends **one**
+notification naming them: `Reloaded config: <dir>` + `basedpyright, jsonls,
+lua_ls, marksman, ruff, taplo`. The title is plain `LSP` now, because the
+subject of the event is the directory. Clients whose settings did not change
+stay out of the message entirely.
+
+`M.detach` drops a client from every group and closes a group's watchers when
+its last client leaves, which is what `is_watching` (unchanged in meaning: "has
+running watchers") keeps observable.
+
+**Deliberately not changed.** The sidecar keys are all `ltex.*`, and
+`read_sidecars` merges them into *every* client of the directory, so `taplo` and
+`lua_ls` carry an `ltex.dictionary` they will never read. Gating the merge on
+"does this server declare an `ltex` section" would rest on nvim-lspconfig
+happening to ship `ltex.enabled` as a default — a silent breakage of the
+dictionary the day it stops. The junk is one key in a settings table that is
+pushed anyway; VSCode's own convention puts every server's settings in one
+`settings.json` too.
+
+### 8.1 The same finding in the other renderer
+
+Chasing the count turned up its twin: LSP progress was being drawn twice.
+lualine owns that display (`lua/ucw/plugins/lsp_progress.lua`, lsp-progress.nvim,
+loaded on `LspAttach`), while noice renders `$/progress` by default and nothing
+turned it off — so each server report was a statusline spinner *and* a
+notification card. basedpyright emits a begin/report/end triple per analysis
+pass, which is why opening a Python buffer stacked several `basedpyright` cards
+over the buffer text: measured 27 `LspProgress` events in the six seconds after
+one `:edit`. `noice.lua` now sets `lsp.progress.enabled = false`; the lualine
+spinner is untouched (measured: 8 `LspProgressStatusUpdated` events on the next
+`:edit`, and no cards).
+
+### 8.2 Guards
+
+`tests/test_lsp.lua` gains *one directory change is one notification*: two fake
+clients on one root, an edit to `.vscode/settings.json`, then a wait for both to
+carry the new value plus a full debounce window for the group's second watcher
+to prove it adds nothing. It asserts exactly one `Reloaded config:` notice and
+that the message names both servers. Reverse-verified: with the per-client
+watchers reinstated it reports 2.
+
+## 9. What this changes in earlier documents
 
 | document | passage | now |
 |---|---|---|
@@ -411,22 +475,26 @@ invisible to it, which is why they have the instrumented cases above.
 | `phase4-folding-comments.md` | §3.2 diagnostic default | `virtual_lines` defaults to `false` (T4) |
 | `phase9-keybindings.md` | §2.2 r2.1 (no jump key for snacks.words) | jumps are `[r`/`]r`, buffer-local (T6) |
 | `phase9-keybindings.md` | §5 extension rule | previous/next is `[`/`]` + a category letter, and nothing else (T6); a read-only window closes on `q` (T7) |
+| `phase3-settings-composition.md` | §5 "the only per-client state left is the base snapshot and the watchers" | watchers are per settings directory, shared by the clients that read it (T8) |
 
 Phase 8's documents are not amended: they record the Phase 8 tree, which Phase 9
 already superseded.
 
-## 9. As-built
+## 10. As-built
 
 `9252521` T4 → `ab3c8e6` T1 → `3716ee1` T2 → `044920f` T5 → `7430074` T3 →
 `c492113` T5 fixes (self-review) → `a88ac1a` label nit → `0f74c1f` T6 →
-`97b9b71` T7.1/7.2 → `ba3d4ed` T7.3. Outside this repo: yadm `9098ba4`
-(tmux `focus-events`).
+`97b9b71` T7.1/7.2 → `ba3d4ed` T7.3 → `7bc16a5` T8 → `3af3df7` T8.1. Outside
+this repo: yadm `9098ba4` (tmux `focus-events`).
 
 Every behaviour change carries a guard, and every guard was reverse-verified by
 reinstating the bug it covers — including one that was not deliberate: a
 truncated write during a btrfs `ENOSPC` silently dropped the `desc` from
 `map('v', '<c-s>', …)`, and the new guard caught it as `x <C-S>` on the next
 run.
+
+`tests/test_lsp.lua` gains the T8 case (one directory change is one
+notification).
 
 New test file: `tests/test_autoread.lua` (reload happens; modified buffer is
 left alone; the notice speaks on reload and stays quiet on delete; neither
@@ -438,7 +506,7 @@ unlabelled-key scan over `n`/`x`/`o`, mini.ai's ownership of `g[`/`g]`, and the
 (T7): a real `:Neogit` on a throwaway repository, both halves of the `<CR>`
 divert and both halves of `<leader>gm`.
 
-## 10. Open
+## 11. Open
 
 - **`<leader>e`/`E` are free.** So are `a d h i j k m o p v x y z` and most
   capitals (§3 of Phase 9); `d` and `a` stay reserved for the debugger and AI
