@@ -1467,7 +1467,9 @@ timing differs.
   (nvim-neo-tree/neo-tree.nvim#2023, merged 2026-04-27) and **not** on the
   `v2.x` branch this config pins - and we are already at that branch's tip
   (`80dc74d`), so there is no bump that fixes it. Moving off `v2.x` is a
-  plugin decision, not a CI fix. **Carried to §7.**
+  plugin decision, not a CI fix. **Carried to §7.** *(Made:
+  `phase9.5-trial-period.md` §11 — neo-tree is on `v3.x`, which chooses the
+  event at runtime.)*
 * **`test_lsp`'s detach case was pinning an upstream decision it does not own.**
   On 0.12.4 the `LspDetach` handler `_disable()`s the buffer; on 0.13-dev it no
   longer does. The case asserted the intermediate `false`. Now it *observes*

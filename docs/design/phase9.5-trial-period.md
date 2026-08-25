@@ -23,7 +23,8 @@ states the rule its family now follows. T8 reopens nothing either: it is a
 notification the trial found saying the same thing four times. T9 reopens T6's
 own rule 1, and says where the line between the bracket family and a native
 vocabulary falls. T10 is not a keybinding at all: two gates and one
-notification that had each been failing long enough to read as scenery.
+notification that had each been failing long enough to read as scenery. T11
+closes the one thing T10 left open.
 
 ## 1. T1 — `<leader>e`/`E` dropped (supersedes §2.5, §3)
 
@@ -635,7 +636,58 @@ The other two are gates rather than behaviour, and their guard is the gate:
 `just lint` is clean, and the drift check was reverse-verified by restoring
 the old bootstrap and watching the same one-line diff come back.
 
-## 11. What this changes in earlier documents
+## 11. T11 — neo-tree off `v2.x`
+
+T10's open item, closed rather than carried: `v2.x` registers `BufModifiedSet`
+unconditionally, Neovim has removed that event, and the branch is two majors
+behind with no fix coming. `v3.x` chooses between `BufModifiedSet` and
+`OptionSet modified` at runtime, so `tests/test_neotree.lua` — the case that
+found this — now passes on both Neovims instead of being a standing red on the
+nightly leg.
+
+The migration itself is three lines. `vim.g.neo_tree_remove_legacy_commands`
+and the `init` hook that set it are gone: 3.0 removed the legacy `NeoTree*`
+commands outright, and this config had been on `:Neotree` since Phase 1.
+`follow_current_file` is a table (`{ enabled = true }`). Nothing else in the
+config touched a removed API — no `NeoTree*` command, no `utils.table_copy` /
+`table_merge`.
+
+### 11.1 What the lint gate caught that opening the tree did not
+
+Four diagnostics, all upstream annotations narrower than upstream's own code,
+and all four are `---@diagnostic disable-next-line` with the evidence named
+(the §7 rule in phase7-ci.md):
+
+- `toggle_directory`'s `path_to_reveal` is annotated `string`. nil means
+  "reveal nothing": the value is forwarded to `fs_scan.get_items`, whose own
+  wrappers annotate it `string?` and whose reveal step is
+  `if path_to_reveal then`, and upstream's own caller passes nothing after the
+  node. Three call sites here, two of them as `missing-parameter`.
+- `window.width` is annotated `integer?`, and the renderer still resolves it
+  through `utils.resolve_config_option`, which calls a function value with
+  `state`. Measured rather than argued: opened in a directory whose `:~` root
+  name is longer than the default, the tree comes up at the computed width and
+  not at 40.
+
+### 11.2 A crash that was never neo-tree's
+
+Driving every custom mapping under v3 — `l`/`h`, `J`/`K`, the twelve `z*`
+fold-emulation commands, `H`, `oh`, lightspeed's `s`/`S` — turned up
+`attempt to index local 'node' (a nil value)` out of `zm` and `zx`. Not a
+migration break: **the identical error reproduces on `v2.x`**, which is how it
+was ruled out (the A/B is worth stating because the first `v2.x` run was
+invalid — `Lazy! install` does not downgrade an installed plugin, so it
+measured v3 twice).
+
+Not every line in the tree is a node. neo-tree renders `(N hidden items)` at
+the end of a directory, a collapse leaves the cursor on one often enough that
+this fired as a routine part of using the keys, and
+`redraw_after_depthlevel_change` indexed `get_node()` unconditionally. It
+returns early now, and the parent walk stops at the root. v3 is in fact the
+better of the two here: on `v2.x` the same sequence also raised an error inside
+neo-tree's own renderer.
+
+## 12. What this changes in earlier documents
 
 | document | passage | now |
 |---|---|---|
@@ -648,11 +700,12 @@ the old bootstrap and watching the same one-line diff come back.
 | `phase9.5-trial-period.md` | §6 rule 1 (previous/next is `[`/`]` + a letter, and nothing else) | a coarser step through a list a native vocabulary already owns stays on that vocabulary's keys (T9) |
 | `phase9.5-trial-period.md` | §12 "`just lint` fails locally … which library entry is responsible was not isolated" | it is `diffview-plus.nvim`, left on disk by the codediff swap; the library is named from the lockfile now (T10.1) |
 | `phase7-ci.md` | §1.5a the lint library is every plugin directory on disk | it is every *locked* plugin; a leftover is not a plugin (T10.1) |
+| `phase7-ci.md` | §9.8 "moving off `v2.x` is a plugin decision, not a CI fix" | the decision was made: neo-tree is on `v3.x` (T11) |
 
 Phase 8's documents are not amended: they record the Phase 8 tree, which Phase 9
 already superseded.
 
-## 12. As-built
+## 13. As-built
 
 `9252521` T4 → `ab3c8e6` T1 → `3716ee1` T2 → `044920f` T5 → `7430074` T3 →
 `c492113` T5 fixes (self-review) → `a88ac1a` label nit → `0f74c1f` T6 →
@@ -684,19 +737,10 @@ unlabelled-key scan over `n`/`x`/`o`, mini.ai's ownership of `g[`/`g]`, and the
 divert and both halves of `<leader>gm`. The `file-granular jumplist` set in
 `tests/test_keys.lua` is T9's.
 
-## 13. Open
+## 14. Open
 
 - **`<leader>e`/`E` are free.** So are `a d h i j k m o p v x y z` and most
   capitals (§3 of Phase 9); `d` and `a` stay reserved for the debugger and AI
   goals.
-- **The `nightly` CI leg is red, for something real.** neo-tree is pinned to
-  `branch = 'v2.x'`, two majors behind, and registers `BufModifiedSet`, which
-  Neovim removed on master — `runtime/doc/news.txt` says to use `OptionSet`
-  with pattern `modified` instead. Upstream neo-tree's `main`
-  already picks between the two at runtime; `v2.x` never will. So this is not
-  a nightly quirk to wait out — it is the advisory leg doing its job, and the
-  deadline is Neovim 0.13. The choice phase7-ci.md §5 leaves open (migrate to
-  v3.x, or delete a leg nobody reads) is still open, but only one of the two
-  answers keeps the file explorer working.
 - **rustaceanvim's buffer-local `<leader>a`** is still squatting the reserved AI
   letter (carried over from Phase 9 §7).
