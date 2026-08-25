@@ -165,11 +165,21 @@ local function read_sidecars(acc, dir)
   end
 end
 
----Per-client state: the settings the server was configured with (so reloads
----compose over a fixed base instead of compounding) and the watcher handles
----keeping themselves alive.
----@type table<integer, { base: table, watchers: table[] }>
+---Per-client state: the settings the server was configured with, so reloads
+---compose over a fixed base instead of compounding.
+---@type table<integer, { base: table }>
 local state = {}
+
+---One watch group per settings directory, shared by every client that reads it.
+---
+---The clients rooted in a project all read the *same* `.vscode`, so watching it
+---once and fanning out from there is both fewer watchers (it was two per client
+---on the same two paths) and the only place that can see a directory change as
+---one event: five clients each discovering it separately is five identical
+---"Reloaded config" notifications for one edit, which is what adding a word to
+---the dictionary used to look like in a project with a few files open.
+---@type table<string, { dir: string, root: string, clients: table<integer, true>, watchers: table[], watching_dir: boolean }>
+local watched = {}
 
 ---Recompute a client's settings from its `.vscode/` directories and push them.
 ---
@@ -206,7 +216,39 @@ function M.reload(client)
   return true
 end
 
----Keep one workspace's settings directory under observation.
+---Reload every client of one watch group and announce the result once.
+---
+---The message names the clients rather than the title doing it, because the
+---subject of this event is the directory: one edit, one notification, whichever
+---servers happened to care. Clients whose settings did not change stay out of
+---it entirely - a `.vscode/settings.json` that only speaks to `lua_ls` says
+---nothing about the four other servers that read the same file.
+---@param entry { dir: string, clients: table<integer, true> }
+local function refresh(entry)
+  local changed = {}
+  for client_id in pairs(entry.clients) do
+    local client = vim.lsp.get_client_by_id(client_id)
+    if not client or client:is_stopped() then
+      M.detach(client_id)
+    elseif M.reload(client) then
+      table.insert(changed, client.name)
+    end
+  end
+  if #changed == 0 then
+    return
+  end
+
+  table.sort(changed)
+  vim.notify(
+    string.format('Reloaded config:\n%s\n%s', entry.dir, table.concat(changed, ', ')),
+    vim.log.levels.INFO,
+    { title = 'LSP' }
+  )
+end
+
+---Keep one workspace's settings directory under observation, for every client
+---rooted there. A client joining a group that already exists needs no watcher
+---of its own; it is already reading the directory the group watches.
 ---
 ---The obvious thing - watch `<root>/.vscode/settings.json` - is what this used
 ---to do, and it silently did nothing whenever the file was not there yet:
@@ -228,39 +270,34 @@ end
 ---@param client vim.lsp.Client
 ---@param root string
 local function watch_workspace(client, root)
-  local st = state[client.id]
   local dir = M.workspace_dir(root)
 
-  local function refresh()
-    if client:is_stopped() then
-      M.detach(client.id)
-      return
-    end
-    if M.reload(client) then
-      vim.notify(
-        string.format('Reloaded config:\n%s', dir),
-        vim.log.levels.INFO,
-        { title = string.format('LSP [%s]', client.name) }
-      )
-    end
+  local entry = watched[dir]
+  if entry then
+    entry.clients[client.id] = true
+    return
   end
 
-  local watching_dir = false
+  entry = { dir = dir, root = root, clients = { [client.id] = true }, watchers = {}, watching_dir = false }
+  watched[dir] = entry
+
   local function watch_dir()
-    if watching_dir or (vim.uv.fs_stat(dir) or {}).type ~= 'directory' then
+    if entry.watching_dir or (vim.uv.fs_stat(dir) or {}).type ~= 'directory' then
       return
     end
-    watching_dir = true
+    entry.watching_dir = true
     local watcher = utils.FileWatcher.new(2000)
-    table.insert(st.watchers, watcher)
-    watcher:start(dir, refresh)
+    table.insert(entry.watchers, watcher)
+    watcher:start(dir, function()
+      refresh(entry)
+    end)
   end
 
   local root_watcher = utils.FileWatcher.new(2000)
-  table.insert(st.watchers, root_watcher)
+  table.insert(entry.watchers, root_watcher)
   root_watcher:start(root, function()
     watch_dir()
-    refresh()
+    refresh(entry)
   end)
 
   watch_dir()
@@ -272,8 +309,7 @@ function M.attach(client)
   if state[client.id] then
     return
   end
-  local st = { base = vim.deepcopy(client.settings or {}), watchers = {} }
-  state[client.id] = st
+  state[client.id] = { base = vim.deepcopy(client.settings or {}) }
 
   -- the load that never used to happen
   M.reload(client)
@@ -289,11 +325,16 @@ end
 ---@param client_id integer
 ---@return boolean
 function M.is_watching(client_id)
-  local st = state[client_id]
-  return st ~= nil and #st.watchers > 0
+  for _, entry in pairs(watched) do
+    if entry.clients[client_id] then
+      return true
+    end
+  end
+  return false
 end
 
----Stop watching for a client that is gone, and drop its base snapshot.
+---Drop a client that is gone: its base snapshot, its membership in every watch
+---group, and - once a group has no clients left - that group's watchers.
 ---
 ---The watchers used to be torn down only if one of them happened to fire again
 ---after the client had stopped, so a `:LspRestart` or a crash left a 2-second
@@ -303,13 +344,17 @@ end
 ---a client that dies without detaching.
 ---@param client_id integer
 function M.detach(client_id)
-  local st = state[client_id]
-  if not st then
-    return
-  end
   state[client_id] = nil
-  for _, watcher in ipairs(st.watchers) do
-    watcher:close()
+  for dir, entry in pairs(watched) do
+    if entry.clients[client_id] then
+      entry.clients[client_id] = nil
+      if next(entry.clients) == nil then
+        watched[dir] = nil
+        for _, watcher in ipairs(entry.watchers) do
+          watcher:close()
+        end
+      end
+    end
   end
 end
 

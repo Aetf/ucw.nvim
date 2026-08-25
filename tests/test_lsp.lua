@@ -591,6 +591,73 @@ T['vscode settings']['each change is pushed exactly once'] = function()
   eq(pushes(), 2)
 end
 
+-- One `.vscode` is one watch group, however many servers are rooted there. Each
+-- client used to start its own pair of watchers on the same two paths and
+-- announce its own reload, so a project with a few files open answered one
+-- `_ltex.addToDictionary` with a stack of identical "Reloaded config" cards -
+-- measured at four in a git repo holding one markdown, one lua, one json and
+-- one toml buffer (marksman, lua_ls, taplo, jsonls; ltex itself is silent
+-- because its command handler reloads it synchronously before any watcher
+-- fires). The clients still reload individually - they compose over different
+-- bases - but the event is the directory's, so the notification is too.
+T['vscode settings']['one directory change is one notification'] = function()
+  local root = child.lua_get([[
+        (function()
+          local dir = vim.fn.tempname()
+          vim.fn.mkdir(dir .. '/.vscode', 'p')
+          vim.fn.writefile({ '{ "probe.value": 1 }' }, dir .. '/.vscode/settings.json')
+          vim.g.__root = dir
+          return dir
+        end)()
+    ]])
+
+  local first = start_fake('faketest', '{}', root)
+  -- In its own buffer, created off-screen: `:enew!` would abandon (and, unnamed
+  -- and unmodified, wipe) the buffer the first client is on, which detaches it
+  -- and takes the group with it - two servers in one project is the case here.
+  local second = child.lua_get(([[
+        (function()
+          local buf = vim.api.nvim_create_buf(true, false)
+          return vim.api.nvim_buf_call(buf, function()
+            return vim.lsp.start({
+              name = 'faketest_two',
+              cmd = _G.new_fake_server({}),
+              root_dir = %q,
+            })
+          end)
+        end)()
+    ]]):format(root))
+
+  -- both read the same directory, so both are in the same group
+  eq(child.lua_get(([[require('ucw.lsp.vscode').is_watching(%d)]]):format(first)), true)
+  eq(child.lua_get(([[require('ucw.lsp.vscode').is_watching(%d)]]):format(second)), true)
+
+  child.lua([[
+        _G.reload_notices = {}
+        vim.notify = function(msg)
+          if type(msg) == 'string' and msg:match('^Reloaded config:') then
+            table.insert(_G.reload_notices, msg)
+          end
+        end
+    ]])
+
+  child.lua(([[
+        vim.fn.writefile({ '{ "probe.value": 2 }' }, vim.g.__root .. '/.vscode/settings.json')
+        _G.reloaded = vim.wait(10000, function()
+          return vim.lsp.get_client_by_id(%d).settings.probe.value == 2
+            and vim.lsp.get_client_by_id(%d).settings.probe.value == 2
+        end, 100)
+        -- and give the second watcher of the group its full debounce window to
+        -- prove it adds nothing, rather than asserting before it could have
+        vim.wait(3000)
+    ]]):format(first, second))
+  eq(child.lua_get([[_G.reloaded]]), true)
+
+  eq(child.lua_get([[#_G.reload_notices]]), 1)
+  -- the message carries what the title used to: which servers were reloaded
+  eq(child.lua_get([[_G.reload_notices[1]:match('faketest, faketest_two') ~= nil]]), true)
+end
+
 -- A workspace with nothing to say must say nothing. Before the push-when-changed
 -- guard, attaching pushed unconditionally, so every client in every project got
 -- woken up for a `.vscode/` that does not exist.
