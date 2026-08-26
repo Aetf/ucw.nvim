@@ -52,6 +52,55 @@ end
 -- The nodes inside the root folder are depth 2.
 local MIN_DEPTH = 2
 
+-- Expand whole subtrees the way neo-tree does it, rather than by walking them
+-- here. Loading a directory is asynchronous: `toggle_directory` returns with
+-- the node still `loaded == false` and no children in the tree, so
+-- `recursive_open`, which opens a node and immediately asks for its children,
+-- sees none and stops one level short. Measured on a cold tree, `zR` used to
+-- descend exactly one more level per press - 16, 55, 98, 152 lines - instead
+-- of expanding everything once.
+--
+-- `node_expander` is upstream's answer to the same problem: it collects the
+-- nodes that were not loaded, runs the source's `prefetcher` over them and
+-- expands again. It has to run inside a coroutine, which is why `done` exists
+-- - the completion callback is the point at which the tree is really expanded,
+-- and it is a callback rather than a wait, so nothing here guesses at timing.
+--
+-- `recursive_open` still serves the depth-limited keys (`zo` with a count,
+-- `zr`, `zx`), which ask for one more level at a time and so are asking about
+-- nodes that are already loaded.
+local function expand_all(state, roots, done)
+  local async = require('plenary.async')
+  local node_expander = require('neo-tree.sources.common.node_expander')
+  local prefetcher = require('neo-tree.sources.filesystem').prefetcher
+
+  renderer.position.set(state, nil)
+  async.run(function()
+    for _, root in ipairs(roots) do
+      node_expander.expand_directory_recursively(state, root, prefetcher)
+    end
+  end, function()
+    if done then
+      done()
+    end
+    renderer.redraw(state)
+  end)
+end
+
+-- The depthlevel a fully expanded tree corresponds to, so that `zm` after `zR`
+-- collapses one level from the bottom rather than from a number `zR` guessed
+-- before the expansion had happened. `set_depthlevel` opens a directory when
+-- its depth is *below* the level, hence the +1.
+local function deepest_expanded(state)
+  local deepest = MIN_DEPTH
+  for _, node in pairs(state.tree.nodes.by_id) do
+    if node.type == 'directory' and node:is_expanded() then
+      deepest = math.max(deepest, node:get_depth() + 1)
+    end
+  end
+  return deepest
+end
+
 --- Close the node and its parents, optionally stopping at max_depth.
 local function recursive_close(state, node, max_depth)
   if max_depth == nil or max_depth <= MIN_DEPTH then
@@ -101,12 +150,14 @@ end
 --- Refresh the tree UI after a change of depthlevel.
 -- @bool stay Keep the current node revealed and selected
 local function redraw_after_depthlevel_change(state, stay)
-  local node = state.tree:get_node()
-  -- Not every line in the tree is a node: neo-tree renders `(N hidden items)`
-  -- at the end of a directory, and a collapse leaves the cursor on one often
-  -- enough that `zm`/`zx` raised "attempt to index local 'node'" as a routine
-  -- part of using them. Nothing to re-focus in that case, so redraw and stop.
+  -- `get_node()` resolves the *cursor's line* against the tree, and by this
+  -- point `set_depthlevel` has already collapsed nodes while the buffer still
+  -- shows the longer rendering - so a cursor below the new end of the tree
+  -- resolves to nothing. Reachable in three keystrokes: `zR`, `G`, `zm`. It
+  -- raised "attempt to index local 'node'" and, because that aborted before
+  -- the redraw, the visible symptom was `zm` silently doing nothing.
   -- Same for a parent lookup that walks off the root.
+  local node = state.tree:get_node()
   if not node then
     return renderer.redraw(state)
   end
@@ -162,13 +213,15 @@ end
 --- Open the fold under the cursor, recursing if count is given.
 function M.commands.neotree_zo(state, open_all)
   local node = state.tree:get_node()
-
-  if open_all then
-    recursive_open(state, node)
-  else
-    recursive_open(state, node, node:get_depth() + vim.v.count1)
+  if not node then
+    return
   end
 
+  if open_all then
+    return expand_all(state, { node })
+  end
+
+  recursive_open(state, node, node:get_depth() + vim.v.count1)
   renderer.redraw(state)
 end
 
@@ -255,15 +308,11 @@ end
 
 -- Expand all folders. Set depthlevel to the deepest node level.
 function M.commands.neotree_zR(state)
-  local top_level_nodes = state.tree:get_nodes()
-
-  local max_depth = 1
-  for _, node in ipairs(top_level_nodes) do
-    max_depth = math.max(max_depth, recursive_open(state, node))
-  end
-
-  vim.b.neotree_depthlevel = max_depth
-  redraw_after_depthlevel_change(state, false)
+  expand_all(state, state.tree:get_nodes(), function()
+    -- `state.bufnr`, not `vim.b`: by the time this runs the current buffer is
+    -- whatever it happens to be, and the depthlevel belongs to the tree.
+    vim.b[state.bufnr].neotree_depthlevel = deepest_expanded(state)
+  end)
 end
 
 -- up to parent dir when on a file, close dir when on a dir
