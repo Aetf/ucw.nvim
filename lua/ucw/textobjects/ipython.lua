@@ -45,7 +45,7 @@ local function cell2region(cell, max_line, ai_type, id)
     return nil
   end
 
-  local new_region = function(from ,to)
+  local new_region = function(from, to)
     if to == nil or from == nil then
       return nil
     end
@@ -162,7 +162,9 @@ function M.cell(ai_type, id, opts)
 
   -- map cell to requested region
   local regions = vim.tbl_filter(
-    function(region) return region ~= nil end,
+    function(region)
+      return region ~= nil
+    end,
     vim.tbl_map(function(cell)
       return cell2region(cell, max_line, ai_type, id)
     end, res)

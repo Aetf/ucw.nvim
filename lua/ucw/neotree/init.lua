@@ -1,13 +1,15 @@
 local M = {}
 
-function M.setup()
-  vim.g.neo_tree_remove_legacy_commands = 1
-end
-
 function M.config()
   local helpers = require('ucw.neotree.helpers')
+  -- Termcode escaping for the two lightspeed mappings below. This used to be
+  -- missing entirely: `t` is a local in lua/ucw/keys/actions.lua and was never
+  -- imported here, so `s`/`S` in the tree window raised "attempt to call a nil
+  -- value" instead of jumping. Found by `just lint`, not by using the editor,
+  -- which is the argument for having the gate at all (phase7-ci.md §1.5).
+  local t = require('ucw.utils').t
 
-  require("neo-tree").setup({
+  require('neo-tree').setup {
     close_if_last_window = true,
     hide_root_node = true,
     -- use vim.ui.input for inputs, which will be dressed up by dressing.vim
@@ -21,8 +23,8 @@ function M.config()
           vim.opt_local.number = true
           vim.opt_local.relativenumber = true
           vim.opt_local.foldcolumn = '0'
-        end
-      }
+        end,
+      },
     },
     default_component_configs = {
       indent = {
@@ -36,22 +38,28 @@ function M.config()
     filesystem = {
       -- This will find and focus the file in the active buffer every
       -- time the current file is changed while the tree is open.
-      follow_current_file = true,
+      follow_current_file = { enabled = true },
       -- This will use the OS level file watchers
       -- to detect changes instead of relying on nvim autocmd events.
       use_libuv_file_watcher = false,
       window = {
-        -- dynamic width fitting the content
+        -- Dynamic width fitting the content. v3 annotates `window.width` as
+        -- `integer?` (`types/config.lua:79`) and still resolves it through
+        -- `utils.resolve_config_option`, which calls a function value with
+        -- `state` (`utils/init.lua:901-914`). Measured rather than assumed:
+        -- opened in a directory whose `:~` root name is longer than the
+        -- default, the tree comes up at the computed width, not at 40.
+        ---@diagnostic disable-next-line: assign-type-mismatch
         width = helpers.width_fit_content,
 
         mappings = {
-          ["O"] = 'system_open',
-          ["o"] = 'none',
-          ["oh"] = "open_vsplit",
-          ["ov"] = "open_split",
+          ['O'] = 'system_open',
+          ['o'] = 'none',
+          ['oh'] = 'open_vsplit',
+          ['ov'] = 'open_split',
           -- Move to first/last sibling
-          ["J"] = 'first_sibling',
-          ["K"] = 'last_sibling',
+          ['J'] = 'first_sibling',
+          ['K'] = 'last_sibling',
           -- Horizontal moves control dir open/close
           ['h'] = 'move_out',
           ['l'] = 'move_in',
@@ -59,29 +67,43 @@ function M.config()
           -- Enable lightspeed movement
           -- 'm' flag tells vim to remap keys
           -- 'x!' flag tells vim not to automatically append <esc> to end the mode so this actually works
-          ["S"] = function(state) vim.api.nvim_feedkeys(t([[<Plug>Lightspeed_S]]), 'mx!', true) end,
-          ["s"] = function(state) vim.api.nvim_feedkeys(t([[<Plug>Lightspeed_omni_s]]), 'mx!', true) end,
+          ['S'] = function(state)
+            vim.api.nvim_feedkeys(t([[<Plug>Lightspeed_S]]), 'mx!', true)
+          end,
+          ['s'] = function(state)
+            vim.api.nvim_feedkeys(t([[<Plug>Lightspeed_omni_s]]), 'mx!', true)
+          end,
           -- Emulating Vim's fold commands
-          ["z"] = "none",
+          ['z'] = 'none',
 
-          ["zo"] = 'neotree_zo',
-          ["zO"] = 'neotree_zO',
-          ["zc"] = 'neotree_zc',
-          ["zC"] = 'neotree_zC',
-          ["za"] = 'neotree_za',
-          ["zA"] = 'neotree_zA',
-          ["zx"] = 'neotree_zx',
-          ["zX"] = 'neotree_zX',
-          ["zm"] = 'neotree_zm',
-          ["zM"] = 'neotree_zM',
-          ["zr"] = 'neotree_zr',
-          ["zR"] = 'neotree_zR',
+          ['zo'] = 'neotree_zo',
+          ['zO'] = 'neotree_zO',
+          ['zc'] = 'neotree_zc',
+          ['zC'] = 'neotree_zC',
+          ['za'] = 'neotree_za',
+          ['zA'] = 'neotree_zA',
+          ['zx'] = 'neotree_zx',
+          ['zX'] = 'neotree_zX',
+          ['zm'] = 'neotree_zm',
+          ['zM'] = 'neotree_zM',
+          ['zr'] = 'neotree_zr',
+          ['zR'] = 'neotree_zR',
         },
       },
       commands = helpers.commands,
     },
-  })
+  }
 
+  -- `\` = toggle+reveal, `|` = the same but focus the tree. These predate the
+  -- leader keys and are what the muscle memory actually uses.
+  --
+  -- Phase 9's D5 added `<leader>e`/`E` as leader-space duplicates of these two
+  -- (the community meaning of `e`, free since iron moved to `<leader>r`). The
+  -- trial period removed them again: two doors to one action, and the one
+  -- nobody presses is the one that costs a `<leader>` letter and a line in
+  -- every `<leader>` popup. `\`/`|` are the surviving door - this is the same
+  -- "one door per thing" call D3 made when it declined `<leader>fb` next to
+  -- `<leader>bb`.
   vim.keymap.set('n', '|', [[<cmd>Neotree action=focus toggle=true reveal=true<cr>]], {
     desc = 'Toggle file tree (focus)',
   })

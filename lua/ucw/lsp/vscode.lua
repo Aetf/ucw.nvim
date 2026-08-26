@@ -1,10 +1,57 @@
+-- Per-workspace server settings from the project's `.vscode/` directory, so a
+-- project configured for VSCode works here without a second config file.
+--
+-- **This module is the only writer of `client.settings`.** That is the whole
+-- design; see docs/design/phase3-settings-composition.md.
+--
+-- It used to share the slot with `ucw.lsp.ltex_dict`, which loaded the ltex
+-- dictionary files out of the same `.vscode/` directory and wrote the result
+-- into `client.settings` after this module had already assigned it. Since a
+-- reload here recomputes from a snapshot taken at attach, every edit to
+-- `settings.json` in a vault silently un-learned every word ever added to it
+-- (Phase 3 acceptance review, P2). The first fix announced each reload so the
+-- other writer could re-apply; this replaces that with the observation that
+-- there was never a second source to compose with:
+--
+--   `.vscode/ltex.dictionary.en-US.txt` *is* a `.vscode` setting. It is the
+--   file-backed spelling of `settings.ltex.dictionary['en-US']`, defined by the
+--   same VSCode LTeX convention that names `settings.json` - the extension
+--   reads `WORKSPACE_FOLDER/.vscode/ltex.SETTING.LANGUAGE.txt` implicitly, with
+--   no reference from `settings.json` needed.
+--
+-- So the directory has one reader, `client.settings` has one writer, and the
+-- module that owns the ltex commands is back to only writing files.
+--
+-- Both halves - initial load and live reload - run through `M.reload` on
+-- `LspAttach` and on every watcher hit. The cost is one extra round trip after
+-- the server starts, which is the contract the live-reload half always had.
+
 local F = vim.fn
-local L = vim.loop
 
 local utils = require('ucw.utils')
-local logger = require('ucw.log').logger()
 
 local M = {}
+
+--- Settings keys that may additionally be written as sibling text files, one
+--- file per variant: `<dir>/ltex.dictionary.en-US.txt` contributes its non-empty
+--- lines to `settings.ltex.dictionary['en-US']`, *unioned* with whatever
+--- `settings.json` declared for the same key.
+---
+--- Not an invention: this is the implicit-default-path half of VSCode LTeX's own
+--- convention (docs/design/phase3-settings-composition.md §2b), which is why a
+--- `.vscode/` written here is readable by VSCode and vice versa. The mechanism
+--- is key-agnostic; this list is data.
+---
+--- Not implemented, deliberately: the other half of that convention, where a
+--- list entry beginning with `:` names an external file explicitly (resolved
+--- relative to the `.vscode` directory, `~` expanded). This config has never had
+--- it; it is a feature, not part of this refactor.
+---@type string[]
+local SIDECAR_KEYS = {
+  'ltex.dictionary',
+  'ltex.hiddenFalsePositives',
+  'ltex.disabledRules',
+}
 
 ---Normalize object keys
 ---i.e. from {["a.b.c"] = 1} to {a = { b = { c = 1 }}}
@@ -20,101 +67,324 @@ local function normalize_keys(obj)
   return res
 end
 
-local function locate_settings_file(root_dir)
-  return F.fnamemodify(root_dir, ':p') .. '.vscode/settings.json'
-end
-
 ---Load .vscode/settings.json and normalize nested keys
 ---@param path string
 ---@return table|nil
 function M.load(path)
-  -- open file
-  local fp, _ = io.open(path, 'r')
+  local fp = io.open(path, 'r')
   if not fp then
     return
   end
-  -- load string
   local settings_str = fp:read('*a')
-  if not settings_str then
+  fp:close()
+  if not settings_str or settings_str == '' then
     return
   end
-  -- decode json
-  local obj = vim.fn.json_decode(settings_str)
-  if not obj then
+  local ok, obj = pcall(vim.json.decode, settings_str)
+  if not ok or type(obj) ~= 'table' then
     return
   end
-  -- normalize keys
-  local settings = normalize_keys(obj)
-  return settings
+  return normalize_keys(obj)
 end
 
----Apply settings and remember previous one
-local function apply_settings(config, obj)
-  local static_settings = config.static_settings or config.settings or {}
-  static_settings = vim.deepcopy(static_settings)
-  config.settings = vim.tbl_deep_extend('force', static_settings, obj)
+---The user-scope settings directory, read for every client.
+---
+---The name is historical: this is where the existing global ltex dictionaries
+---live, and a tidier name would orphan them. It is the analogue of VSCode's
+---`LTEX_GLOBAL_STORAGE_PATH`, which is also read implicitly.
+---@return string
+function M.global_dir()
+  return F.stdpath('data') .. '/ltex'
 end
 
----Used to inject config from root_dir
-local function on_new_config_workdir(new_config, root_dir)
-  new_config.static_settings = vim.deepcopy(new_config.settings)
-  local path = locate_settings_file(root_dir)
-  local obj = M.load(path)
-  if obj then
-    apply_settings(new_config, obj)
+---The settings directory of a workspace root.
+---@param root string
+---@return string
+function M.workspace_dir(root)
+  return F.fnamemodify(root, ':p') .. '.vscode'
+end
+
+---Every settings directory that applies to a client, lowest priority first:
+---user scope, then one per workspace folder. A single-file client still gets
+---the user-scope one - which is exactly where words added without a project go.
+---
+---Does **not** create anything. Creating a directory while looking for a file in
+---it is what used to leave an empty `.vscode/` behind in every project that ever
+---opened a prose file (docs/design/phase3-settings-composition.md §1).
+---@param client vim.lsp.Client
+---@return string[]
+function M.settings_dirs(client)
+  local dirs = { M.global_dir() }
+  for _, folder in ipairs(client.workspace_folders or {}) do
+    table.insert(dirs, M.workspace_dir(vim.uri_to_fname(folder.uri)))
   end
+  return dirs
 end
 
-local function dir_changed(client, settings_file)
-  local obj = M.load(settings_file)
-  if obj then
-    apply_settings(client.config, obj)
-    client.workspace_did_change_configuration(client.config.settings)
-    vim.notify(
-      string.format('Reloaded config:\n%s', settings_file),
-      vim.log.levels.INFO,
-      { title = string.format('LSP [%s]', client.name)}
-    )
-  end
+---Where the sidecar file for `key`/`variant` lives inside `dir`.
+---@param dir string
+---@param key string dotted settings key, e.g. 'ltex.dictionary'
+---@param variant string e.g. 'en-US'
+---@return string
+function M.sidecar_path(dir, key, variant)
+  return string.format('%s/%s.%s.txt', dir, key, variant)
 end
 
-local watching_client_ids = {}
-
-local function watch_settings_change(client, _)
-  -- skip for singlefile mode
-  if not client.config.workspace_folders then
+---Merge every sidecar file found in `dir` into `acc`.
+---
+---Union, not replacement: a `settings.json` that declares
+---`ltex.dictionary['en-US']` keeps its entries and the file's are appended.
+---`vim.tbl_deep_extend` cannot express that - measured, it replaces a nested
+---list wholesale (design §2) - which is why sidecars are merged here instead of
+---being turned into a table and handed to it.
+---@param acc table
+---@param dir string
+local function read_sidecars(acc, dir)
+  local stat = vim.uv.fs_stat(dir)
+  if not stat or stat.type ~= 'directory' then
     return
   end
-  if watching_client_ids[client.id] then
-    -- client already handled
-    return
-  end
-  watching_client_ids[client.id] = true
-  -- for all workspace folders
-  for _, folder in pairs(client.config.workspace_folders) do
-    local root_dir = vim.uri_to_fname(folder.uri)
-    -- watch the parent folder of the settings file
-    local settings_file = locate_settings_file(root_dir)
 
-    -- setup a luv fs event watcher on it, and a debounce time
-    local watcher = utils.FileWatcher.new(2000)
-    watcher:start(settings_file, function(_, _, _)
-      if client:is_stopped() then
-        -- we save a ref in callback so watcher won't be deleted even
-        -- when the local watcher goes out of scope
-        watcher:close()
-        watching_client_ids[client.id] = nil
-        return
+  for name, kind in vim.fs.dir(dir) do
+    if kind == 'file' then
+      for _, key in ipairs(SIDECAR_KEYS) do
+        local variant = name:match('^' .. vim.pesc(key) .. '%.(.+)%.txt$')
+        if variant then
+          local by_variant = utils.prop_get_table(acc, key)
+          if type(by_variant[variant]) ~= 'table' then
+            by_variant[variant] = {}
+          end
+          for _, line in ipairs(F.readfile(dir .. '/' .. name)) do
+            if line ~= '' then
+              utils.tbl_insert_uniq(by_variant[variant], line)
+            end
+          end
+        end
       end
-      dir_changed(client, settings_file)
+    end
+  end
+end
+
+---Per-client state: the settings the server was configured with, so reloads
+---compose over a fixed base instead of compounding.
+---@type table<integer, { base: table }>
+local state = {}
+
+---One watch group per settings directory, shared by every client that reads it.
+---
+---The clients rooted in a project all read the *same* `.vscode`, so watching it
+---once and fanning out from there is both fewer watchers (it was two per client
+---on the same two paths) and the only place that can see a directory change as
+---one event: five clients each discovering it separately is five identical
+---"Reloaded config" notifications for one edit, which is what adding a word to
+---the dictionary used to look like in a project with a few files open.
+---@type table<string, { dir: string, root: string, clients: table<integer, true>, watchers: table[], watching_dir: boolean }>
+local watched = {}
+
+---Recompute a client's settings from its `.vscode/` directories and push them.
+---
+---Idempotent, and silent when nothing changed - which is what keeps a server
+---from being woken four times to open one file (design §1).
+---@param client vim.lsp.Client
+---@return boolean changed
+function M.reload(client)
+  local st = state[client.id]
+  if not st then
+    return false
+  end
+
+  -- The base is the attach-time snapshot rather than
+  -- `vim.lsp.config[client.name].settings`: the native lookup is measured
+  -- identical for the servers we enable, but it is `nil` for `rust-analyzer`,
+  -- since rustaceanvim starts that client itself - and covering that client for
+  -- free is why this lives on `LspAttach` at all.
+  local acc = vim.deepcopy(st.base)
+  for _, dir in ipairs(M.settings_dirs(client)) do
+    local obj = M.load(dir .. '/settings.json')
+    if obj then
+      acc = vim.tbl_deep_extend('force', acc, obj)
+    end
+    read_sidecars(acc, dir)
+  end
+
+  if vim.deep_equal(acc, client.settings) then
+    return false
+  end
+
+  client.settings = acc
+  client:notify('workspace/didChangeConfiguration', { settings = acc })
+  return true
+end
+
+---Reload every client of one watch group and announce the result once.
+---
+---The message names the clients rather than the title doing it, because the
+---subject of this event is the directory: one edit, one notification, whichever
+---servers happened to care. Clients whose settings did not change stay out of
+---it entirely - a `.vscode/settings.json` that only speaks to `lua_ls` says
+---nothing about the four other servers that read the same file.
+---@param entry { dir: string, clients: table<integer, true> }
+local function refresh(entry)
+  local changed = {}
+  for client_id in pairs(entry.clients) do
+    local client = vim.lsp.get_client_by_id(client_id)
+    if not client or client:is_stopped() then
+      M.detach(client_id)
+    elseif M.reload(client) then
+      table.insert(changed, client.name)
+    end
+  end
+  if #changed == 0 then
+    return
+  end
+
+  table.sort(changed)
+  vim.notify(
+    string.format('Reloaded config:\n%s\n%s', entry.dir, table.concat(changed, ', ')),
+    vim.log.levels.INFO,
+    { title = 'LSP' }
+  )
+end
+
+---Keep one workspace's settings directory under observation, for every client
+---rooted there. A client joining a group that already exists needs no watcher
+---of its own; it is already reading the directory the group watches.
+---
+---The obvious thing - watch `<root>/.vscode/settings.json` - is what this used
+---to do, and it silently did nothing whenever the file was not there yet:
+---`uv.fs_event_start` fails on a missing path and `FileWatcher` never retries,
+---so creating a `settings.json` in an already-open project was never picked up
+---until the client restarted (second-round review, Q6; measured identically on
+---the tree before the composition rewrite, so it long predates it).
+---
+---Watching the *directory* is not enough on its own either, because `.vscode/`
+---itself is often the thing that does not exist yet - a vault whose dictionary
+---was written by `_ltex.addToDictionary` gets one only at that moment. So watch
+---the workspace root, which always exists, for `.vscode` appearing, and the
+---directory itself for changes inside it, promoting as soon as it shows up.
+---
+---The root watcher fires for any change to a direct child, which is more often
+---than needed - but `M.reload` re-reads two small files and stays silent unless
+---the result changed, so the cost of a spurious wake-up is bounded and
+---invisible.
+---@param client vim.lsp.Client
+---@param root string
+local function watch_workspace(client, root)
+  local dir = M.workspace_dir(root)
+
+  local entry = watched[dir]
+  if entry then
+    entry.clients[client.id] = true
+    return
+  end
+
+  entry = { dir = dir, root = root, clients = { [client.id] = true }, watchers = {}, watching_dir = false }
+  watched[dir] = entry
+
+  local function watch_dir()
+    if entry.watching_dir or (vim.uv.fs_stat(dir) or {}).type ~= 'directory' then
+      return
+    end
+    entry.watching_dir = true
+    local watcher = utils.FileWatcher.new(2000)
+    table.insert(entry.watchers, watcher)
+    watcher:start(dir, function()
+      refresh(entry)
     end)
   end
+
+  local root_watcher = utils.FileWatcher.new(2000)
+  table.insert(entry.watchers, root_watcher)
+  root_watcher:start(root, function()
+    watch_dir()
+    refresh(entry)
+  end)
+
+  watch_dir()
 end
 
-function M.install()
-  local ucwlsp = require('ucw.lsp')
-  ucwlsp.register_on_new_config('.*', on_new_config_workdir)
-  ucwlsp.register_on_attach('.*', watch_settings_change)
+---Called once per client from the LspAttach handler.
+---@param client vim.lsp.Client
+function M.attach(client)
+  if state[client.id] then
+    return
+  end
+  state[client.id] = { base = vim.deepcopy(client.settings or {}) }
+
+  -- the load that never used to happen
+  M.reload(client)
+
+  for _, folder in ipairs(client.workspace_folders or {}) do
+    watch_workspace(client, vim.uri_to_fname(folder.uri))
+  end
+end
+
+---Whether a `.vscode/settings.json` watcher is currently running for a client.
+---Exists so the lifetime is observable - from a test, and from `:lua =` when
+---wondering why a settings file is or is not being picked up.
+---@param client_id integer
+---@return boolean
+function M.is_watching(client_id)
+  for _, entry in pairs(watched) do
+    if entry.clients[client_id] then
+      return true
+    end
+  end
+  return false
+end
+
+---Drop a client that is gone: its base snapshot, its membership in every watch
+---group, and - once a group has no clients left - that group's watchers.
+---
+---The watchers used to be torn down only if one of them happened to fire again
+---after the client had stopped, so a `:LspRestart` or a crash left a 2-second
+---poll running for the rest of the session, with its `state` entry pinned
+---(Phase 3 acceptance review, P5). `M.setup()` below hangs this off
+---`LspDetach`; the in-watcher call above stays as the belt-and-braces path for
+---a client that dies without detaching.
+---@param client_id integer
+function M.detach(client_id)
+  state[client_id] = nil
+  for dir, entry in pairs(watched) do
+    if entry.clients[client_id] then
+      entry.clients[client_id] = nil
+      if next(entry.clients) == nil then
+        watched[dir] = nil
+        for _, watcher in ipairs(entry.watchers) do
+          watcher:close()
+        end
+      end
+    end
+  end
+end
+
+function M.setup()
+  vim.api.nvim_create_autocmd('LspDetach', {
+    group = vim.api.nvim_create_augroup('ucw.lsp.vscode', { clear = true }),
+    desc = 'ucw: stop watching .vscode/settings.json for a departed client',
+    callback = function(args)
+      local client_id = args.data.client_id
+      -- LspDetach is per *buffer*, and it fires while the buffer is still in
+      -- `client.attached_buffers` (client.lua:1363 runs before :1392), so
+      -- "is this the last one" means "is any *other* buffer still attached".
+      -- The client stays useful - and its watcher stays up - as long as one is.
+      --
+      -- `client.attached_buffers` rather than
+      -- `vim.lsp.get_buffers_by_client_id()`, which is deprecated for removal in
+      -- 0.13 (lsp.lua:1076) and is only a `tbl_keys` over this field anyway.
+      -- Using it printed a deprecation warning on every `:bdelete` of a buffer
+      -- with a client - measured in a real TUI, and exactly the class of defect
+      -- the review that introduced this handler had just fixed elsewhere.
+      local client = vim.lsp.get_client_by_id(client_id)
+      local still_attached = client ~= nil
+        and vim.iter(vim.tbl_keys(client.attached_buffers)):any(function(buf)
+          return buf ~= args.buf
+        end)
+      if not still_attached then
+        M.detach(client_id)
+      end
+    end,
+  })
 end
 
 return M

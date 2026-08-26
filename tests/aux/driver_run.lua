@@ -17,8 +17,7 @@ local function has_tags(tags)
   end
 end
 
-
-MiniTest.run{
+MiniTest.run {
   collect = {
     filter_cases = has_tags(tags),
   },

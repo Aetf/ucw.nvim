@@ -1,0 +1,146 @@
+-- Upstream's default branch is now `main`/`master` alike, both on the
+-- rewritten API (no more `.configs.setup{}`, `ensure_installed`, or
+-- `nvim_treesitter#foldexpr()` - those only exist on old, no-longer-tracked
+-- history). This was discovered while migrating the engine (Phase 1), not a
+-- deliberate modernization choice deferred to a later phase - the classic
+-- API is simply no longer available from any live branch, so there was no
+-- way to preserve it faithfully. Written against the new API per
+-- nvim-treesitter's own current README.
+
+local ensure_installed = {
+  'bash',
+  'beancount',
+  'bibtex',
+  'c',
+  'c_sharp',
+  'cmake',
+  'comment', -- for todo, fixme, etc
+  'cpp',
+  'css',
+  'cuda',
+  'dart',
+  'dockerfile',
+  'dot',
+  'fennel',
+  'fish',
+  'glsl',
+  'go',
+  'hjson',
+  'html',
+  'java',
+  'javascript',
+  'jsdoc',
+  'json',
+  'json5',
+  'just',
+  'llvm',
+  'lua',
+  'make',
+  'markdown',
+  'ninja',
+  'nix',
+  'perl',
+  'php',
+  'pug',
+  'python',
+  'regex',
+  'rst',
+  'ruby',
+  'rust',
+  'scss',
+  'toml',
+  'tsx',
+  'typescript',
+  'vim',
+  'vimdoc', -- vim help files
+  'vue',
+  'yaml',
+}
+
+return {
+  'nvim-treesitter/nvim-treesitter',
+  branch = 'main',
+  lazy = false,
+  priority = 1000,
+  build = ':TSUpdate',
+  dependencies = {
+    { 'HiPhish/rainbow-delimiters.nvim', url = 'https://gitlab.com/HiPhish/rainbow-delimiters.nvim' },
+  },
+  config = function()
+    require('nvim-treesitter').setup {}
+    -- Only a session someone is actually looking at installs parsers by
+    -- itself. Mason's version of this rule is two layers, not one -
+    -- mason-tool-installer/mason-lspconfig carry `cond = is_full_ui`, so they
+    -- never even load under firenvim/vscode-neovim, and only *underneath*
+    -- that does Mason's own "skip when no UI is attached" apply, which is the
+    -- half tests/test_lsp.lua asserts. nvim-treesitter has no spec-level
+    -- `cond` to lean on - it loads everywhere, embedded targets included, so
+    -- both halves have to be checked here: `nvim --headless`, a `-c` script
+    -- and a mini.test child all get a config that boots in milliseconds
+    -- instead of one that downloads and compiles a couple of dozen grammars
+    -- into whatever data directory they happen to have, and so does a real
+    -- firenvim/vscode-neovim session - both attach a UI of their own
+    -- (`nvim_ui_attach`, confirmed against their source) to render into the
+    -- browser tab / VS Code editor, which the first half alone would have
+    -- waved through as "someone is looking".
+    --
+    -- Until Phase 6.5 the first half held by accident: no `tree-sitter` CLI
+    -- was reachable from anywhere, so the branch below never ran. Making the
+    -- project's own tools resolvable (docs/design/phase6.5-binary-deps.md
+    -- §2.3) is what turned that luck into a real code path, and the suite
+    -- promptly started compiling parsers per test file.
+    -- docs/design/phase6.5-acceptance-review.md R1.
+    if #vim.api.nvim_list_uis() > 0 and require('ucw.targets').is_full_ui() then
+      -- Parser compilation shells out to the `tree-sitter` CLI. Without it
+      -- installed, .install() would otherwise retry (and fail, noisily) every
+      -- single boot for every not-yet-compiled parser. Check once and skip
+      -- with a single clear warning instead.
+      if vim.fn.executable('tree-sitter') == 1 then
+        require('nvim-treesitter').install(ensure_installed)
+      else
+        vim.notify(
+          'tree-sitter CLI not found on $PATH - skipping treesitter parser install/update. '
+            .. 'Install it (e.g. `mise use -g tree-sitter@latest`) to get new/updated parsers.',
+          vim.log.levels.WARN,
+          { title = 'nvim-treesitter' }
+        )
+      end
+    end
+
+    -- Additional parser
+    vim.api.nvim_create_autocmd('User', {
+      pattern = 'TSUpdate',
+      callback = function()
+        -- `ParserInfo.tier` and `InstallInfo.revision` are annotated required
+        -- and are optional in practice - nvim-treesitter fills in both for a
+        -- parser declared this way, which is the shape its own docs show for
+        -- adding one out of tree.
+        ---@diagnostic disable-next-line: missing-fields
+        require('nvim-treesitter.parsers').openscad = {
+          ---@diagnostic disable-next-line: missing-fields
+          install_info = {
+            url = 'https://github.com/bollian/tree-sitter-openscad',
+            files = { 'src/parser.c' },
+            branch = 'master',
+          },
+        }
+      end,
+    })
+
+    -- highlighting and indentation are natively provided by Neovim/this plugin
+    -- now - just need to opt in per-buffer.
+    --
+    -- Folding is deliberately *not* set here. It was overwritten per-window by
+    -- nvim-ufo in the full UI anyway, so this spec was a second, invisible
+    -- source of fold state; the embedded contexts only got their folds from it
+    -- by accident. Fold policy lives in ucw.options and ucw.plugins.ufo now.
+    vim.api.nvim_create_autocmd('FileType', {
+      callback = function(args)
+        pcall(vim.treesitter.start, args.buf)
+        pcall(function()
+          vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+        end)
+      end,
+    })
+  end,
+}

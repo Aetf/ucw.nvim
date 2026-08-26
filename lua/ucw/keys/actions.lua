@@ -4,84 +4,72 @@
 local utils = require('ucw.utils')
 local t = utils.t
 
-
-_G.UCW = {}
 local M = {}
-local H = {}
-
-H.echo = function(msg, is_important)
-  -- Construct message chunks
-  msg = type(msg) == 'string' and { { msg } } or msg
-  table.insert(msg, 1, { '(mini.ai) ', 'WarningMsg' })
-
-  -- Avoid hit-enter-prompt
-  local max_width = vim.o.columns * math.max(vim.o.cmdheight - 1, 0) + vim.v.echospace
-  local chunks, tot_width = {}, 0
-  for _, ch in ipairs(msg) do
-    local new_ch = { vim.fn.strcharpart(ch[1], 0, max_width - tot_width), ch[2] }
-    table.insert(chunks, new_ch)
-    tot_width = tot_width + vim.fn.strdisplaywidth(new_ch[1])
-    if tot_width >= max_width then break end
-  end
-
-  -- Echo. Force redraw to ensure that it is effective (`:h echo-redraw`)
-  vim.cmd([[echo '' | redraw]])
-  vim.api.nvim_echo(chunks, is_important, {})
-end
-
-H.unecho = function()
-  if H.cache.msg_shown then vim.cmd([[echo '' | redraw]]) end
-end
-
-H.message = function(msg) H.echo(msg, true) end
-
-H.error = function(msg) error(string.format('(ucw.keys.actions) %s', msg), 0) end
 
 function M.bufdelete(bufnr, force)
-  return utils.bufdelete( bufnr, force)
+  return utils.bufdelete(bufnr, force)
 end
 
 function M.bufwipeout(bufnr, force)
-  return utils.bufwipeout( bufnr, force)
+  return utils.bufwipeout(bufnr, force)
 end
 
+-- `vim.cmd` is a callable *table*, not a function, so `pcall`'s `fun(...)`
+-- parameter type rejects it while `pcall` itself is perfectly happy with
+-- anything that has a `__call`. Same suppression on `bufprev` below.
 function M.bufnext()
+  ---@diagnostic disable-next-line: param-type-mismatch
   local ok = pcall(vim.cmd, 'BufferLineCycleNext')
   if not ok then
-    vim.cmd [[bnext]]
+    vim.cmd([[bnext]])
   end
 end
 
 function M.bufprev()
+  ---@diagnostic disable-next-line: param-type-mismatch
   local ok = pcall(vim.cmd, 'BufferLineCyclePrev')
   if not ok then
-    vim.cmd [[bprev]]
+    vim.cmd([[bprev]])
   end
 end
 
-local function diag_jump(direction)
-  local trouble_method, vim_method = unpack(({
-    next = {'next', 'goto_next'},
-    prev = {'previous', 'goto_prev'}
-  })[direction])
+-- Diagnostic navigation lives on Neovim's own `[d`/`]d`/`[D`/`]D` (Phase 9.5,
+-- T6). The wrappers that were here are gone: the defaults call the same
+-- `vim.diagnostic.jump()` and additionally honour a count. No float on arrival
+-- in either version, which is what this config wants - Phase 4 made
+-- `virtual_lines = { current_line = true }` the way full diagnostic text is
+-- shown, so a float would render the same message a second time on top of it.
 
-  local ok, trouble = pcall(require, 'trouble')
-  if ok then
-    -- if trouble returns nothing from items, then either trouble view isn't visible, or it's empty
-    local items = trouble.get_items()
-    if not vim.tbl_isempty(items) then
-      return trouble[trouble_method]({ skip_groups = true, jump = true })
-    end
+-- Previous / next ipython cell, the `[`/`]` form every other sequence in this
+-- config uses. Bound buffer-locally in `ftplugin/python.lua`: the `# %%` mark
+-- these jump between is a Python comment, and the textobject that finds it
+-- (`ucw.textobjects.ipython`, registered as mini.ai's `h`/`H`) has nothing to
+-- match in any other filetype.
+---@param dir 'prev'|'next'
+function M.cell_jump(dir)
+  require('mini.ai').move_cursor('left', 'a', 'h', { n_times = vim.v.count1, search_method = dir })
+end
+
+-- One `<C-o>`/`<C-i>` step at file granularity: go to the nearest jumplist
+-- entry that is in another file, which is what holding the native key down
+-- until the name in the statusline changes does by hand. Bound to the same
+-- keys with Shift (`ucw.keys`).
+--
+-- The jump itself is Neovim's - this only works out *how many* presses reach
+-- that entry and hands `{steps}<C-o>` back to `normal!`. Anything that moved
+-- the cursor directly (`nvim_win_set_cursor`, `:buffer`) would leave the
+-- jumplist describing a history that never happened.
+---@param dir -1|1 backward (`<C-o>`) or forward (`<C-i>`)
+function M.jump_file(dir)
+  local steps = utils.win_jump_other_buf(0, nil, dir, vim.v.count1)
+  if steps == nil then
+    return vim.notify(
+      dir < 0 and 'No earlier file in the jumplist' or 'No later file in the jumplist',
+      vim.log.levels.INFO,
+      { title = 'jumplist' }
+    )
   end
-  return vim.diagnostic[vim_method]()
-end
-
-function M.diag_next()
-  return diag_jump('next')
-end
-
-function M.diag_prev()
-  return diag_jump('prev')
+  vim.cmd.normal { steps .. vim.keycode(dir < 0 and '<C-o>' or '<C-i>'), bang = true }
 end
 
 -- Send ipython cell under the current cursor to iron REPL.
@@ -89,21 +77,21 @@ end
 function M.iron_send_block(opts)
   opts = opts or { next = false }
   -- TODO: figure out a way to directly call iron api
-  vim.api.nvim_feedkeys(t'<leader>efih', 'mx', false)
+  -- `<leader>rs` + the `ih` cell textobject (Phase 9, D5: was `<leader>ef`)
+  vim.api.nvim_feedkeys(t('<leader>rsih'), 'mx', false)
   if opts.next then
-    vim.cmd [[normal ]h]]
+    -- `M.cell_jump`, not `:normal ]h`: this is bound to `<S-Enter>` globally,
+    -- and `]h` only exists in a python buffer. The mapping was never there to
+    -- press either - it was written against mini.ai's `goto_*` keys after
+    -- those had been disabled, so the advance half of `<S-Enter>` had been a
+    -- no-op ever since (Phase 9.5, T6).
+    M.cell_jump('next')
   end
 end
 
--- Go to start obj mark, can be used as opfunc for textobj
-function M.opfunc_textobj_go_start()
-  vim.cmd 'normal! `['
-end
-
--- Go to end obj mark, can be used as opfunc for textobj
-function M.opfunc_textobj_go_end()
-  vim.cmd 'normal! `]'
-end
+-- The diagnostic virtual-lines toggle that lived here (`toggle_virtual_lines`,
+-- the remnant of lsp_lines.nvim) is a `Snacks.toggle` in `ucw.toggles` now
+-- (Phase 8, D2), history and all.
 
 -- Invoke fold preview or lsp preview
 function M.hoverK()
@@ -117,58 +105,32 @@ function M.hoverK()
   end
 end
 
--- Like the default Ctrl-L, but also clears nvim-notify
+-- Does what the default `<C-l>` does, plus dismisses anything noice is showing.
+--
+-- Bound to **`<Esc>` in normal mode** (`ucw/keys.lua`), not to `<C-l>` - the
+-- old comment said "like the default Ctrl-L" and that reads as *where* it is
+-- bound. It is not; `<C-l>` is still Neovim's own. So this runs on one of the
+-- most-pressed keys there is, and everything in it has to be cheap and safe to
+-- repeat.
 function M.clear()
-  vim.cmd [[nohlsearch]]
-  vim.cmd [[diffupdate]]
+  vim.cmd([[nohlsearch]])
+  vim.cmd([[diffupdate]])
   -- Clear and redraw the screen
   -- See :h mode
-  vim.cmd [[mode]]
-  -- call notify in pcall to safely ignore any error
+  vim.cmd([[mode]])
+  -- noice rather than the notifier directly: it dismisses its own views *and*,
+  -- through `SnacksView.dismiss`, calls `Snacks.notifier.hide()`. Kept in a
+  -- pcall to safely ignore any error, as the nvim-notify version was.
+  --
+  -- This is wider than the `require('notify').dismiss()` it replaced - it takes
+  -- down every noice view, not just the toasts - which on `<Esc>` is the
+  -- intent, and it is safe to do this often: `Router.dismiss()` starts with
+  -- `Manager.clear()`, but that empties only the *live* set (`_messages`).
+  -- Browsable history lives in `Manager._history`, which nothing here touches.
+  -- Measured, three messages held: `<Esc>` leaves `:Noice`/`<leader>nn` at 3.
   pcall(function()
-    require('notify').dismiss()
+    require('noice').cmd('dismiss')
   end)
 end
-
--- Jump between text objects
-function H.user_textobject_id(ai_type)
-  -- Get from user single character textobject identifier
-  local needs_help_msg = true
-  vim.defer_fn(function()
-    if not needs_help_msg then return end
-
-    local msg = string.format('Enter `%s` textobject identifier (single character) ', ai_type)
-    H.echo(msg)
-    H.cache.msg_shown = true
-  end, 1000)
-  local ok, char = pcall(vim.fn.getcharstr)
-  needs_help_msg = false
-  H.unecho()
-
-  -- Terminate if couldn't get input (like with <C-c>) or it is `<Esc>`
-  if not ok or char == '\27' then return nil end
-
-  if char:find('^[%w%p%s]$') == nil then
-    H.error('Input must be single character: alphanumeric, punctuation, or space.')
-    return nil
-  end
-
-  return char
-end
-function M.jump_textobject(prev_next, left_right, ai_type)
-  H.cache = {}
-
-  local ok, ai = pcall(require, 'mini.ai')
-  if not ok then
-    H.error('No mini-ai found')
-  end
-  -- Get user input
-  local tobj_id = H.user_textobject_id('a')
-  if tobj_id == nil then return end
-
-  -- Jump!
-  ai.move_cursor(left_right, ai_type, tobj_id, { n_times = vim.v.count1, search_method = prev_next })
-end
-_G.UCW.jump_textobject = M.jump_textobject
 
 return M

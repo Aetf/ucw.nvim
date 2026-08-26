@@ -1,90 +1,83 @@
--- [[
--- LSP integration framework that coordinates the setup between
--- nvim-lsp-installer, nvim-lspconfig, various enhance plugins and
--- any user custom language settings.
--- ]]
+-- LSP entry point.
+--
+-- There is no framework here any more. Neovim 0.12's native four-layer config
+-- (`vim.lsp.config('*')` -> `<rtp>/lsp/<name>.lua` -> `<rtp>/after/lsp/<name>.lua`
+-- -> explicit `vim.lsp.config(name, ...)`) plus `LspAttach` covers everything
+-- `ucw.lsp.hooks` used to hand-roll, so this module is only three things: the
+-- server list, the filetypes derived from it, and one `setup()` that installs
+-- the attach handlers and calls `vim.lsp.enable()`.
+--
+-- See docs/design/phase3-lsp-redesign.md for the measurements behind that.
+
 local M = {}
-local au = require('au')
 
-local hooks = require('ucw.lsp.hooks')
+local servers = require('ucw.lsp.servers')
 
--- reexport a few
-M.register_on_server_setup = hooks.register_on_server_setup
-M.register_on_new_config = hooks.register_on_new_config
-M.register_on_attach = hooks.register_on_attach
-
-local function on_new_config(new_config, root_dir)
-  local root_dir_name = vim.fn.fnamemodify(root_dir, ':p:~')
-  vim.notify(string.format('Enabled on:\n%s', root_dir_name), vim.log.levels.INFO, {
-    title = string.format('LSP [%s]', new_config.name)
-  })
+---Server names this config runs, sorted for stable output/tests.
+---@return string[]
+function M.server_names()
+  local names = vim.tbl_keys(servers)
+  table.sort(names)
+  return names
 end
 
-function setup_codelens_refresh(client, bufnr)
-  local status_ok, codelens_supported = pcall(function()
-    return client:supports_method("textDocument/codeLens")
-  end)
-  if not status_ok or not codelens_supported then
+---The filetypes that should bring the LSP stack up, i.e. the `ft =` trigger of
+---every LSP plugin spec. Sorted and deduplicated.
+---@return string[]
+function M.filetypes()
+  local seen = {}
+  local out = {}
+  for _, fts in pairs(servers) do
+    for _, ft in ipairs(fts) do
+      if not seen[ft] then
+        seen[ft] = true
+        table.insert(out, ft)
+      end
+    end
+  end
+  table.sort(out)
+  return out
+end
+
+local did_setup = false
+
+---Called from the nvim-lspconfig spec's `config`, i.e. the first time a
+---buffer of a supported filetype is opened.
+---
+---Note what is NOT here: `ucw.lsp.attach.setup()`. Attach behaviour has to be
+---installed eagerly from `ucw.boot`, because not every client comes from this
+---list - rustaceanvim starts its own on `ft=rust`, and nvim-lspconfig never
+---loads for a Rust buffer at all. Wiring the handlers here meant a Rust buffer
+---got no keymaps and no inlay hints; found by driving a real TUI, invisible to
+---anything that only looked at servers we enable ourselves.
+function M.setup()
+  if did_setup then
     return
   end
-  local group = "lsp_code_lens_refresh"
-  local cl_events = { "BufEnter", "InsertLeave" }
-  local ok, cl_autocmds = pcall(vim.api.nvim_get_autocmds, {
-    group = group,
-    buffer = bufnr,
-    event = cl_events,
-  })
-  if ok and #cl_autocmds > 0 then
-      return
-  end
-  vim.api.nvim_create_augroup(group, { clear = false })
-  vim.api.nvim_create_autocmd(cl_events, {
-    group = group,
-    buffer = bufnr,
-    callback = vim.lsp.codelens.refresh,
-  })
-  vim.lsp.codelens.refresh( { bufnr = bufnr })
-end
+  did_setup = true
 
-local function setup_keymap(client, bufnr)
-  -- register a few buffer local shortcuts
-  local wk = require('which-key')
-  wk.register({
-    ['<M-CR>'] = { [[<cmd>lua vim.lsp.buf.code_action()<cr>]], "Code actions" },
-    ['<M-S-CR>'] = { [[<cmd>lua vim.lsp.buf.range_code_action()<cr>]], "Range code actions" },
-    g = {
-      ['0'] = { [[<cmd>Telescope lsp_document_symbols<cr>]], "Symbols in the current buffer"},
-      W = { [[<cmd>Telescope lsp_workspace_symbols<cr>]], "Symbols in the current workspace"},
-      e = { [[<cmd>Telescope diagnostics<cr>]], "Diagnostics for current buffer"},
-      D = { [[<cmd>Telescope lsp_implementations<cr>]], "Go to implementation"},
-      d = { [[<cmd>Telescope lsp_definitions<cr>]], "Go to definition"},
-      t = { [[<cmd>Telescope lsp_type_definitions<cr>]], "Go to type definition"},
-      H = { [[<cmd>lua vim.lsp.declaration()<cr>]], "Go to declaration"},
-      r = { [[<cmd>Telescope lsp_references<cr>]], "Find references"},
+  -- Every client speaks utf-16, so that buffers with more than one client agree
+  -- on what a column is. Left to themselves they do not: basedpyright picks
+  -- utf-16 and ruff picks utf-8, and every Python buffer has both, which
+  -- `:checkhealth vim.lsp` reports as "buffers attached to multiple clients with
+  -- different position encodings" - along with this exact advice (second-round
+  -- review, Q3). Diagnostics measured correct on a CJK line either way, since
+  -- Neovim converts per client, so this closes a hazard rather than a live bug.
+  --
+  -- utf-16 rather than utf-8 because it is the one encoding the LSP spec
+  -- requires every server to support. It is cross-cutting table data at the
+  -- `'*'` layer, which is where the design says such things go, and it runs
+  -- before the first `vim.lsp.enable()`, which is the ordering invariant that
+  -- makes any `'*'` capability take effect at all.
+  vim.lsp.config('*', {
+    capabilities = {
+      general = {
+        positionEncodings = { 'utf-16' },
+      },
     },
-    ['<c-k>'] = { '<cmd>lua vim.diagnostic.open_float()<cr>', "Show diagnostics on the current line" },
-    ['<M-S-r>'] = { [[<cmd>lua vim.lsp.buf.rename()<cr>]], "Rename the symbol under cursor" },
-  }, { buffer = bufnr })
-end
+  })
 
-local function enable_inlay_hint(client, bufnr)
-  vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
-end
-
-function M.config()
-  hooks.install()
-
-  require('ucw.lsp.vscode').install()
-
-  hooks.register_on_new_config('.*', on_new_config)
-  hooks.register_on_attach('.*', setup_keymap)
-  hooks.register_on_attach('.*', setup_codelens_refresh)
-  hooks.register_on_attach('.*', enable_inlay_hint)
-end
-
-function M.activate()
-  hooks.activate()
-  MiniIcons.tweak_lsp_kind()
+  vim.lsp.enable(M.server_names())
 end
 
 return M

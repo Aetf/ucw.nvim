@@ -1,5 +1,6 @@
 local au = require('au')
 local utils = require('ucw.utils')
+local targets = require('ucw.targets')
 
 -- UI elements
 vim.opt.number = true
@@ -28,8 +29,8 @@ vim.opt.whichwrap:append('h,l,<,>')
 -- use spaces instead of tabs
 vim.opt.expandtab = true
 -- 1 tab == 4 spaces
-vim.opt.shiftwidth=4
-vim.opt.tabstop=4
+vim.opt.shiftwidth = 4
+vim.opt.tabstop = 4
 
 -- smart indent (only a fallback when indentexpr is not available, which will be set by treesitter
 vim.opt.smartindent = true
@@ -45,38 +46,48 @@ vim.opt.list = true
 vim.opt.listchars = 'tab:  ⇥,trail:␣,nbsp:☠'
 
 -- folding
+--
+-- Which engine provides folds depends on the context, and this is the only
+-- place that branch is stated:
+--
+--   * full UI (tui/gui) -> nvim-ufo, which owns 'foldmethod', 'foldexpr',
+--     'foldlevel' and 'foldtext' itself. See lua/ucw/plugins/ufo.lua.
+--   * firenvim/vscode   -> ufo is not loaded (`cond = is_full_ui`), so folds
+--     come from Neovim's native treesitter foldexpr, set below.
+--
+-- Before Phase 4 the second case was served by a `foldmethod`/`foldexpr` pair
+-- in treesitter.lua that only ever reached those contexts *because* ufo
+-- happened not to load and overwrite it - accident rather than design.
+--
 -- show a column of fold marker
 vim.opt.foldcolumn = '1'
--- fold level higher than this will be closed by default
-vim.opt.foldlevel = 1
 -- minimum lines to fold
 vim.opt.foldminlines = 3
--- unfolds the line in which the cursor is located when opening a file
-au.group('OpenFoldOnEnter', {
+if not targets.is_full_ui() then
+  vim.opt.foldmethod = 'expr'
+  vim.opt.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+  -- These contexts have a cramped layout (a browser textarea, a VSCode editor
+  -- pane), so opening files mostly folded is the useful default there. The
+  -- full UI gets ufo's `foldlevel = 99` instead, which is a requirement of
+  -- ufo's manual-fold model rather than a preference - see ufo.lua.
+  vim.opt.foldlevel = 1
+end
+-- Unfold the line the cursor lands on, when opening a file and when leaving
+-- insert mode. Only does anything where 'foldlevel' is low enough for folds to
+-- be closed in the first place, i.e. the embedded contexts above.
+--
+-- This used to be paired with an `InsertEnter` handler that forced
+-- `foldmethod=manual` for the duration of insert mode - a real trick for expr
+-- folds, but a measured no-op under ufo, which sets `foldmethod=manual` itself
+-- and recomputes folds from its own async provider rather than from 'foldexpr'.
+-- Removed in Phase 4; see docs/design/phase4-folding-comments.md §1.2.
+au.group('UnfoldCursorLine', {
   {
-    'BufWinEnter', '*',
+    { 'BufWinEnter', 'InsertLeave' },
+    '*',
     function()
-      vim.cmd [[normal! zv]]
-    end
-  }
-})
--- disable folding while in insert mode, to avoid sudden jumps
-au.group('InsertNoFold', {
-  {
-    'InsertEnter', '*',
-    function()
-      vim.w.oldfdm = vim.wo.foldmethod
-      vim.wo.foldmethod = 'manual'
-    end
-  },
-  {
-    'InsertLeave', '*',
-    function()
-      if vim.w.oldfdm then
-        vim.wo.foldmethod = vim.w.oldfdm
-      end
-      vim.cmd [[normal! zv]]
-    end
+      vim.cmd([[normal! zv]])
+    end,
   },
 })
 
@@ -84,10 +95,19 @@ au.group('InsertNoFold', {
 vim.opt.inccommand = 'split'
 
 -- diff mode
+--
+-- Through a typed local rather than `vim.opt.diffopt:append(...)` twice.
+-- lua_ls infers the type of a `vim.opt` field from every assignment it can
+-- reach, and the lint gate reaches the installed plugins' sources - one
+-- plugin doing `vim.opt.diffopt = { ... }` is enough to make the field a list
+-- everywhere and `:append` an undefined field on a line that is correct. The
+-- annotation states what `vim.opt.X` always is; it suppresses nothing.
+---@type vim.Option
+local diffopt = vim.opt.diffopt
 -- do a second diff stage to match lines in hunk
-vim.opt.diffopt:append('linematch:120')
+diffopt:append('linematch:120')
 -- generate minimal diff
-vim.opt.diffopt:append('algorithm:histogram')
+diffopt:append('algorithm:histogram')
 
 -- Program beheavior
 
@@ -113,7 +133,12 @@ vim.opt.sessionoptions:append('winpos,terminal,localoptions')
 -- saving options may interference with packer.nvim lazy loading
 vim.opt.sessionoptions:remove('options')
 
--- auto reload externally changed file
+-- Reload a file changed outside nvim, as long as it has no unsaved changes
+-- here. Half the mechanism: 'autoread' only decides what happens *when* nvim
+-- notices, and nvim only notices when something runs `:checktime` - entering
+-- the buffer, a shell command, terminal focus. Sitting in a buffer while the
+-- file changes underneath is exactly the case it does not cover, so
+-- `ucw.extras` puts the `:checktime` on an idle timer.
 vim.opt.autoread = true
 -- always reserve 3 lines ahead the cursor - when moving vertically using j/k
 vim.opt.scrolloff = 3
@@ -146,16 +171,16 @@ vim.opt.updatetime = 300
 vim.diagnostic.config {
   signs = {
     text = {
-      [vim.diagnostic.severity.ERROR] = "",
-      [vim.diagnostic.severity.WARN] = "",
-      [vim.diagnostic.severity.INFO] = "",
-      [vim.diagnostic.severity.HINT] = "",
+      [vim.diagnostic.severity.ERROR] = '',
+      [vim.diagnostic.severity.WARN] = '',
+      [vim.diagnostic.severity.INFO] = '',
+      [vim.diagnostic.severity.HINT] = '',
     },
     linehl = {
-      [vim.diagnostic.severity.ERROR] = "Error",
-      [vim.diagnostic.severity.WARN] = "Warn",
-      [vim.diagnostic.severity.INFO] = "Info",
-      [vim.diagnostic.severity.HINT] = "Hint",
+      [vim.diagnostic.severity.ERROR] = 'Error',
+      [vim.diagnostic.severity.WARN] = 'Warn',
+      [vim.diagnostic.severity.INFO] = 'Info',
+      [vim.diagnostic.severity.HINT] = 'Hint',
     },
   },
   underline = {
@@ -170,7 +195,28 @@ vim.diagnostic.config {
     prefix = '●',
     --prefix = 'Hahaha:',
   },
+  -- Full diagnostic text rendered under the cursor's line. Off by default,
+  -- turned on on demand with `<leader>uv` (a `Snacks.toggle` in `ucw.toggles`,
+  -- whose on-state must match the shape written there).
+  --
+  -- Off rather than on for the current line: `virtual_text` above already puts
+  -- the message on screen, and the extra two or three lines this inserts
+  -- reflow everything below the cursor on every cursor move, which costs more
+  -- attention than the wrapped text buys. The toggle is what makes that
+  -- affordable - reach for it on the rare diagnostic virtual_text truncates.
+  -- Trial-period tuning after Phase 9; it used to default on in the full UI.
+  --
+  -- This used to be lsp_lines.nvim, which replaced core's `virtual_lines`
+  -- handler with its own. Core absorbed the same rendering (measured: same
+  -- box drawing, same multi-line indentation), so the plugin is gone. Note the
+  -- option is `current_line`; lsp_lines called it `only_current_line`.
+  --
+  -- No target branch left. It used to read
+  -- `targets.is_full_ui() and { current_line = true } or false`, carrying
+  -- lsp_lines' `cond = is_full_ui` (a browser textarea or a VSCode editor pane
+  -- cannot spare two or three lines under the cursor) - see 'foldlevel' above
+  -- for the same shape. Off everywhere subsumes off in the embedded contexts.
+  virtual_lines = false,
   -- display higher severity signs over lower ones
   severity_sort = true,
 }
-

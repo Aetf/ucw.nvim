@@ -2,11 +2,21 @@
 vim.opt_local.textwidth = 0
 vim.opt_local.wrap = true
 
+-- Block conform's LSP fallback for this filetype: texlab also advertises
+-- `documentFormattingProvider`, and without this, conform.lua's
+-- `default_format_opts.lsp_format = 'fallback'` would reach it on every
+-- `format_on_save` write - texlab already owns build-on-save + chktex, not
+-- reformatting, and this file already hand-rolls the reformatting LaTeX
+-- actually wants (the sentence-per-line `formatexpr` below). No formatter
+-- list, only the override: this entry exists purely to block the fallback.
+-- See docs/design/phase6-format-lint.md §1.5.
+require('conform').formatters_by_ft.tex = { lsp_format = 'never' }
+
 local function contains_latex_comment(line)
   -- backslash literal                             \\
   -- previous atom not match (looking back 1 byte) \@1<!
   -- percent literal                               %
-  local ptn = vim.regex [[\\\@1<!%]]
+  local ptn = vim.regex([[\\\@1<!%]])
   if ptn:match_str(line) then
     return true
   else
@@ -34,10 +44,10 @@ local function chunk_add_line(chunk, line, is_comment)
     if not vim.tbl_isempty(chunk[1]) then
       -- first line's whitespace at beginning is kept as indentation
       trimmed_indent = string.len(line)
-      line = line:gsub("^%s+", "")
+      line = line:gsub('^%s+', '')
       trimmed_indent = trimmed_indent - string.len(line)
     end
-    line = line:gsub("%s+$", "")
+    line = line:gsub('%s+$', '')
   end
   table.insert(chunk[1], line)
   return trimmed_indent, line
@@ -60,20 +70,20 @@ local function latexformatexpr_restore(lnum, count)
   -- split lines into chunks, each chunk is either normal lines, or a line containing comment (%)
   -- comment lines are skipped from formatting and kept as is.
   local chunks = {}
-  local chunk = {{}, false, nil} -- {lines, is_comment, [cursor_col]} cursor_col is 0-based byte-index into the string
+  local chunk = { {}, false, nil } -- {lines, is_comment, [cursor_col]} cursor_col is 0-based byte-index into the string
   for idx, line in ipairs(lines) do
     local is_comment = contains_latex_comment(line)
     if is_comment ~= chunk[2] then
       if not vim.tbl_isempty(chunk[1]) then
         table.insert(chunks, chunk)
       end
-      chunk = {{}, is_comment, nil}
+      chunk = { {}, is_comment, nil }
     end
     -- this chunk should contain cursor
     if start_line + idx - 1 == pos[1] then
       local orig_len = chunk_len(chunk)
       local trimmed_indent, trimmed_line = chunk_add_line(chunk, line)
-      chunk[3] = orig_len + 1    - trimmed_indent + pos[2]
+      chunk[3] = orig_len + 1 - trimmed_indent + pos[2]
       --         ^          ^      ^                ^
       --         existing  <SPC>   removed          current cursor col
 
@@ -103,7 +113,7 @@ local function latexformatexpr_restore(lnum, count)
       end
     else
       -- join all lines
-      local line = table.concat(chunk[1], " ")
+      local line = table.concat(chunk[1], ' ')
       if chunk[3] == nil then
         -- end of sentence:
         --   either a single char [.!?:;]
@@ -112,7 +122,7 @@ local function latexformatexpr_restore(lnum, count)
         -- and they must followed by
         --   one space     \zs\s\ze\S
         -- there will be exactly one space because the line is joined from trimmed buffer lines
-        line = vim.fn.substitute(line, pattern, [[\r]], "g")
+        line = vim.fn.substitute(line, pattern, [[\r]], 'g')
         local new_lines = vim.fn.split(line, [[\r]])
         for _, line in ipairs(new_lines) do
           table.insert(replacement, line)
@@ -151,7 +161,7 @@ local function latexformatexpr_restore(lnum, count)
 
   -- try to restore cursor position
   if need_cursor_update then
-    vim.api.nvim_win_set_curosr(0, new_pos)
+    vim.api.nvim_win_set_cursor(0, new_pos)
   end
 
   -- do not run builtin formatter
@@ -173,14 +183,14 @@ local function latexformatexpr(lnum, count)
   -- split lines into chunks, each chunk is either normal lines, or a line containing comment (%)
   -- comment lines are skipped from formatting and kept as is.
   local chunks = {}
-  local chunk = {{}, false} -- {lines, is_comment}
+  local chunk = { {}, false } -- {lines, is_comment}
   for idx, line in ipairs(lines) do
     local is_comment = contains_latex_comment(line)
     if is_comment ~= chunk[2] then
       if not vim.tbl_isempty(chunk[1]) then
         table.insert(chunks, chunk)
       end
-      chunk = {{}, is_comment}
+      chunk = { {}, is_comment }
     end
     chunk_add_line(chunk, line)
   end
@@ -198,7 +208,7 @@ local function latexformatexpr(lnum, count)
       end
     else
       -- join all lines
-      local line = table.concat(chunk[1], " ")
+      local line = table.concat(chunk[1], ' ')
       -- end of sentence:
       --   either a single char [.!?:;]
       --   or                   \|
@@ -206,7 +216,7 @@ local function latexformatexpr(lnum, count)
       -- and they must followed by
       --   one space     \zs\s\ze\S
       -- there will be exactly one space because the line is joined from trimmed buffer lines
-      line = vim.fn.substitute(line, pattern, [[\r]], "g")
+      line = vim.fn.substitute(line, pattern, [[\r]], 'g')
       local new_lines = vim.fn.split(line, [[\r]])
       for _, line in ipairs(new_lines) do
         table.insert(replacement, line)

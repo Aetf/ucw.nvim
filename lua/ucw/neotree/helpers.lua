@@ -1,17 +1,27 @@
 local M = {}
 
-local renderer = require "neo-tree.ui.renderer"
+local renderer = require('neo-tree.ui.renderer')
 
 -- Set width to be the same as content
 function M.width_fit_content(state)
-  local root_name = vim.fn.fnamemodify(state.path, ":~")
+  local root_name = vim.fn.fnamemodify(state.path, ':~')
   local root_len = string.len(root_name) + 4
   return math.max(root_len, 30)
 end
 
 -- Expand a node and load filesystem info if needed.
+--
+-- `path_to_reveal` is nil on purpose - "reveal nothing" - and neo-tree v3
+-- annotates that third parameter `string` rather than `string?`, which its own
+-- code contradicts twice over: `toggle_directory` forwards the value to
+-- `fs_scan.get_items`, whose wrappers annotate it `string?` and whose reveal
+-- step is `if path_to_reveal then` (`lib/fs_scan.lua:533/541/618`), and
+-- upstream's own caller passes nothing after the node
+-- (`common/commands.lua:797`). Same annotation, same evidence, at both
+-- `toggle_directory` calls in `move_out`/`move_in` below.
 local function open_dir(state, dir_node)
-  local fs = require "neo-tree.sources.filesystem"
+  local fs = require('neo-tree.sources.filesystem')
+  ---@diagnostic disable-next-line: param-type-mismatch
   fs.toggle_directory(state, dir_node, nil, true, false)
 end
 
@@ -21,7 +31,7 @@ local function recursive_open(state, node, max_depth)
   local stack = { node }
   while next(stack) ~= nil do
     node = table.remove(stack)
-    if node.type == "directory" and not node:is_expanded() then
+    if node.type == 'directory' and not node:is_expanded() then
       open_dir(state, node)
     end
 
@@ -41,6 +51,55 @@ end
 
 -- The nodes inside the root folder are depth 2.
 local MIN_DEPTH = 2
+
+-- Expand whole subtrees the way neo-tree does it, rather than by walking them
+-- here. Loading a directory is asynchronous: `toggle_directory` returns with
+-- the node still `loaded == false` and no children in the tree, so
+-- `recursive_open`, which opens a node and immediately asks for its children,
+-- sees none and stops one level short. Measured on a cold tree, `zR` used to
+-- descend exactly one more level per press - 16, 55, 98, 152 lines - instead
+-- of expanding everything once.
+--
+-- `node_expander` is upstream's answer to the same problem: it collects the
+-- nodes that were not loaded, runs the source's `prefetcher` over them and
+-- expands again. It has to run inside a coroutine, which is why `done` exists
+-- - the completion callback is the point at which the tree is really expanded,
+-- and it is a callback rather than a wait, so nothing here guesses at timing.
+--
+-- `recursive_open` still serves the depth-limited keys (`zo` with a count,
+-- `zr`, `zx`), which ask for one more level at a time and so are asking about
+-- nodes that are already loaded.
+local function expand_all(state, roots, done)
+  local async = require('plenary.async')
+  local node_expander = require('neo-tree.sources.common.node_expander')
+  local prefetcher = require('neo-tree.sources.filesystem').prefetcher
+
+  renderer.position.set(state, nil)
+  async.run(function()
+    for _, root in ipairs(roots) do
+      node_expander.expand_directory_recursively(state, root, prefetcher)
+    end
+  end, function()
+    if done then
+      done()
+    end
+    renderer.redraw(state)
+  end)
+end
+
+-- The depthlevel a fully expanded tree corresponds to, so that `zm` after `zR`
+-- collapses one level from the bottom rather than from a number `zR` guessed
+-- before the expansion had happened. `set_depthlevel` opens a directory when
+-- its depth is *below* the level, hence the +1.
+local function deepest_expanded(state)
+  local deepest = MIN_DEPTH
+  for _, node in pairs(state.tree.nodes.by_id) do
+    if node.type == 'directory' and node:is_expanded() then
+      deepest = math.max(deepest, node:get_depth() + 1)
+    end
+  end
+  return deepest
+end
 
 --- Close the node and its parents, optionally stopping at max_depth.
 local function recursive_close(state, node, max_depth)
@@ -70,7 +129,7 @@ local function set_depthlevel(state, depthlevel)
   while next(stack) ~= nil do
     local node = table.remove(stack)
 
-    if node.type == "directory" then
+    if node.type == 'directory' then
       local should_be_open = depthlevel == nil or node:get_depth() < depthlevel
       if should_be_open and not node:is_expanded() then
         open_dir(state, node)
@@ -91,14 +150,24 @@ end
 --- Refresh the tree UI after a change of depthlevel.
 -- @bool stay Keep the current node revealed and selected
 local function redraw_after_depthlevel_change(state, stay)
+  -- `get_node()` resolves the *cursor's line* against the tree, and by this
+  -- point `set_depthlevel` has already collapsed nodes while the buffer still
+  -- shows the longer rendering - so a cursor below the new end of the tree
+  -- resolves to nothing. Reachable in three keystrokes: `zR`, `G`, `zm`. It
+  -- raised "attempt to index local 'node'" and, because that aborted before
+  -- the redraw, the visible symptom was `zm` silently doing nothing.
+  -- Same for a parent lookup that walks off the root.
   local node = state.tree:get_node()
+  if not node then
+    return renderer.redraw(state)
+  end
 
   if stay then
-    require("neo-tree.ui.renderer").expand_to_node(state.tree, node)
+    require('neo-tree.ui.renderer').expand_to_node(state.tree, node)
   else
     -- Find the closest parent that is still visible.
     local parent = state.tree:get_node(node:get_parent_id())
-    while not parent:is_expanded() and parent:get_depth() > 1 do
+    while parent and not parent:is_expanded() and parent:get_depth() > 1 do
       node = parent
       parent = state.tree:get_node(node:get_parent_id())
     end
@@ -144,13 +213,15 @@ end
 --- Open the fold under the cursor, recursing if count is given.
 function M.commands.neotree_zo(state, open_all)
   local node = state.tree:get_node()
-
-  if open_all then
-    recursive_open(state, node)
-  else
-    recursive_open(state, node, node:get_depth() + vim.v.count1)
+  if not node then
+    return
   end
 
+  if open_all then
+    return expand_all(state, { node })
+  end
+
+  recursive_open(state, node, node:get_depth() + vim.v.count1)
   renderer.redraw(state)
 end
 
@@ -191,7 +262,7 @@ function M.commands.neotree_za(state, toggle_all)
     return
   end
 
-  if node.type == "directory" and not node:is_expanded() then
+  if node.type == 'directory' and not node:is_expanded() then
     M.commands.neotree_zo(state, toggle_all)
   else
     M.commands.neotree_zc(state, toggle_all)
@@ -237,24 +308,21 @@ end
 
 -- Expand all folders. Set depthlevel to the deepest node level.
 function M.commands.neotree_zR(state)
-  local top_level_nodes = state.tree:get_nodes()
-
-  local max_depth = 1
-  for _, node in ipairs(top_level_nodes) do
-    max_depth = math.max(max_depth, recursive_open(state, node))
-  end
-
-  vim.b.neotree_depthlevel = max_depth
-  redraw_after_depthlevel_change(state, false)
+  expand_all(state, state.tree:get_nodes(), function()
+    -- `state.bufnr`, not `vim.b`: by the time this runs the current buffer is
+    -- whatever it happens to be, and the depthlevel belongs to the tree.
+    vim.b[state.bufnr].neotree_depthlevel = deepest_expanded(state)
+  end)
 end
 
 -- up to parent dir when on a file, close dir when on a dir
 function M.commands.move_out(state)
   local node = state.tree:get_node()
   if node.type == 'directory' and node:is_expanded() then
-    require'neo-tree.sources.filesystem'.toggle_directory(state, node)
+    ---@diagnostic disable-next-line: missing-parameter
+    require('neo-tree.sources.filesystem').toggle_directory(state, node)
   else
-    require'neo-tree.ui.renderer'.focus_node(state, node:get_parent_id())
+    require('neo-tree.ui.renderer').focus_node(state, node:get_parent_id())
   end
 end
 
@@ -263,11 +331,19 @@ function M.commands.move_in(state)
   local node = state.tree:get_node()
   if node.type == 'directory' then
     if not node:is_expanded() then
-      require'neo-tree.sources.filesystem'.toggle_directory(state, node)
+      ---@diagnostic disable-next-line: missing-parameter
+      require('neo-tree.sources.filesystem').toggle_directory(state, node)
     elseif node:has_children() then
-      require'neo-tree.ui.renderer'.focus_node(state, node:get_child_ids()[1])
+      require('neo-tree.ui.renderer').focus_node(state, node:get_child_ids()[1])
     end
   end
+end
+
+-- Toggle hidden files. Overrides the builtin only to drop its `log.info`
+-- notification: the redrawn tree already shows whether dotfiles are in it.
+function M.commands.toggle_hidden(state)
+  state.filtered_items.visible = not state.filtered_items.visible
+  require('neo-tree.sources.filesystem')._navigate_internal(state, nil, nil, nil, false)
 end
 
 return M

@@ -1,0 +1,105 @@
+# Every gate here is a `just` recipe, and this file only ever calls `just`.
+# That is the same rule the rest of this config follows (`just tui` wrapping
+# `scripts/tui-drive.sh`), and it means "reproduce CI locally" is copying one
+# line rather than reading YAML. See docs/design/phase7-ci.md §3.1/§3.2.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.neovim }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # `stable` and this machine are the same Neovim: `stable` is a
+        # lightweight tag that currently points at v0.12.4's commit
+        # (68ea43cd), and Arch ships 0.12.4 too. `nightly` is advisory - see
+        # `continue-on-error` below. No pinned third leg; when Arch next lags a
+        # release, phase7-ci.md §5 says to add one.
+        neovim: [stable, nightly]
+    # An advisory leg that is red for three months is a leg nobody reads. If
+    # nightly stays red for something that is not actionable, delete it rather
+    # than keep ignoring it.
+    continue-on-error: ${{ matrix.neovim == 'nightly' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.neovim }}
+      - uses: extractions/setup-just@v4
+      # Pinned rather than left at its default of `latest`: mise.toml's "no
+      # `mise trust` needed" claim - which is what makes `just deps` a single
+      # command on a fresh checkout - is measured against one specific mise, and
+      # its own header comment says which. An unpinned action is a second copy
+      # of a version this repo already decided, drifting on its own. D13.
+      - uses: jdx/mise-action@v4
+        with:
+          version: 2026.7.11
+
+      - run: just deps
+      - run: just ci
+
+      # D6. On the `stable` leg only: a nightly that resolves something
+      # differently must not be able to fail this. The suite boots the full
+      # config into ten scratch data dirs, and lazy.nvim honours the lockfile
+      # when it installs - so a diff here means a boot path added a pin, which
+      # is exactly how Phase 6 found the embedded target writing a firenvim
+      # entry into the real lockfile.
+      - name: lazy-lock.json did not drift
+        if: matrix.neovim == 'stable'
+        run: git diff --exit-code lazy-lock.json
+
+  # Separate jobs rather than extra steps on `test`: both are
+  # version-independent and finish in seconds, and keeping them off the matrix
+  # means a formatting nit reports once instead of three identical times.
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      # Neovim is not redundant on a job that runs no tests. `just lint` asks
+      # `nvim` for `$VIMRUNTIME`, without which lua_ls checks this repo with
+      # none of Neovim's annotations - louder *and* blinder, and still exit 0
+      # on a good day. The recipe refuses to run rather than degrade, so a
+      # missing Neovim here fails the job instead of weakening it silently.
+      # phase7-ci.md §1.5b, D11/D12.
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+      - uses: extractions/setup-just@v4
+      - uses: jdx/mise-action@v4
+        with:
+          version: 2026.7.11
+      # `just lint` depends on `just plugins` and `just deps`, because the
+      # plugin `lua/` directories are the difference between the check that
+      # finds 22 problems and the one that finds 16 and says nothing about the
+      # rest. `plugins` names this checkout as Neovim's config directory
+      # explicitly (`NVIM_APPNAME`); bare `nvim` would find no config here at
+      # all, which is invisible on a machine where the repo *is*
+      # `~/.config/nvim`. See the acceptance review's R1.
+      - run: just lint
+
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: extractions/setup-just@v4
+      # No `stylua-action`: mise.toml pins `stylua = "2.5.2"` and `just
+      # fmt-check` runs under `mise exec`, so CI and this machine run the same
+      # binary by construction rather than by keeping two pins in agreement.
+      - uses: jdx/mise-action@v4
+        with:
+          version: 2026.7.11
+      - run: just fmt-check

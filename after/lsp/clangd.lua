@@ -1,0 +1,14 @@
+-- C/C++. New in Phase 3: `clangd_extensions.nvim` had been installed and
+-- loading for years while clangd itself was never enabled, because
+-- mason-lspconfig only auto-enabled servers Mason had actually installed and
+-- clangd was not one of them.
+--
+-- Table fields only, and non-negotiably so: upstream nvim-lspconfig defines
+-- **both** `on_attach` and `on_init` for clangd (the `switch_source_header`
+-- command and the encoding negotiation live there). Any function field in this
+-- layer replaces one of them outright.
+--
+-- Nothing to customize yet - upstream's cmd/root_markers/offsetEncoding are
+-- what we want. The file exists to hold the note above, so the next person to
+-- reach for `on_attach` here reads it first.
+return {}

@@ -1,0 +1,25 @@
+# The binaries this repo needs to work on itself, pinned the way any other
+# project pins its own — see docs/design/phase6.5-binary-deps.md §2.3.
+#
+# Nothing here is special to an editor config. `stylua` formats this repo's
+# Lua and `lua-language-server --check` lints it (`just fmt` / `just lint`);
+# `ruff` and `taplo` are the real formatters `tests/test_format.lua` drives, so
+# the suite runs the versions named here rather than whatever Mason happened to
+# install on the host.
+#
+# Neovim resolves these through exactly the same mechanism `just` does — PATH —
+# because Mason *appends* its bin directory instead of prepending it
+# (lua/ucw/plugins/mason.lua). A session started outside this project's
+# environment falls back to Mason's copies, which is deliberate and visible:
+# `:checkhealth ucw` prints the path each declared binary actually resolved to.
+#
+# Keep this file plain `[tools]` with literal versions. mise reads a config of
+# that shape without `mise trust` (measured on mise 2026.7.11: a scratch,
+# never-trusted `[tools]` config installs and resolves fine), so `just deps` is
+# one command and a fresh checkout — or a CI runner — has nothing to authorize.
+# Adding tasks, templates or tool options would make trust load-bearing again.
+[tools]
+stylua = "2.5.2"
+lua-language-server = "3.18.2"
+ruff = "0.16.2"
+taplo = "0.10.0"

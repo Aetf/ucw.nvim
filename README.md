@@ -1,5 +1,13 @@
 # `ucw.nvim`
 
+[![CI](https://github.com/Aetf/ucw.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/Aetf/ucw.nvim/actions/workflows/ci.yml)
+
+> **This page is out of date.** It describes the systemd-style dependency engine
+> that Phase 1 of the 2026 modernization deleted; the config runs on `lazy.nvim`
+> now. Rewriting it is Phase 10's job, along with `docs/architecture.md`, so it
+> is not being done piecemeal. Ground truth is `AGENTS.md`, `lua/ucw/plugins/*.lua`
+> and the phase design documents under `docs/design/`.
+
 My experimental idea of managing neovim plugin dependencies and configs using concepts copied from systemd.
 
 Mostly importantly, the following properties are implemented and can be used to control order and dependency:
