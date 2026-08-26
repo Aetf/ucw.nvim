@@ -669,23 +669,59 @@ and all four are `---@diagnostic disable-next-line` with the evidence named
   name is longer than the default, the tree comes up at the computed width and
   not at 40.
 
-### 11.2 A crash that was never neo-tree's
+### 11.2 `zR` expanded one level per press
 
-Driving every custom mapping under v3 — `l`/`h`, `J`/`K`, the twelve `z*`
-fold-emulation commands, `H`, `oh`, lightspeed's `s`/`S` — turned up
-`attempt to index local 'node' (a nil value)` out of `zm` and `zx`. Not a
-migration break: **the identical error reproduces on `v2.x`**, which is how it
-was ruled out (the A/B is worth stating because the first `v2.x` run was
-invalid — `Lazy! install` does not downgrade an installed plugin, so it
-measured v3 twice).
+Loading a directory is asynchronous. `toggle_directory` returns with the node
+still `loaded == false` and no children in the tree — measured directly: right
+after the call `#tree:get_nodes(id)` is 0, and two seconds later it is 6. So
+`recursive_open`, which opens a node and immediately asks for its children,
+saw none and stopped one level short of wherever the loading had got to.
 
-Not every line in the tree is a node. neo-tree renders `(N hidden items)` at
-the end of a directory, a collapse leaves the cursor on one often enough that
-this fired as a routine part of using the keys, and
-`redraw_after_depthlevel_change` indexed `get_node()` unconditionally. It
-returns early now, and the parent walk stops at the root. v3 is in fact the
-better of the two here: on `v2.x` the same sequence also raised an error inside
-neo-tree's own renderer.
+The visible shape of that: `zR` on a cold tree went 16 → 55 → 98 → 152 → 154
+lines across four presses instead of expanding everything once. Every
+depth-limited key had the same ceiling; they get away with it because they ask
+for one more level at a time, and that level is usually loaded already.
+
+`zO`/`zR` go through `node_expander.expand_directory_recursively` with the
+filesystem source's `prefetcher` now — upstream's answer to exactly this, which
+collects the unloaded nodes, prefetches them and expands again. It runs inside
+a coroutine, so the depthlevel is recorded in the completion callback rather
+than after the call returns: a callback, not a wait. `zR` is one press and
+idempotent, and the depthlevel it records is the tree's real depth, so `zm`
+after `zR` steps down from the bottom instead of from a number `zR` had
+guessed before the expansion happened.
+
+`recursive_open` stays for the depth-limited keys.
+
+### 11.3 A nil that is guarded but not reproduced in a test
+
+The same drive turned up `attempt to index local 'node' (a nil value)` out of
+`zm`/`zx`, and it is not a migration break — **the identical error reproduces
+on `v2.x`**, which is how that was ruled out. (Worth stating because the first
+`v2.x` A/B was invalid: `Lazy! install` does not downgrade an installed plugin,
+so it measured v3 twice.)
+
+`redraw_after_depthlevel_change` indexed `get_node()` unconditionally, and that
+resolves the *cursor's line* against a tree `set_depthlevel` has already
+collapsed while the buffer still shows the longer rendering. It returns early
+now, and the parent walk stops at the root.
+
+**The stated cause was wrong once and is worth correcting in place**, because
+the wrong one is more plausible than the right one: it is *not* that
+`(N hidden items)` is a line without a node. Measured — every line in a
+rendered tree, that one included, resolves to a node.
+
+What this does not have is a guard, and that is deliberate rather than
+overlooked. The condition needs the tree in a state that took eight fold
+keypresses to build, and a child driven through those keypresses reproduces it
+**sometimes** — the intermediate expansions are asynchronous, so the state at
+key nine is not the same twice. A guard that passes and fails on its own
+schedule is worse than none: it is indistinguishable from the working gate it
+is pretending to be, which is the failure mode this repo keeps writing down.
+So the guard covers the two `zR`/`zm` claims of §11.2, both reverse-verified by
+restoring the old `zR`, and the nil check stands on its own argument — nui
+annotates `get_node()` as returning `NuiTree.Node?`, and a parent lookup at the
+root returns nothing.
 
 ## 12. What this changes in earlier documents
 
