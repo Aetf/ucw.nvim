@@ -85,8 +85,8 @@ Notes / gotchas:
 - **`send` vs `keys`**: `send` injects via the control socket in Neovim key notation
   (`<CR>`, `<Esc>`, `<C-w>`). `keys` uses raw tmux key events (`C-c`) for things the
   RPC channel cannot inject.
-- **Settle before capturing.** `send`/`cmd` are asynchronous and lazy units take a
-  moment to `packadd` + `config`. If a `capture` shows an intermediate state (e.g. an
+- **Settle before capturing.** `send`/`cmd` are asynchronous and lazy plugins take a
+  moment to load and run their `config`. If a `capture` shows an intermediate state (e.g. an
   empty noice cmdline box), capture again a beat later. In scripts, poll for expected
   text rather than capturing once.
 - **`messages` never blocks.** It routes through the socket, so it reads the message

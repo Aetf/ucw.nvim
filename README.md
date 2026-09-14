@@ -2,70 +2,37 @@
 
 [![CI](https://github.com/Aetf/ucw.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/Aetf/ucw.nvim/actions/workflows/ci.yml)
 
-> **This page is out of date.** It describes the systemd-style dependency engine
-> that Phase 1 of the 2026 modernization deleted; the config runs on `lazy.nvim`
-> now. Rewriting it is Phase 10's job, along with `docs/architecture.md`, so it
-> is not being done piecemeal. Ground truth is `AGENTS.md`, `lua/ucw/plugins/*.lua`
-> and the phase design documents under `docs/design/`.
+My Neovim config: `lazy.nvim`, one spec file per plugin, LSP on Neovim's
+native `vim.lsp.config`/`vim.lsp.enable` layers, and a test suite that boots
+the whole thing headless.
 
-My experimental idea of managing neovim plugin dependencies and configs using concepts copied from systemd.
+- `AGENTS.md` — the rules for changing it (plugins, keys, LSP, CI).
+- `docs/architecture.md` — the map: boot order, layout, what owns what.
+- `docs/testing.md`, `docs/tui-observation.md` — the suite and how to look
+  at the rendered TUI from outside.
+- `docs/design/` — one design document and one independent acceptance
+  review per phase of the 2026 modernization; the reasoning behind every
+  decision above lives there.
 
-Mostly importantly, the following properties are implemented and can be used to control order and dependency:
+## Working on it
 
-
-* `requires`
-* `wants`
-* `requisite`
-* `before`
-* `after`
-
-They share the same semantics as systemd units.
-See [systemd.unit](https://www.freedesktop.org/software/systemd/man/systemd.unit.html) for details.
-
-Additionally, `activation.wanted_by`/`activation.required_by` can be used, similar to `WantedBy`/`RequiredBy` in systemd
-unit's `[Install]` section.
-
-* `activation.cmd` can be used to start a unit upon calling a command.
-
-* `no_default_dependencies`
-
-Unless `no_default_dependencies=true`, all targets gains a `after` dependency for all its `wants/requires/requisite`.
-And all units gains a `after` dependency on `target.base`.
-
-During activation,
-
-* calls `unit.setup`
-* calls `packadd`
-* calls `unit.config`
-
-## Example
-
-Require `nvimd` and just boot from `init.lua`.
-
-You can list the parent module containing unit definitions in `units_modules`.
-
-```lua
-local target = 'target.tui'
-if utils.is_gui() then
-  target = 'target.gui'
-elseif vim.g.started_by_firenvim then
-  target = 'target.firenvim'
-end
-
-require('nvimd').boot(
-  {
-    units_modules ={
-      'ucw.units.thirdparty',
-      'ucw.units.user',
-    }
-  },
-  target
-)
+```sh
+just deps       # pinned binaries (mise.toml) + a test-only mini.nvim into deps/
+just ci         # the suite, as CI runs it
+just lint       # lua-language-server --check
+just fmt-check  # stylua
 ```
 
-## Extra Features
+`mise.toml` pins the binaries the repo needs to work on itself; Neovim finds
+the same ones through `PATH`, with Mason's copies as the fallback, and
+`:checkhealth ucw` prints which one won.
 
-### Workspace specific LSP settings
+## Notable pieces
 
-* Load vscode compatible settings file `.vscode/settings.json` for LSP.
-* Load vscode compatible ltex dictionaries from `.vscode`.
+- Workspace LSP settings from `.vscode/settings.json`, including ltex
+  dictionaries, rebuilt on every change (`lua/ucw/lsp/vscode.lua`).
+- Keys follow native vocabulary first (`gr*` for LSP, `[`/`]` + letter for
+  previous/next), then LazyVim's `<leader>` namespaces; the placement rule
+  for a new plugin is a table in `docs/design/phase9-keybindings.md` §5.
+- The neogit ↔ codediff seam (`lua/ucw/git.lua`): `<CR>` on any commit opens
+  it in codediff; `<leader>gm` shows the commit message from either side.

@@ -86,7 +86,7 @@ Two helpers in `tests/aux/lua/helpers.lua`:
 ```lua
 local H = require('helpers')
 
--- Unit: no nvimd. Only cwd + mini.test on rtp. Fast. Auto-tagged "unit".
+-- Unit: no config boot. Only cwd + mini.test on rtp. Fast. Auto-tagged "unit".
 local T, child = H.new_unit_test()
 
 -- Integration: boots the whole ucw.nvim config. Auto-tagged "integration".
