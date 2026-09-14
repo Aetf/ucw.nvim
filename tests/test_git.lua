@@ -150,6 +150,40 @@ T['neogit <CR>']['still opens the file on a file row'] = function()
   vim.fn.delete(dir, 'rf')
 end
 
+-- The log view has no mapping table of its own; it takes `<CR>`'s lhs from
+-- `mappings.status` by action name, which is why the override is buffer-local
+-- and why this half is the one more likely to move (acceptance review R4).
+-- `:Neogit log` opens the popup; `l` is "log current", pressed through
+-- `:normal` (mappings apply, synchronous) once the popup buffer is current -
+-- fed as typeahead before that, the `l` lands in the status buffer instead.
+T['neogit <CR>']['is wrapped in the log view too'] = function()
+  local dir = make_repo()
+  open_neogit(dir)
+  child.lua([[vim.cmd('Neogit log')]])
+  eq(child.lua_get([[vim.wait(5000, function() return vim.bo.filetype == 'NeogitPopup' end, 50)]]), true)
+  child.lua([[vim.cmd('normal l')]])
+  local ok = child.lua_get([[
+        vim.wait(20000, function()
+          if vim.bo.filetype ~= 'NeogitLogView' then return false end
+          for _, l in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
+            if l:match('second commit') then return true end
+          end
+          return false
+        end, 50)
+    ]])
+  eq(ok, true)
+  eq(child.lua_get([[vim.fn.maparg('<CR>', 'n', false, true).desc]]), 'Diff this commit (codediff)')
+  eq(child.lua_get([[vim.fn.maparg('<CR>', 'n', false, true).buffer]]), 1)
+  local ref = child.lua_get(([[
+        (function()
+          vim.api.nvim_win_set_cursor(0, { %d, 0 })
+          return require('ucw.git').commit_under_cursor() or false
+        end)()
+    ]]):format(line_of('second commit')))
+  eq(type(ref) == 'string' and ref:match('^%x+$') ~= nil, true)
+  vim.fn.delete(dir, 'rf')
+end
+
 T['commit message'] = new_set()
 
 T['commit message']['<leader>gm is a live stub before codediff loads'] = function()

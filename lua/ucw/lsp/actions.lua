@@ -2,7 +2,7 @@
 --
 -- Two consumers bind these: `ucw.lsp.attach` (buffer-local `g`-prefixed keys,
 -- only while a client is attached) and `ucw.plugins.which-key` (the global
--- `<leader>l` tree). Before this table they each carried their own copy of the
+-- `<leader>c` tree). Before this table they each carried their own copy of the
 -- same `<cmd>lua vim.lsp...<cr>` strings, which is how two of them rotted away
 -- unnoticed across Neovim releases:
 --
@@ -106,7 +106,7 @@ M.actions = {
   -- diagnostics` with no arguments used to be, see above.
   diagnostics_all = { desc = 'Diagnostics for the whole workspace', picker = 'diagnostics' },
 
-  -- The inlay-hint toggle (`<leader>lI`) is not here: Phase 8 (D2) made it a
+  -- The inlay-hint toggle (`<leader>uh`) is not here: Phase 8 (D2) made it a
   -- `Snacks.toggle` (`ucw.toggles`), which owns the enable/is_enabled pairing
   -- the bespoke `toggle` kind used to encode. The *global*-flag semantics it
   -- must keep (Phase 3 acceptance review, P1) are documented there.

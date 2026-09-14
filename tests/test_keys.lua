@@ -1,8 +1,9 @@
 -- Coverage for global keymap *registration*, wherever it happens: since
 -- Phase 8 (D1) that is three mechanisms - lazy.nvim `keys =` in each
 -- plugin's spec (the bulk), `wk.add` in `ucw.plugins.which-key` (group
--- headers, core editor keys, the `<leader>l` tree), and `Snacks.toggle`
--- objects (`ucw.toggles` + `gitsigns.lua`) for the four toggles.
+-- headers, core editor keys, the `gr*` LSP rhs and the label-only blocks),
+-- and `Snacks.toggle` objects (`ucw.toggles` + `gitsigns.lua`) for the
+-- `<leader>u` toggles.
 --
 -- The founding bug: the Phase 3 acceptance review found `g[` / `g]` - the
 -- config's own diagnostic pair at the time, retired in Phase 9.5 (T6) in
@@ -299,13 +300,26 @@ end
 --
 -- Only `wk.add` entries are visible in `Config.mappings` - a lazy `keys =`
 -- entry never lands there - which is why `<leader>n`'s icon is registered in
--- which-key.lua as an entry with an icon and nothing else. That makes this
--- census exactly the first level: ten group headers plus the four leaves.
+-- which-key.lua as an entry with an icon and nothing else. So the *set* of
+-- first-level keys comes from the mapping table (`nvim_get_keymap('n')`, where
+-- a `keys =` stub is present from boot) and `Config.mappings` only supplies
+-- the icon and group: a first-level key registered in a plugin spec with no
+-- icon entry here is the blank-column defect the census exists to catch,
+-- and a registry-only census could not see it (Phase 9 acceptance review R3).
 T['which-key spec']['every <leader> first-level entry follows the label/icon rules'] = function()
   local entries = child.lua_get([[
         (function()
           local Config = require('which-key.config')
           local seen = {}
+          -- `<leader>` is a literal space in this config; the `<Plug>` filter
+          -- is the snapshot script's, for the same reason
+          for _, m in ipairs(vim.api.nvim_get_keymap('n')) do
+            local rest = m.lhs:match('^ (.*)$')
+            if rest and vim.fn.strchars(rest) == 1 and not m.lhs:find('<Plug>', 1, true) then
+              local key = rest == ' ' and '<Space>' or rest
+              seen['<leader>' .. key] = { desc = m.desc, group = false }
+            end
+          end
           for _, m in ipairs(Config.mappings or {}) do
             -- exactly one key after the prefix. `<leader>go` is a subtree
             -- header one level down and rides on `<leader>g`'s icon.
@@ -349,7 +363,7 @@ T['which-key spec']['every <leader> first-level entry follows the label/icon rul
     '<leader>f group icon lower',
     '<leader>g group icon lower',
     '<leader>l leaf icon Sentence',
-    '<leader>n leaf icon n/a',
+    '<leader>n leaf icon Sentence',
     '<leader>q group icon lower',
     '<leader>r group icon lower',
     '<leader>s group icon lower',
@@ -361,9 +375,9 @@ end
 
 -- Visual mode used to render `c -> +2 keymaps`: `wk.add` defaults to mode `n`,
 -- so the group *headers* were normal-mode only while their members were not.
--- Only the five headers with a visual-mode member are asserted - the others
--- are registered for `x` too but have nothing to head there, and which-key
--- does not draw an empty group.
+-- Every header is asserted for `x` (rule 4 in which-key.lua), not only the
+-- ones with a visual-mode member today: a member added later must find its
+-- header already there.
 T['which-key spec']['leader group headers exist in visual mode too'] = function()
   local groups = child.lua_get([[
         (function()
@@ -608,6 +622,92 @@ T['REPL keys']['degrade the same way when no definition exists at all'] = functi
   eq(result.ok2, true)
   eq(result.n, 1)
   eq(result.msg:find('no usable REPL') ~= nil, true)
+end
+
+-- The block-send keys used to reach the REPL through typeahead
+-- (`feedkeys('<leader>rsih')`); when the `<leader>rs` wrapper declined, the
+-- leftover `ih` was typed into the buffer (acceptance review R2). Both halves:
+-- nothing is typed without the binary, and with one the cell - and only the
+-- cell - reaches `iron.core.send`.
+T['REPL keys']['the block keys type nothing without the binary'] = function()
+  local result = child.lua_get([[
+        (function()
+          require('iron.config').repl_definition.ucwtest = { command = { 'ucw-definitely-not-a-binary' } }
+          vim.cmd('enew!')
+          vim.bo.filetype = 'ucwtest'
+          vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'a = 1' })
+          vim.bo.modified = false
+          vim.api.nvim_win_set_cursor(0, { 1, 0 })
+          local warns = 0
+          vim.notify = function() warns = warns + 1 end
+          local cb = vim.fn.maparg('<C-CR>', 'n', false, true).callback
+          local ok1 = pcall(cb)
+          local ok2 = pcall(vim.fn.maparg('<S-CR>', 'n', false, true).callback)
+          return { ok = ok1 and ok2, warns = warns, lines = vim.api.nvim_buf_get_lines(0, 0, -1, false), modified = vim.bo.modified, mode = vim.fn.mode() }
+        end)()
+    ]])
+  eq(result.ok, true)
+  eq(result.warns, 1)
+  eq(result.lines, { 'a = 1' })
+  eq(result.modified, false)
+  eq(result.mode, 'n')
+end
+
+T['REPL keys']['the block keys hand exactly the cell to iron'] = function()
+  local result = child.lua_get([[
+        (function()
+          -- an executable that exists, so the probe passes; iron never runs it
+          require('iron.config').repl_definition.ucwok = { command = { 'sh' } }
+          vim.cmd('enew!')
+          vim.bo.filetype = 'ucwok'
+          vim.api.nvim_buf_set_lines(0, 0, -1, false, { '# %%', 'x = 1', 'y = 2', '', '# %%', 'z = 3' })
+          vim.bo.modified = false
+          vim.api.nvim_win_set_cursor(0, { 2, 0 })
+          local sent
+          require('iron.core').send = function(ft, data) sent = { ft = ft, data = data } end
+          vim.fn.maparg('<C-CR>', 'n', false, true).callback()
+          return { sent = sent, lines = vim.api.nvim_buf_get_lines(0, 0, -1, false), modified = vim.bo.modified }
+        end)()
+    ]])
+  eq(result.sent, { ft = 'ucwok', data = { 'x = 1', 'y = 2' } })
+  eq(result.lines, { '# %%', 'x = 1', 'y = 2', '', '# %%', 'z = 3' })
+  eq(result.modified, false)
+end
+
+T['mouse side buttons'] = new_set()
+
+-- `<X1Mouse>`/`<X2Mouse>` are the jumplist in every mode they are bound in.
+-- In insert mode a bare `<C-o>`/`<C-i>` rhs is `i_CTRL-O`/`i_CTRL-I` - a
+-- one-shot normal command and a tab - so the insert-mode pair goes through
+-- the one-shot normal (acceptance review R1). Driven with real mouse events;
+-- the desc scan cannot tell a jump from a tab.
+T['mouse side buttons']['step the jumplist from insert mode without editing'] = function()
+  child.lua([[
+        vim.o.mouse = 'nvi'
+        vim.cmd('enew!')
+        vim.api.nvim_buf_set_lines(0, 0, -1, false, { 'one', 'two', 'three', 'four', 'five' })
+        vim.bo.modified = false
+        -- two jumplist entries: line 1 -> line 5
+        vim.cmd('normal! gg')
+        vim.cmd('normal! G')
+        vim.cmd('startinsert')
+        vim.api.nvim_input_mouse('x1', 'press', '', 0, 4, 0)
+    ]])
+  -- the event is processed once the RPC channel yields; read state back after
+  local after = child.lua_get([[
+        { mode = vim.fn.mode(), line = vim.api.nvim_win_get_cursor(0)[1], lines = vim.api.nvim_buf_get_lines(0, 0, -1, false), modified = vim.bo.modified }
+    ]])
+  eq(after.mode, 'i')
+  eq(after.line, 1)
+  eq(after.lines, { 'one', 'two', 'three', 'four', 'five' })
+  eq(after.modified, false)
+  child.lua([[vim.api.nvim_input_mouse('x2', 'press', '', 0, 0, 0)]])
+  local forward = child.lua_get([[
+        { mode = vim.fn.mode(), line = vim.api.nvim_win_get_cursor(0)[1], lines = vim.api.nvim_buf_get_lines(0, 0, -1, false) }
+    ]])
+  eq(forward.mode, 'i')
+  eq(forward.line, 5)
+  eq(forward.lines, { 'one', 'two', 'three', 'four', 'five' })
 end
 
 T['embedded contexts'] = new_set()

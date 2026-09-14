@@ -98,7 +98,7 @@ local function setup_capabilities(bufnr)
   -- were never a missing guard - they were two rust-analyzer clients.
 
   -- `is_enabled()` with no filter reads the *global* flag, which `M.setup()`
-  -- seeds to `true` and `<leader>lI` flips: it is the user's preference, and
+  -- seeds to `true` and `<leader>uh` flips: it is the user's preference, and
   -- this line is what carries it to a buffer that did not exist when the key
   -- was pressed. Passing a literal `true` here instead is what made the toggle
   -- unable to stick (Phase 3 acceptance review, P1).
@@ -122,7 +122,7 @@ function M.setup()
   -- Inlay hints are on by default, expressed as the *global* flag rather than
   -- as a literal `true` at attach time. That flag is what
   -- `vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled())` - the
-  -- upstream-documented toggle idiom, and what `<leader>lI` runs - reads and
+  -- upstream-documented toggle idiom, and what `<leader>uh` runs - reads and
   -- writes. Seeding it here is what makes the first press turn hints *off*:
   -- before, attach set only the buffer flag, the global one stayed `false`,
   -- and the first press "enabled" hints that were already on.

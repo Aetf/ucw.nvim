@@ -102,6 +102,25 @@ T['sources']['the keys bound to pickers all resolve'] = function()
   end
 end
 
+-- `<C-p>` is `smart` minus its `buffers` finder (Phase 9 D3): open buffers
+-- have `<leader>bb` as their only door. snacks' default `multi` includes
+-- `buffers`, so the composition is the one thing in that key that a
+-- "resolves and is callable" check cannot see (acceptance review R4).
+T['sources']['<C-p> composes recent and files, not buffers'] = function()
+  local multi = child.lua_get([[
+        (function()
+          vim.fn.maparg('<C-p>', 'n', false, true).callback()
+          -- the picker window is created on the next tick
+          vim.wait(3000, function() return #Snacks.picker.get() > 0 end, 20)
+          local p = Snacks.picker.get()[1]
+          local multi = p and p.opts.multi
+          if p then p:close() end
+          return multi
+        end)()
+    ]])
+  eq(multi, { 'recent', 'files' })
+end
+
 T['buffers picker'] = new_set()
 
 -- The design doc called the buffers picker "the one with real behaviour

@@ -2,7 +2,6 @@
 --Custom actions in one place
 --]]
 local utils = require('ucw.utils')
-local t = utils.t
 
 local M = {}
 
@@ -36,9 +35,9 @@ end
 -- Diagnostic navigation lives on Neovim's own `[d`/`]d`/`[D`/`]D` (Phase 9.5,
 -- T6). The wrappers that were here are gone: the defaults call the same
 -- `vim.diagnostic.jump()` and additionally honour a count. No float on arrival
--- in either version, which is what this config wants - Phase 4 made
--- `virtual_lines = { current_line = true }` the way full diagnostic text is
--- shown, so a float would render the same message a second time on top of it.
+-- in either version, which is what this config wants: the message is one `K`
+-- (or `<leader>uv`, virtual lines) away when it is wanted, and a float that
+-- appears on every jump is in the way when it is not.
 
 -- Previous / next ipython cell, the `[`/`]` form every other sequence in this
 -- config uses. Bound buffer-locally in `ftplugin/python.lua`: the `# %%` mark
@@ -76,9 +75,17 @@ end
 -- If opts.next == true, move cursor to next cell.
 function M.iron_send_block(opts)
   opts = opts or { next = false }
-  -- TODO: figure out a way to directly call iron api
-  -- `<leader>rs` + the `ih` cell textobject (Phase 9, D5: was `<leader>ef`)
-  vim.api.nvim_feedkeys(t('<leader>rsih'), 'mx', false)
+  -- The cell is resolved with mini.ai's public lookup (the same `ih` spec
+  -- the textobject key uses) and handed to iron directly. Not
+  -- `feedkeys('<leader>rsih')`: when the `<leader>rs` wrapper declined (no
+  -- REPL binary) the leftover `ih` ran as normal-mode input and typed an
+  -- `h` into the buffer (Phase 9 acceptance review R2); and typeahead has
+  -- no way to report "nothing was sent".
+  local region = require('mini.ai').find_textobject('i', 'h')
+  if region then
+    local lines = vim.api.nvim_buf_get_lines(0, region.from.line - 1, region.to.line, false)
+    require('iron.core').send(vim.bo.filetype, lines)
+  end
   if opts.next then
     -- `M.cell_jump`, not `:normal ]h`: this is bound to `<S-Enter>` globally,
     -- and `]h` only exists in a python buffer. The mapping was never there to
@@ -127,7 +134,7 @@ function M.clear()
   -- intent, and it is safe to do this often: `Router.dismiss()` starts with
   -- `Manager.clear()`, but that empties only the *live* set (`_messages`).
   -- Browsable history lives in `Manager._history`, which nothing here touches.
-  -- Measured, three messages held: `<Esc>` leaves `:Noice`/`<leader>nn` at 3.
+  -- Measured, three messages held: `<Esc>` leaves `:Noice`/`<leader>n` at 3.
   pcall(function()
     require('noice').cmd('dismiss')
   end)

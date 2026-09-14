@@ -178,6 +178,10 @@ Tried live in the preview session before deciding. Final set:
 - `<leader>l` (freed) = `:Lazy` — literally LazyVim's own binding.
   `:checkhealth ucw` stays keyless (low frequency).
 
+**(r4)** The jump keys were adopted after all, as `[r`/`]r` rather than
+`]]`/`[[` — the `[`/`]` grammar, buffer-local with the LSP client, no native
+motion shadowed. `phase9.5-trial-period.md` §6.4.
+
 ### 2.3 D3 — `<leader>f` find + `<leader>s` search; sessions → `<leader>q` ✔
 
 - `<leader>f`: `ff` files, `fr` recent, `fg` git files. **No `fb`** —
@@ -371,6 +375,11 @@ New namespace ⇒ claim a free prefix (§3), add the eager group header in
 which-key.lua, and add it to the group census in `tests/test_keys.lua` —
 the census failing is the designed reminder that this table needs a row.
 
+**(r4)** Two rows the trial added to the rule: a previous/next pair is
+`[`/`]` + a category letter and nothing else (`phase9.5-trial-period.md` §6),
+and a window that is only read or navigated closes on `q`, never `<Esc>`
+(§7.3 there).
+
 **(r4)** That header has three required parts, each with its own guard, because
 each fails silently and only in the popup: a **lowercase** group label, an
 **explicit `icon`** (which-key otherwise guesses one by keyword-matching the
@@ -426,10 +435,12 @@ Divergences and findings from construction, none changing a decision:
   plugin's native vocabulary (P1).
 - **D1 instrument**: the buffer-local census lives in tests/test_lsp.lua
   ("the buffer-local key set is exactly the D1 set"), asserting both the
-  four present keys and the seven deleted ones staying gone.
+  present keys (`gd`/`gD`/`<M-CR>`/`<C-K>` at r3; **(r4)** `[r`/`]r` joined
+  in 9.5 T6) and the seven deleted ones staying gone.
 - **D2c**: snacks.words adopted highlight-only (no jump keys), per the
   r2.1 note. Measured live: 4 reference marks on a symbol, 0 on a
-  comment line, namespace `nvim.lsp.references`.
+  comment line, namespace `nvim.lsp.references`. **(r4)** The jump keys
+  followed in 9.5 T6 as `[r`/`]r`; see §2.2.
 - **D3b**: smart.Config's annotated `finders` field has **no consumer**
   in the pinned snacks; the composition mechanism is `multi`. `<C-p>`
   ships `multi = { 'recent', 'files' }`, verified live

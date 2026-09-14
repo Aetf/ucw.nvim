@@ -59,8 +59,8 @@ return {
   -- from startup, so stay eager (Phase 8 relocates registration, not
   -- triggers).
   lazy = false,
-  -- `<leader>r` = REPL (Phase 9, D5; the tree lived on `<leader>e`, freed
-  -- for the explorer). These are bound here rather than through iron's
+  -- `<leader>r` = REPL (Phase 9, D5; the tree lived on `<leader>e`, which
+  -- is free now - Phase 9.5 T1). These are bound here rather than through iron's
   -- `keymaps =` table: iron hardcodes identifier-style descs
   -- (`iron_repl_send_file`, core.lua:832) with no way to override, and every
   -- rhs in its `named_maps` is a thin wrapper over the public API anyway -
@@ -142,16 +142,23 @@ return {
       desc = 'Exit the REPL',
       silent = true,
     },
+    -- Wrapped like every other REPL key: the block keys are the ones a REPL
+    -- user presses most, and they were the two that bypassed the probe
+    -- (Phase 9 acceptance review R2).
     {
       '<C-Enter>',
-      "<cmd>lua require('ucw.keys.actions').iron_send_block()<cr>",
+      repl_key(function()
+        require('ucw.keys.actions').iron_send_block()
+      end),
       desc = 'Send block to REPL',
       mode = { 'n', 'v', 'i' },
       silent = true,
     },
     {
       '<S-Enter>',
-      "<cmd>lua require('ucw.keys.actions').iron_send_block({next=true})<cr>",
+      repl_key(function()
+        require('ucw.keys.actions').iron_send_block { next = true }
+      end),
       desc = 'Send block to REPL and move to next',
       mode = { 'n', 'v', 'i' },
       silent = true,

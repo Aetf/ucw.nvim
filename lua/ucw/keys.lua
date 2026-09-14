@@ -71,9 +71,13 @@ end
 -- error message rather than through the Lua error path (Phase 9.5, T6).
 
 -- For mouse. The side buttons are the jumplist, the same pair a browser puts
--- them on.
-map({ 'n', 'i', 'v' }, '<X2Mouse>', '<c-i>', { noremap = true, silent = true, desc = 'Jump forward (jumplist)' })
-map({ 'n', 'i', 'v' }, '<X1Mouse>', '<c-o>', { noremap = true, silent = true, desc = 'Jump back (jumplist)' })
+-- them on. Insert mode gets its own rhs: there `<C-o>` is `i_CTRL-O` (one
+-- normal-mode command) and `<C-i>` is `i_CTRL-I` (a tab), so the jump is
+-- reached *through* the one-shot normal (Phase 9 acceptance review R1).
+map({ 'n', 'v' }, '<X2Mouse>', '<c-i>', { noremap = true, silent = true, desc = 'Jump forward (jumplist)' })
+map({ 'n', 'v' }, '<X1Mouse>', '<c-o>', { noremap = true, silent = true, desc = 'Jump back (jumplist)' })
+map('i', '<X2Mouse>', '<c-o><c-i>', { noremap = true, silent = true, desc = 'Jump forward (jumplist)' })
+map('i', '<X1Mouse>', '<c-o><c-o>', { noremap = true, silent = true, desc = 'Jump back (jumplist)' })
 
 -- Shift is one notch coarser on the same list: `<C-o>`/`<C-i>` step through
 -- every entry, and a handful of edits in one file put a dozen of them there, so

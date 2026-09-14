@@ -222,8 +222,10 @@ The rules, stated once so the next binding has somewhere to look:
 default on worse terms. `[d`/`]d`/`[D`/`]D` and `[q`/`]q`/`[Q`/`]Q`/`[<C-Q>`/
 `]<C-Q>` take a count, and the quickfix ones print a failure as a plain error
 message rather than through the Lua error path; neither opens a float on
-arrival, which is what this config wants (`virtual_lines` already shows the
-text). `ucw.keys.actions.diag_next`/`diag_prev` are gone with them.
+arrival, which is what this config wants (the message is one `K` or
+`<leader>uv` away when wanted; T4 turned `virtual_lines` off by default, so
+it is no longer what makes the float redundant). `ucw.keys.actions.diag_next`/
+`diag_prev` are gone with them.
 
 ### 6.2 mini.ai's goto keys are mini.ai's again
 
@@ -359,8 +361,9 @@ Measured across every window this config can open, in a real TUI:
 | **`<Esc>` cancels, `q` is a literal character** | the picker's input, `vim.ui.input`, which-key |
 | **neither — `:q` was the only way out** | **help, quickfix/loclist** |
 
-So `q` was already the convention, in 11 window kinds out of 13, and `<Esc>`
-was a close key in two places only: neogit, and things you type into. The rules
+So `q` was already the convention in every window kind but the two in the
+table's last row, and `<Esc>` was a close key in two places only: neogit, and
+things you type into. The rules
 this settles on are a description of that, not a redesign:
 
 1. A window you only read or navigate closes on **`q`**.
@@ -730,7 +733,7 @@ root returns nothing.
 | `phase9-keybindings.md` | §2.5 D5, §3 layout | `<leader>e`/`E` gone (T1); group labels renamed (T2) |
 | `phase9-keybindings.md` | §5 extension rule | a new namespace also needs a lowercase label, an explicit icon, and `mode = { 'n', 'x' }` (T2) |
 | `phase4-folding-comments.md` | §3.2 diagnostic default | `virtual_lines` defaults to `false` (T4) |
-| `phase9-keybindings.md` | §2.2 r2.1 (no jump key for snacks.words) | jumps are `[r`/`]r`, buffer-local (T6) |
+| `phase9-keybindings.md` | §2.2 r2.1, §7 D1 instrument / D2c (no jump key for snacks.words; four buffer-local keys) | jumps are `[r`/`]r`, buffer-local, and in the census (T6) |
 | `phase9-keybindings.md` | §5 extension rule | previous/next is `[`/`]` + a category letter, and nothing else (T6); a read-only window closes on `q` (T7) |
 | `phase3-settings-composition.md` | §5 "the only per-client state left is the base snapshot and the watchers" | watchers are per settings directory, shared by the clients that read it (T8) |
 | `phase9.5-trial-period.md` | §6 rule 1 (previous/next is `[`/`]` + a letter, and nothing else) | a coarser step through a list a native vocabulary already owns stays on that vocabulary's keys (T9) |
@@ -747,8 +750,9 @@ already superseded.
 `c492113` T5 fixes (self-review) → `a88ac1a` label nit → `0f74c1f` T6 →
 `97b9b71` T7.1/7.2 → `ba3d4ed` T7.3 → `7bc16a5` T8 → `3af3df7` T8.1 →
 `3d733b0` T9.2 → `9ad7de4` T9 → `8e3804d`/`62f9a85` T10.1 → `18d14f3` T10.3 →
-`630e79f`/`2d15b98` T10.2. Outside this repo: yadm `9098ba4` (tmux
-`focus-events`) and the Konsole keytab entries T9.1 lists.
+`630e79f`/`2d15b98` T10.2 → `7380309` T11 → `cebf98e` T11.1 → `107cd15`
+T11.2. Outside this repo: yadm `9098ba4` (tmux `focus-events`) and the Konsole
+keytab entries T9.1 lists.
 
 Every behaviour change carries a guard, and every guard was reverse-verified by
 reinstating the bug it covers — including one that was not deliberate: a
@@ -761,6 +765,9 @@ notification).
 
 `tests/test_utils.lua` is new (T9): the jumplist landing rule, and `bufdelete`
 going through it.
+
+`tests/test_neotree.lua` gains the `fold emulation` set (T11.2): `zR` expands
+everything in one press, `zm` steps back down from there.
 
 New test file: `tests/test_autoread.lua` (reload happens; modified buffer is
 left alone; the notice speaks on reload and stays quiet on delete; neither
