@@ -264,6 +264,11 @@ capture.
   not what was tried. A phase document is the record of its own phase; when
   a later phase supersedes it, the earlier document says so inline and points
   forward, and this file plus `docs/architecture.md` describe the present.
+  The phase series is closed (the 2026 modernization is complete). A new
+  feature - the debugger and AI integration Phase 9 reserved `<leader>d` /
+  `<leader>a` for, or anything else - lands as one ordinary change: spec,
+  keys, tests, and the edits to this file and `docs/architecture.md`
+  together. Write a design document only when reopening a recorded decision.
 - **No logger.** Use `vim.notify`; everything it emits is retrievable
   afterwards from `<leader>n` (noice history).
 - **`VAR=x just …` does not reach the recipe.** `just` here is a zinit wrapper

@@ -11,8 +11,8 @@ the whole thing headless.
 - `docs/testing.md`, `docs/tui-observation.md` — the suite and how to look
   at the rendered TUI from outside.
 - `docs/design/` — one design document and one independent acceptance
-  review per phase of the 2026 modernization; the reasoning behind every
-  decision above lives there.
+  review per phase of the 2026 modernization (complete); the reasoning
+  behind every decision above lives there.
 
 ## Working on it
 

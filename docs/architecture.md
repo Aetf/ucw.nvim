@@ -197,7 +197,9 @@ back to Mason's copies. See `design/phase6.5-binary-deps.md`.
 
 ## Where the reasoning lives
 
-Each phase of the 2026 modernization has a design document (proposal →
+The 2026 modernization (2026-07-25 to 2026-09-14) is complete: engine,
+LSP, keys, tests and CI are all in the form this document describes, and
+the phase series is closed. Each phase has a design document (proposal →
 decision → as-built) and an independent acceptance review under `design/`:
 
 | phase | subject | design | review |
@@ -216,3 +218,11 @@ decision → as-built) and an independent acceptance review under `design/`:
 A design document is the record of its own phase; where a later phase
 superseded a decision, the earlier document says so inline and points
 forward. This file and `AGENTS.md` are the current description.
+
+What comes next is not a phase. The two features Phase 9 reserved prefixes
+for — a debugger under `<leader>d` and AI integration under `<leader>a` —
+and anything else that gets added, land as ordinary changes: the spec, its
+keys, its tests and the update to this file and `AGENTS.md` in the same
+change. A design document under `design/` is warranted only when a change
+reopens a recorded decision; the placement rule for its keys is
+`design/phase9-keybindings.md` §5.

@@ -368,8 +368,8 @@ comes from this table, not from the plugin's README defaults:
 | buffer/window/tab lifecycle | `<leader>b` / `<leader>w` / `<leader>t` |
 | an interactive tool with its own UI (REPL-like) | `<leader>r` or a new free prefix |
 | a motion/textobject | non-leader, native-shaped, P3 applies |
-| the debugger (upcoming goal) | `<leader>d` — reserved, don't squat it |
-| AI integration (upcoming goal) | `<leader>a` — reserved, don't squat it |
+| the debugger (future feature) | `<leader>d` — reserved, don't squat it |
+| AI integration (future feature) | `<leader>a` — reserved, don't squat it |
 
 New namespace ⇒ claim a free prefix (§3), add the eager group header in
 which-key.lua, and add it to the group census in `tests/test_keys.lua` —
