@@ -6,7 +6,9 @@ My Neovim config: `lazy.nvim`, one spec file per plugin, LSP on Neovim's
 native `vim.lsp.config`/`vim.lsp.enable` layers, and a test suite that boots
 the whole thing headless.
 
-- `AGENTS.md` — the rules for changing it (plugins, keys, LSP, CI).
+- `docs/features.md` — what it does for you; `docs/keys.md` — every key.
+- `AGENTS.md` — the rules for changing it (plugins, keys, LSP, CI);
+  `docs/extending.md` — the extension points, module APIs and tooling.
 - `docs/architecture.md` — the map: boot order, layout, what owns what.
 - `docs/testing.md`, `docs/tui-observation.md` — the suite and how to look
   at the rendered TUI from outside.

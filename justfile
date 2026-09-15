@@ -53,6 +53,14 @@ test stop_on_error *tags: deps
         -u ./tests/aux/driver_init.lua \
         -S ./tests/aux/driver_run.lua
 
+# Regenerate the key tables in docs/keys.md from a real boot
+# (scripts/keys-doc.lua). The tables are checked in; tests/test_keys_doc.lua
+# is the drift gate. Runs from a `VimEnter` autocmd, not `-c`: which-key's
+# mappings only exist after VimEnter (and `User VeryLazy` never fires headless).
+keys-doc:
+    @{{ nvim_config_env }} {{ mise }} nvim --headless \
+        "+autocmd VimEnter * ++once lua vim.g.ucw_keys_doc_path = 'docs/keys.md'; dofile('scripts/keys-doc.lua'); vim.cmd.qa()"
+
 # Format this repo's Lua (stylua.toml)
 fmt:
     @{{ mise }} stylua .

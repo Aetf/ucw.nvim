@@ -3,15 +3,13 @@ local actions = require('ucw.keys.actions')
 
 vim.g.mapleader = ' '
 
-local opts = { silent = true }
-
 -- swap 0 to ^
 map('n', '0', '^', { silent = true, desc = 'Go to first non-blank character' })
 map('n', '^', '0', { silent = true, desc = 'Go to start of line' })
 
 -- swap <C-r> and <C-r><C-o>, to paste literally without autoindent
-map('i', '<c-r>', '<c-r><c-o>', opts)
-map('i', '<c-r><c-o>', '<c-r>', opts)
+map('i', '<c-r>', '<c-r><c-o>', { silent = true, desc = 'Paste a register literally (no autoindent)' })
+map('i', '<c-r><c-o>', '<c-r>', { silent = true, desc = 'Paste a register as typed' })
 
 -- When paste, cursor stays (by jump back to mark p). See :h [`
 -- Note that there are p, P, gp, gP

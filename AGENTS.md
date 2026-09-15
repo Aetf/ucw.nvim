@@ -1,9 +1,11 @@
 # AGENTS.md — working in `ucw.nvim`
 
 Guidance for AI agents (and humans) editing this Neovim config. Read this first.
-`docs/architecture.md` is the map of the code; this file is the rules for
-changing it. The reasoning behind a rule is in the phase design document it
-cites under `docs/design/`.
+`docs/architecture.md` is the map of the code, `docs/extending.md` the
+reference for changing it (recipes, module APIs, test helpers, tooling),
+`docs/features.md` and `docs/keys.md` what it does and which key does it;
+this file is the short rulebook. The reasoning behind a rule is in the
+phase design document it cites under `docs/design/`.
 
 ## What this is
 
@@ -63,7 +65,8 @@ right, each of which fails silently:
   not the plugin's README defaults. A new namespace claims a free prefix, gets
   an eager group header in `which-key.lua` (lowercase label, explicit `icon`,
   `mode = { 'n', 'x' }`) and a row in the group census in
-  `tests/test_keys.lua`.
+  `tests/test_keys.lua`. Then `just keys-doc`: `docs/keys.md`'s tables are
+  generated and `tests/test_keys_doc.lua` fails while they are stale.
 
 Removing a plugin: delete the spec, run `:Lazy clean`, commit the lockfile
 change. `just lint` reads its library list from the lockfile, so a plugin

@@ -5,9 +5,10 @@ its own: plugin lifecycle is lazy.nvim's, LSP is Neovim's native
 `vim.lsp.config`/`vim.lsp.enable` stack, and the config's own code is the
 options, keys, and the handful of seams between plugins that no plugin owns.
 This document is the map of that code: what each piece is for and the load
-order it relies on. Day-to-day rules ("how do I add a plugin / server / key")
-are in `../AGENTS.md`; the reasoning behind each decision is in the phase
-design documents under `design/`.
+order it relies on. Day-to-day rules are in `../AGENTS.md` and the
+extension points in `extending.md`; what the editor does and which key does
+it are `features.md` and `keys.md`; the reasoning behind each decision is in
+the phase design documents under `design/`.
 
 ## Boot
 
@@ -59,7 +60,7 @@ lua/ucw/plugins/*.lua         one lazy.nvim spec per plugin
 lua/ucw/plugins/user/         same-named overrides (empty)
 after/lsp/<server>.lua        per-server LSP settings, table-only
 ftplugin/<ft>.lua             filetype options + conform formatters_by_ft
-scripts/                      keymap-snapshot, luarc-lint-config, tui-drive
+scripts/                      keymap-snapshot, keys-doc, luarc-lint-config, tui-drive
 tests/                        mini.test suite (see testing.md)
 ```
 

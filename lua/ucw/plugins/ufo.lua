@@ -116,8 +116,8 @@ local function config()
   vim.opt.foldlevelstart = 99 -- useful when switching from a window with small foldlevel
 
   -- Using ufo provider needs remap 'zR' and 'zM' to not let them change foldlevel
-  vim.keymap.set('n', 'zR', require('ufo').openAllFolds)
-  vim.keymap.set('n', 'zM', require('ufo').closeAllFolds)
+  vim.keymap.set('n', 'zR', require('ufo').openAllFolds, { desc = 'Open all folds' })
+  vim.keymap.set('n', 'zM', require('ufo').closeAllFolds, { desc = 'Close all folds' })
 
   -- Tell any server that we support foldingRange.
   --
