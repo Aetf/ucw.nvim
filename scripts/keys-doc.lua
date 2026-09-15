@@ -77,6 +77,9 @@ local function groups()
   local ok, Config = pcall(require, 'which-key.config')
   if ok then
     for _, m in ipairs(Config.mappings or {}) do
+      -- `group` is set on header entries at runtime (measured; the display
+      -- name is in `desc`) but absent from which-key's `wk.Spec` annotation
+      ---@diagnostic disable-next-line: undefined-field
       if m.group and m.mode == 'n' and vim.startswith(m.lhs or '', '<leader>') then
         labels[m.lhs:sub(#'<leader>' + 1)] = m.desc
       end
