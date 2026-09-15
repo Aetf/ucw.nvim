@@ -240,43 +240,35 @@ end
 
 T['removed plugins'] = new_set()
 
--- Phase 5 deleted six plugins. lazy.nvim keeps a spec entry for anything still
--- referenced by a `dependencies` list, so a forgotten reference shows up here
--- rather than as a mysterious extra plugin in `:Lazy`.
-T['removed plugins']['are not in the lazy spec any more'] = function()
-  local present = child.lua_get([[
+-- Everything the modernization deleted, in one place: a spec that is back
+-- (lazy.nvim keeps an entry for anything a `dependencies` list still names)
+-- or a module that is requirable again (a stale `require` in config would
+-- otherwise fail at the call site, the next time that path runs).
+T['removed plugins']['none is back, as a spec or as a module'] = function()
+  local back = child.lua_get([[
         (function()
           local plugins = require('lazy.core.config').plugins
-          local gone = {
-            'telescope.nvim', 'telescope-fzf-native.nvim', 'session-lens',
-            'remote-nvim.nvim', 'nvim-notify', 'structlog.nvim',
-          }
-          local present = {}
-          for _, name in ipairs(gone) do
-            if plugins[name] then table.insert(present, name) end
+          local back = {}
+          for _, name in ipairs({
+            'telescope.nvim', 'telescope-fzf-native.nvim', 'session-lens', 'remote-nvim.nvim',
+            'nvim-notify', 'structlog.nvim', 'nvim-cmp', 'LuaSnip', 'cmp-nvim-lsp',
+            'cmp-nvim-lsp-signature-help', 'diffview.nvim', 'lsp_lines.nvim',
+          }) do
+            if plugins[name] then table.insert(back, 'spec ' .. name) end
           end
-          table.sort(present)
-          return present
+          for _, mod in ipairs({
+            'telescope', 'notify', 'structlog', 'session-lens', 'remote-nvim', 'luasnip', 'cmp',
+            'diffview', 'ucw.lsp.hooks', 'ucw.lsp.lang.texlab', 'ucw.log', 'nvimd',
+          }) do
+            if pcall(require, mod) then table.insert(back, 'module ' .. mod) end
+          end
+          -- nvim-lspconfig stays installed as data; its framework must never load
+          if package.loaded['lspconfig'] then table.insert(back, 'loaded lspconfig') end
+          table.sort(back)
+          return back
         end)()
     ]])
-  eq(present, {})
-end
-
-T['removed plugins']['their modules are not requirable either'] = function()
-  -- A spec can be gone while a stale `require` survives in a config file - the
-  -- runtime path would still be empty, so this fails loudly at the call site
-  -- instead of the next time that code path happens to run.
-  local loadable = child.lua_get([[
-        (function()
-          local bad = {}
-          for _, mod in ipairs({ 'telescope', 'notify', 'structlog', 'session-lens', 'remote-nvim' }) do
-            if pcall(require, mod) then table.insert(bad, mod) end
-          end
-          table.sort(bad)
-          return bad
-        end)()
-    ]])
-  eq(loadable, {})
+  eq(back, {})
 end
 
 T['notifications'] = new_set()

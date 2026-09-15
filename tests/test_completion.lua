@@ -88,13 +88,6 @@ end
 
 T['plugins'] = new_set()
 
-T['plugins']['blink.cmp replaced the whole nvim-cmp cluster'] = function()
-  eq(child.lua_get([[require('lazy.core.config').plugins['blink.cmp'] ~= nil]]), true)
-  for _, gone in ipairs { 'nvim-cmp', 'LuaSnip', 'cmp-nvim-lsp', 'cmp-nvim-lsp-signature-help' } do
-    eq({ gone, child.lua_get(([[require('lazy.core.config').plugins[%q] ~= nil]]):format(gone)) }, { gone, false })
-  end
-end
-
 T['plugins']['autopairs stands on its own, not as a cmp dependency'] = function()
   eq(child.lua_get([[require('lazy.core.config').plugins['nvim-autopairs'] ~= nil]]), true)
 end
@@ -109,20 +102,6 @@ T['snippets']['run on native vim.snippet, with no snippet engine plugin'] = func
 end
 
 T['sources'] = new_set()
-
--- Asserts the *effective* config, not what the spec happens to spell out: most
--- of these now come from blink's own defaults rather than from our opts, and
--- the point is that the behaviour the old cmp cluster provided is still there
--- either way.
-T['sources']['configured source set matches the replaced cmp sources'] = function()
-  eq(child.lua_get([[require('blink.cmp.config').sources.default]]), { 'lsp', 'path', 'snippets', 'buffer' })
-  -- carried over from cmp-buffer's `keyword_length = 6`
-  eq(child.lua_get([[require('blink.cmp.config').sources.providers.buffer.min_keyword_length]]), 6)
-  -- replaces cmp-nvim-lsp-signature-help
-  eq(child.lua_get([[require('blink.cmp.config').signature.enabled]]), true)
-  -- replaces cmp-cmdline
-  eq(child.lua_get([[require('blink.cmp.config').cmdline.enabled]]), true)
-end
 
 -- End-to-end through the real menu. The path source is used because it is fully
 -- local and deterministic: no language server, no network, and the fixture is

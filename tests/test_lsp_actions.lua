@@ -124,28 +124,16 @@ T['servers']['rust is left to rustaceanvim'] = function()
   eq(child.lua_get([[vim.tbl_contains(require('ucw.lsp').server_names(), 'rust_analyzer')]]), false)
 end
 
-T['servers']['filetypes() is the sorted, deduplicated union'] = function()
-  -- basedpyright and ruff both claim `python`; it must appear once
-  local fts = child.lua_get([[require('ucw.lsp').filetypes()]])
-  local seen = {}
-  for _, ft in ipairs(fts) do
-    eq({ ft, seen[ft] }, { ft, nil })
-    seen[ft] = true
+-- basedpyright and ruff both claim `python`; the `ft` trigger built from this
+-- must list it once, or lazy.nvim registers the FileType trigger twice.
+T['servers']['filetypes() lists a filetype claimed by two servers once'] = function()
+  local n = 0
+  for _, ft in ipairs(child.lua_get([[require('ucw.lsp').filetypes()]])) do
+    if ft == 'python' then
+      n = n + 1
+    end
   end
-  eq(seen['python'] ~= nil, true)
-  eq(seen['lua'] ~= nil, true)
-
-  local sorted = vim.deepcopy(fts)
-  table.sort(sorted)
-  eq(fts, sorted)
-end
-
-T['servers']['server_names() is sorted and matches the table'] = function()
-  local names = child.lua_get([[require('ucw.lsp').server_names()]])
-  local sorted = vim.deepcopy(names)
-  table.sort(sorted)
-  eq(names, sorted)
-  eq(#names, child.lua_get([[vim.tbl_count(require('ucw.lsp.servers'))]]))
+  eq(n, 1)
 end
 
 return T

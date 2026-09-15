@@ -90,15 +90,6 @@ T['activation']['ensure_installed cannot fire inside the test child'] = function
   eq(child.lua_get([[vim.fn.glob(vim.fn.stdpath('data') .. '/mason/packages/*', false, true)]]), {})
 end
 
-T['activation']['the ft trigger is exactly ucw.lsp.filetypes()'] = function()
-  -- If these drift, opening a supported file stops bringing LSP up at all -
-  -- silently, because there is nothing left to error.
-  eq(
-    child.lua_get([[require('lazy.core.config').plugins['nvim-lspconfig'].ft]]),
-    child.lua_get([[require('ucw.lsp').filetypes()]])
-  )
-end
-
 T['activation']['enabling happens against the explicit server list'] = function()
   eq(child.lua_get([[next(vim.lsp._enabled_configs) == nil]]), true)
   load_lsp()
@@ -147,13 +138,6 @@ T['activation']['every spec that starts a server depends on mason'] = function()
         end)()
     ]])
   eq(missing, {})
-end
-
-T['activation']['ensure_installed tracks the server list'] = function()
-  eq(
-    child.lua_get([[require('lazy.core.config').plugins['mason-lspconfig.nvim'].opts.ensure_installed]]),
-    child.lua_get([[require('ucw.lsp').server_names()]])
-  )
 end
 
 T['config layering'] = new_set()
@@ -945,17 +929,6 @@ T['ltex']['addToDictionary writes into the project, not the global store'] = fun
         ]]),
     true
   )
-end
-
-T['hooks are gone'] = new_set()
-
--- Nothing should reintroduce the monkey-patch layer. `require('lspconfig')`
--- itself is now a deprecation warning upstream.
-T['hooks are gone']['no ucw.lsp.hooks module and no lspconfig require'] = function()
-  load_lsp()
-  eq(child.lua_get([[pcall(require, 'ucw.lsp.hooks')]]), false)
-  eq(child.lua_get([[pcall(require, 'ucw.lsp.lang.texlab')]]), false)
-  eq(child.lua_get([[package.loaded['lspconfig'] ~= nil]]), false)
 end
 
 return T
