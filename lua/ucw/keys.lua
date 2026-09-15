@@ -1,13 +1,13 @@
-local map = require('ucw.utils').map
+local map = vim.keymap.set
 local actions = require('ucw.keys.actions')
 
 vim.g.mapleader = ' '
 
-local opts = { noremap = true, silent = true }
+local opts = { silent = true }
 
 -- swap 0 to ^
-map('n', '0', '^', { noremap = true, silent = true, desc = 'Go to first non-blank character' })
-map('n', '^', '0', { noremap = true, silent = true, desc = 'Go to start of line' })
+map('n', '0', '^', { silent = true, desc = 'Go to first non-blank character' })
+map('n', '^', '0', { silent = true, desc = 'Go to start of line' })
 
 -- swap <C-r> and <C-r><C-o>, to paste literally without autoindent
 map('i', '<c-r>', '<c-r><c-o>', opts)
@@ -21,7 +21,7 @@ map('i', '<c-r><c-o>', '<c-r>', opts)
 -- P   a12|3|bc
 -- gp   ab123|c|
 -- So p and gP is symmetrical
-map('n', 'p', 'mpp[`', { noremap = true, silent = true, desc = 'Paste after cursor, keep cursor put' })
+map('n', 'p', 'mpp[`', { silent = true, desc = 'Paste after cursor, keep cursor put' })
 
 -- <c-s> as an extra way to exit insert mode and save.
 --
@@ -59,10 +59,10 @@ vim.keymap.set('n', 'K', actions.hoverK, { desc = 'Hover over symbol', silent = 
 -- nvim-ts-context-commentstring provided here, so both were dropped in Phase 4;
 -- all that needs config is the editor-style shortcut for the common case.
 if require('ucw.utils').is_gui() then
-  map('n', '<c-/>', 'gcc', { noremap = false, desc = 'Toggle comment on this line' })
+  map('n', '<c-/>', 'gcc', { remap = true, desc = 'Toggle comment on this line' })
 else
   -- this is actually Ctrl + /, but in a terminal nvim sees it as <c-_>
-  map('n', '<c-_>', 'gcc', { noremap = false, desc = 'Toggle comment on this line' })
+  map('n', '<c-_>', 'gcc', { remap = true, desc = 'Toggle comment on this line' })
 end
 
 -- No quickfix pair here: Neovim's own `[q`/`]q` (and `[Q`/`]Q`,
@@ -74,10 +74,10 @@ end
 -- them on. Insert mode gets its own rhs: there `<C-o>` is `i_CTRL-O` (one
 -- normal-mode command) and `<C-i>` is `i_CTRL-I` (a tab), so the jump is
 -- reached *through* the one-shot normal (Phase 9 acceptance review R1).
-map({ 'n', 'v' }, '<X2Mouse>', '<c-i>', { noremap = true, silent = true, desc = 'Jump forward (jumplist)' })
-map({ 'n', 'v' }, '<X1Mouse>', '<c-o>', { noremap = true, silent = true, desc = 'Jump back (jumplist)' })
-map('i', '<X2Mouse>', '<c-o><c-i>', { noremap = true, silent = true, desc = 'Jump forward (jumplist)' })
-map('i', '<X1Mouse>', '<c-o><c-o>', { noremap = true, silent = true, desc = 'Jump back (jumplist)' })
+map({ 'n', 'v' }, '<X2Mouse>', '<c-i>', { silent = true, desc = 'Jump forward (jumplist)' })
+map({ 'n', 'v' }, '<X1Mouse>', '<c-o>', { silent = true, desc = 'Jump back (jumplist)' })
+map('i', '<X2Mouse>', '<c-o><c-i>', { silent = true, desc = 'Jump forward (jumplist)' })
+map('i', '<X1Mouse>', '<c-o><c-o>', { silent = true, desc = 'Jump back (jumplist)' })
 
 -- Shift is one notch coarser on the same list: `<C-o>`/`<C-i>` step through
 -- every entry, and a handful of edits in one file put a dozen of them there, so
@@ -109,4 +109,4 @@ vim.keymap.set('n', '<S-X2Mouse>', function()
 end, { silent = true, desc = 'Jump forward to the next file (jumplist)' })
 
 -- term navigation
-map('t', '<esc><esc>', [[<c-\><c-n>]], { noremap = true, silent = true, desc = 'Leave terminal mode' })
+map('t', '<esc><esc>', [[<c-\><c-n>]], { silent = true, desc = 'Leave terminal mode' })

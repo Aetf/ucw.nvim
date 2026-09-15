@@ -1,61 +1,54 @@
-local au = require('au')
+local function augroup(name)
+  return vim.api.nvim_create_augroup(name, { clear = true })
+end
 
 -- Save file with root
 vim.cmd([[command! -bar W exe 'w !pkexec tee >/dev/null %:p:S' | setl nomod]])
 
 -- Highlight
-au.group('HighlightYank', {
-  {
-    'TextYankPost',
-    '*',
-    function()
-      vim.highlight.on_yank { timeout = 200 }
-    end,
-  },
+vim.api.nvim_create_autocmd('TextYankPost', {
+  group = augroup('HighlightYank'),
+  callback = function()
+    vim.highlight.on_yank { timeout = 200 }
+  end,
 })
 
 -- return to last edit position when opening files (You want this!)
-au.group('RestoreLastCursor', {
-  {
-    'BufReadPost',
-    '*',
-    function()
-      local pos = vim.api.nvim_buf_get_mark(0, '"')
-      if pos[1] > 0 then
-        -- this may fail if the buffer is shorter than pos, just ignore that
-        pcall(vim.api.nvim_win_set_cursor, 0, pos)
-      end
-    end,
-  },
+vim.api.nvim_create_autocmd('BufReadPost', {
+  group = augroup('RestoreLastCursor'),
+  callback = function()
+    local pos = vim.api.nvim_buf_get_mark(0, '"')
+    if pos[1] > 0 then
+      -- this may fail if the buffer is shorter than pos, just ignore that
+      pcall(vim.api.nvim_win_set_cursor, 0, pos)
+    end
+  end,
 })
 
 -- return to last accessed window when closing current one
-au.group('RestoreLastWindow', {
-  {
-    { 'VimEnter', 'WinEnter' },
-    '*',
-    function()
-      -- Exclude floating windows
-      if '' ~= vim.api.nvim_win_get_config(0).relative then
-        return
-      end
-      -- Record the window we jump from (previous) and to (current)
-      if nil == vim.t.winid_rec then
-        vim.t.winid_rec = { prev = vim.fn.win_getid(), current = vim.fn.win_getid() }
-      else
-        vim.t.winid_rec = { prev = vim.t.winid_rec.current, current = vim.fn.win_getid() }
-      end
+vim.api.nvim_create_autocmd({ 'VimEnter', 'WinEnter' }, {
+  group = augroup('RestoreLastWindow'),
+  callback = function()
+    -- Exclude floating windows
+    if '' ~= vim.api.nvim_win_get_config(0).relative then
+      return
+    end
+    -- Record the window we jump from (previous) and to (current)
+    if nil == vim.t.winid_rec then
+      vim.t.winid_rec = { prev = vim.fn.win_getid(), current = vim.fn.win_getid() }
+    else
+      vim.t.winid_rec = { prev = vim.t.winid_rec.current, current = vim.fn.win_getid() }
+    end
 
-      -- Loop through all windows to check if the previous one has been closed
-      for winnr = 1, vim.fn.winnr('$') do
-        if vim.fn.win_getid(winnr) == vim.t.winid_rec.prev then
-          return -- Return if previous window is not closed
-        end
+    -- Loop through all windows to check if the previous one has been closed
+    for winnr = 1, vim.fn.winnr('$') do
+      if vim.fn.win_getid(winnr) == vim.t.winid_rec.prev then
+        return -- Return if previous window is not closed
       end
+    end
 
-      vim.cmd([[ wincmd p ]])
-    end,
-  },
+    vim.cmd([[ wincmd p ]])
+  end,
 })
 
 -- `q` closes the two read-only windows that had no way out but `:q`
@@ -71,21 +64,16 @@ au.group('RestoreLastWindow', {
 -- `<C-w>q` verbatim from Neovim's own `man` mapping, which is the same idea
 -- in the runtime: quit this window, and behave like `:q` when it is the last
 -- one. Buffer-local, so `q` keeps recording macros everywhere else.
-au.group('CloseWithQ', {
-  {
-    'FileType',
-    { 'help', 'qf' },
-    function()
-      -- `buffer = 0`, not an event argument: `au` registers through the
-      -- `:autocmd` string form, so the callback takes none. `FileType` fires
-      -- with the buffer it is about already current.
-      vim.keymap.set('n', 'q', '<C-w>q', {
-        buffer = 0,
-        silent = true,
-        desc = 'Close this window',
-      })
-    end,
-  },
+vim.api.nvim_create_autocmd('FileType', {
+  group = augroup('CloseWithQ'),
+  pattern = { 'help', 'qf' },
+  callback = function(ev)
+    vim.keymap.set('n', 'q', '<C-w>q', {
+      buffer = ev.buf,
+      silent = true,
+      desc = 'Close this window',
+    })
+  end,
 })
 
 -- The other half of 'autoread' (see `ucw.options`): the option only says what
@@ -118,16 +106,13 @@ au.group('CloseWithQ', {
 -- is the known crash-shaped case: running it from the command-line window
 -- raises E11.
 if require('ucw.targets').is_full_ui() then
-  au.group('AutoReadChanged', {
-    {
-      { 'FocusGained', 'BufEnter', 'CursorHold', 'CursorHoldI', 'TermLeave' },
-      '*',
-      function()
-        if vim.fn.mode() ~= 'c' and vim.fn.getcmdwintype() == '' then
-          vim.cmd('checktime')
-        end
-      end,
-    },
+  vim.api.nvim_create_autocmd({ 'FocusGained', 'BufEnter', 'CursorHold', 'CursorHoldI', 'TermLeave' }, {
+    group = augroup('AutoReadChanged'),
+    callback = function()
+      if vim.fn.mode() ~= 'c' and vim.fn.getcmdwintype() == '' then
+        vim.cmd('checktime')
+      end
+    end,
   })
 
   -- Say so when the reload happened. 'autoread' is silent, which makes a
@@ -140,16 +125,13 @@ if require('ucw.targets').is_full_ui() then
   -- true thing (`E211: File ... no longer available`). Measured: `v:fcs_reason`
   -- is `deleted` in that case and empty on a real reload; the conflict case
   -- does not reach this event at all.
-  au.group('AutoReadNotify', {
-    {
-      'FileChangedShellPost',
-      '*',
-      function()
-        if vim.v.fcs_reason == 'deleted' then
-          return
-        end
-        vim.notify('Reloaded from disk (changed externally)', vim.log.levels.INFO)
-      end,
-    },
+  vim.api.nvim_create_autocmd('FileChangedShellPost', {
+    group = augroup('AutoReadNotify'),
+    callback = function()
+      if vim.v.fcs_reason == 'deleted' then
+        return
+      end
+      vim.notify('Reloaded from disk (changed externally)', vim.log.levels.INFO)
+    end,
   })
 end

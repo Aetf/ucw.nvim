@@ -1,18 +1,6 @@
 local L = vim.loop
-local map_key = vim.api.nvim_set_keymap
 
 local M = {}
-
-M.map = function(modes, lhs, rhs, opts)
-  opts = opts or {}
-  opts.noremap = opts.noremap == nil and true or opts.noremap
-  if type(modes) == 'string' then
-    modes = { modes }
-  end
-  for _, mode in ipairs(modes) do
-    map_key(mode, lhs, rhs, opts)
-  end
-end
 
 M.is_gui = function()
   return vim.g.neovide or vim.g.nvui
@@ -188,72 +176,12 @@ M.bufdelete = function(bufnr, force)
   return buf_kill('bd', bufnr, force)
 end
 
----Get the property `prop` specified as dot separated path from `obj`, creating empty table for
----all levels if not exists
-function M.prop_get_table(obj, prop)
-  for key in prop:gmatch('[^.]+') do
-    if obj[key] == nil then
-      obj[key] = {}
-    end
-    obj = obj[key]
-  end
-  return obj
-end
-
----Get the property `prop` specified as dot separated path from `obj`,
----creating empty table if not exists for all levels except the last
----level, which is set to val
-function M.prop_set(obj, prop, val)
-  -- get the parent level as table
-  local parent, key = string.match(prop, '(.+)%.([^%.]+)')
-  if not parent or not key then
-    -- assume prop is the key directly
-    obj[prop] = val
-  else
-    M.prop_get_table(obj, parent)[key] = val
-  end
-end
-
----table.insert but skip if already contains the value
-function M.tbl_insert_uniq(tbl, val)
-  if not vim.tbl_contains(tbl, val) then
-    table.insert(tbl, val)
-  end
-end
-
 -- The function is called `t` for `termcodes`.
 -- You don't have to call it that, but I find the terseness convenient
 function M.t(str)
   -- Adjust boolean arguments as needed
   return vim.api.nvim_replace_termcodes(str, true, true, true)
 end
-
--- This is a bit of syntactic sugar for creating highlight groups over vim.api.nvim_set_hl.
--- Note that this currently always overrides the group rather than update the existing one.
---
--- local hi = require('ucw.utils').highlight
--- hi.Comment = { fg='#ffffff', bg='#000000', italic=true }
--- hi.LspDiagnosticsDefaultError = 'DiagnosticError' -- Link to another group
---
--- This is equivalent to the following vimscript
---
--- hi Comment guifg=#ffffff guibg=#000000 gui=italic
--- hi! link LspDiagnosticsDefaultError DiagnosticError
---
--- Or the following lua
---
--- vim.api.nvim_set_hl(0, 'Comment', { fg='#ffffff', bg='#000000', italic=true })
--- vim.api.nvim_set_hl(0, 'LspDiagnosticsDefaultError', { link='DiagnosticError'})
-M.highlight = setmetatable({}, {
-  __newindex = function(_, hlgroup, args)
-    if 'string' == type(args) then
-      vim.api.nvim_set_hl(0, hlgroup, { link = args })
-      return
-    else
-      vim.api.nvim_set_hl(0, hlgroup, args)
-    end
-  end,
-})
 
 M.FileWatcher = {}
 

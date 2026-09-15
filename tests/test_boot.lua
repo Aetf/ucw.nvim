@@ -11,6 +11,21 @@ T['smoke'] = function()
   local messages = child.cmd_capture('messages')
   eq({ messages:find('E%d+:') ~= nil, messages:find('Error') ~= nil }, { false, false })
   eq(child.lua_get([[vim.tbl_count(require('lazy.core.config').plugins) > 0]]), true)
+  -- A plugin whose `config()` threw is reported by lazy.nvim through
+  -- `vim.notify` at ERROR level, which noice routes into the snacks history
+  -- rather than `:messages`. Reverse-verified: a spec calling a nil helper in
+  -- `config()` boots "clean" by every assertion above and fails here.
+  local errors = child.lua_get([[
+        (function()
+          require('noice.message.router').update()
+          local out = {}
+          for _, n in ipairs(Snacks.notifier.get_history()) do
+            if n.level == 'error' then table.insert(out, n.msg) end
+          end
+          return out
+        end)()
+    ]])
+  eq(errors, {})
 end
 
 return T

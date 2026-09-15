@@ -30,6 +30,29 @@ local F = vim.fn
 
 local utils = require('ucw.utils')
 
+---The table at dot-separated `prop` under `obj`, creating every level.
+local function prop_get_table(obj, prop)
+  for key in string.gmatch(prop, '[^%.]+') do
+    if obj[key] == nil then
+      obj[key] = {}
+    end
+    obj = obj[key]
+  end
+  return obj
+end
+
+---Set dot-separated `prop` under `obj` to `val`, creating the levels above.
+---`prop` may be a number (an array index from `normalize_keys`), which
+---`string.match` coerces and which is then set as-is.
+local function prop_set(obj, prop, val)
+  local parent, key = string.match(prop, '(.+)%.([^%.]+)')
+  if parent and key then
+    prop_get_table(obj, parent)[key] = val
+  else
+    obj[prop] = val
+  end
+end
+
 local M = {}
 
 --- Settings keys that may additionally be written as sibling text files, one
@@ -62,7 +85,7 @@ local function normalize_keys(obj)
 
   local res = {}
   for k, v in pairs(obj) do
-    utils.prop_set(res, k, normalize_keys(v))
+    prop_set(res, k, normalize_keys(v))
   end
   return res
 end
@@ -150,13 +173,15 @@ local function read_sidecars(acc, dir)
       for _, key in ipairs(SIDECAR_KEYS) do
         local variant = name:match('^' .. vim.pesc(key) .. '%.(.+)%.txt$')
         if variant then
-          local by_variant = utils.prop_get_table(acc, key)
+          local by_variant = prop_get_table(acc, key)
           if type(by_variant[variant]) ~= 'table' then
             by_variant[variant] = {}
           end
           for _, line in ipairs(F.readfile(dir .. '/' .. name)) do
             if line ~= '' then
-              utils.tbl_insert_uniq(by_variant[variant], line)
+              if not vim.list_contains(by_variant[variant], line) then
+                table.insert(by_variant[variant], line)
+              end
             end
           end
         end

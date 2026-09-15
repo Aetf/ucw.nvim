@@ -32,7 +32,6 @@ is_full_ui`).
   `ltex_dict.lua`, `texlab_sync.lua`, `utils.lua`.
 - `after/lsp/<server>.lua` — per-server settings Neovim discovers itself.
 - `ftplugin/<ft>.lua` — filetype options and `conform` formatters.
-- `lua/au.lua` — the autocmd DSL.
 - `scripts/` — `keymap-snapshot.lua`, `luarc-lint-config.lua`, `tui-drive.sh`.
 - `tests/`, `docs/`, `justfile`, `mise.toml`, `.luarc.json`, `lazy-lock.json`.
 
@@ -72,10 +71,9 @@ left on disk but out of the spec no longer leaks its globals into the lint.
 
 ## Key idioms
 
-- **Autocmds** — use the `au` DSL (`lua/au.lua`): `au.BufWritePost = fn` or
-  `au.group('Name', { BufEnter = fn, ... })`. Raw `nvim_create_autocmd` also
-  appears. `BufModifiedSet` is gone in 0.13; use `OptionSet` with pattern
-  `modified`.
+- **Autocmds** — `vim.api.nvim_create_autocmd` with a named, cleared
+  `augroup`; no DSL. `BufModifiedSet` is gone in 0.13; use `OptionSet` with
+  pattern `modified`.
 - **Keymaps** — a plugin's keys live in *its own spec* as lazy.nvim
   `keys = { { lhs, rhs, desc = '...', silent = true }, ... }` entries;
   `lua/ucw/plugins/which-key.lua` keeps only group headers and core editor

@@ -26,11 +26,8 @@ local function fold_virt_text_handler(virtText, lnum, endLnum, width, truncate)
   return newVirtText
 end
 
-local utils = require('ucw.utils')
-local au = require('au')
-
 local function ufo_color()
-  utils.highlight.UfoFoldedBg = 'IncSearch'
+  vim.api.nvim_set_hl(0, 'UfoFoldedBg', { link = 'IncSearch' })
 end
 
 -- Can ufo's treesitter provider actually fold this filetype?
@@ -155,8 +152,9 @@ local function config()
   }
 
   ufo_color()
-  au.group('ufo-color', {
-    { 'ColorScheme', '*', ufo_color },
+  vim.api.nvim_create_autocmd('ColorScheme', {
+    group = vim.api.nvim_create_augroup('ufo-color', { clear = true }),
+    callback = ufo_color,
   })
 end
 

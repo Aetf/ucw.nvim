@@ -1,5 +1,4 @@
-local au = require('au')
-local map = require('ucw.utils').map
+local map = vim.keymap.set
 
 local function config()
   vim.g.firenvim_config = {
@@ -53,12 +52,12 @@ local function config()
     },
   }
   -- set filetype for specific textareas
-  au.BufEnter = {
-    'github.com_*.txt',
-    function()
+  vim.api.nvim_create_autocmd('BufEnter', {
+    pattern = 'github.com_*.txt',
+    callback = function()
       vim.opt_local.filetype = 'markdown'
     end,
-  }
+  })
 
   -- default to soft wrap and no hard wrap when editing on websites
   vim.opt.wrap = false
@@ -72,12 +71,14 @@ local function config()
   -- light theme + minimal chrome, tuned for embedding in a browser textarea
   vim.cmd([[colorscheme base16-one-light]])
   vim.opt.laststatus = 0
-  au.UIEnter = function()
-    vim.defer_fn(function()
-      vim.opt.guifont = 'Hack Nerd Font Mono:h18'
-      -- see https://github.com/glacambre/firenvim/issues/800
-    end, 200)
-  end
+  vim.api.nvim_create_autocmd('UIEnter', {
+    callback = function()
+      vim.defer_fn(function()
+        vim.opt.guifont = 'Hack Nerd Font Mono:h18'
+        -- see https://github.com/glacambre/firenvim/issues/800
+      end, 200)
+    end,
+  })
 end
 
 return {

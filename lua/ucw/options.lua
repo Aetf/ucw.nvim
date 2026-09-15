@@ -1,4 +1,3 @@
-local au = require('au')
 local targets = require('ucw.targets')
 
 -- UI elements
@@ -80,14 +79,11 @@ end
 -- folds, but a measured no-op under ufo, which sets `foldmethod=manual` itself
 -- and recomputes folds from its own async provider rather than from 'foldexpr'.
 -- Removed in Phase 4; see docs/design/phase4-folding-comments.md §1.2.
-au.group('UnfoldCursorLine', {
-  {
-    { 'BufWinEnter', 'InsertLeave' },
-    '*',
-    function()
-      vim.cmd([[normal! zv]])
-    end,
-  },
+vim.api.nvim_create_autocmd({ 'BufWinEnter', 'InsertLeave' }, {
+  group = vim.api.nvim_create_augroup('UnfoldCursorLine', { clear = true }),
+  callback = function()
+    vim.cmd([[normal! zv]])
+  end,
 })
 
 -- live command preview

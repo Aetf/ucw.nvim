@@ -41,7 +41,6 @@ the rest on their `event`/`ft`/`cmd`/`keys` triggers.
 
 ```
 init.lua
-lua/au.lua                    autocmd DSL (`au.Event = fn`, `au.group(...)`)
 lua/ucw/init.lua              boot() above
 lua/ucw/options.lua           vim.opt.*, commented with *why*
 lua/ucw/keys.lua              core editor remaps that belong to no plugin
@@ -49,7 +48,7 @@ lua/ucw/keys/actions.lua      named actions those keys call
 lua/ucw/extras.lua            small autocmd features (yank highlight, autoread, :W)
 lua/ucw/targets.lua           context predicates for spec `cond`
 lua/ucw/toggles.lua           editor-level Snacks.toggle objects (<leader>u)
-lua/ucw/utils.lua             helpers (map, bufdelete, jumplist rule, is_gui)
+lua/ucw/utils.lua             helpers (bufdelete, jumplist rule, is_gui, FileWatcher)
 lua/ucw/git.lua               neogit <-> codediff seam, commit-message float
 lua/ucw/health.lua            :checkhealth ucw
 lua/ucw/gui.lua               Neovide options
