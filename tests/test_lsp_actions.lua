@@ -35,22 +35,22 @@ T['actions']['every vim.lsp entry point still exists'] = function()
   eq(broken, {})
 end
 
--- Four kinds now, since Phase 5 added `picker` and Phase 6 added `fn`.
+-- Three kinds: `lsp` (a path under vim.lsp), `picker` (Phase 5) and `fn` (Phase 6).
 -- Whether each `picker`/`fn` entry point is real cannot be checked here -
 -- that needs the plugin loaded - so tests/test_picker.lua and
 -- tests/test_format.lua carry those halves.
-T['actions']['every action is exactly one of lsp/cmd/picker/fn, and describable'] = function()
+T['actions']['every action is exactly one of lsp/picker/fn, and describable'] = function()
   local bad = child.lua_get([[
         (function()
           local A = require('ucw.lsp.actions')
           local bad = {}
           for name, action in pairs(A.actions) do
             local kinds = 0
-            for _, k in ipairs({ 'lsp', 'cmd', 'picker', 'fn' }) do
+            for _, k in ipairs({ 'lsp', 'picker', 'fn' }) do
               if action[k] ~= nil then kinds = kinds + 1 end
             end
             if kinds ~= 1 then
-              table.insert(bad, name .. ': needs exactly one of lsp/cmd/picker/fn, has ' .. kinds)
+              table.insert(bad, name .. ': needs exactly one of lsp/picker/fn, has ' .. kinds)
             end
             if type(action.desc) ~= 'string' or action.desc == '' then
               table.insert(bad, name .. ': missing desc')
@@ -70,28 +70,22 @@ T['actions']['resolve tolerates missing paths'] = function()
   eq(child.lua_get([[require('ucw.lsp.actions').resolve('no.such.path.at.all') == nil]]), true)
 end
 
-T['actions']['wk() builds a which-key v3 entry and rejects typos'] = function()
-  -- queried field by field: a which-key entry mixes an array part (lhs, rhs)
-  -- with a hash part, which the RPC bridge to the child cannot marshal whole
-  local function field(expr)
-    return child.lua_get(
-      ([[(function() local e = require('ucw.lsp.actions').wk('<leader>ld', 'definitions', { buffer = 7 }) return %s end)()]]):format(
-        expr
-      )
-    )
-  end
-  eq(field('e[1]'), '<leader>ld')
-  -- a picker action, so the rhs is a callback rather than an ex-command
-  eq(field('type(e[2])'), 'function')
-  eq(field('e.desc'), 'Go to definition')
-  eq(field('e.buffer'), 7)
-
-  -- code_action is n+x; the mode has to survive into the spec or visual-mode
-  -- code actions silently stop working (this is what replaced the removed
-  -- range_code_action binding)
-  eq(child.lua_get([[require('ucw.lsp.actions').wk('<leader>la', 'code_action').mode]]), { 'n', 'x' })
-
-  eq(child.lua_get([[pcall(require('ucw.lsp.actions').wk, 'x', 'nope')]]), false)
+T['actions']['rhs() is a closure that names the action when it is broken'] = function()
+  eq(child.lua_get([[type(require('ucw.lsp.actions').rhs('definitions'))]]), 'function')
+  eq(child.lua_get([[pcall(require('ucw.lsp.actions').rhs, 'nope')]]), false)
+  -- a broken entry point fails at press time with the action's name in the
+  -- message, which is the whole point of naming entry points as data
+  local res = child.lua_get([[
+        (function()
+          local A = require('ucw.lsp.actions')
+          A.actions.ucw_probe = { desc = 'probe', lsp = 'buf.no_such_function' }
+          local ok, err = pcall(A.rhs('ucw_probe'))
+          A.actions.ucw_probe = nil
+          return { ok = ok, err = tostring(err) }
+        end)()
+    ]])
+  eq(res.ok, false)
+  eq(res.err:find('ucw_probe', 1, true) ~= nil, true)
 end
 
 T['servers'] = new_set()

@@ -31,7 +31,6 @@ local M = {}
 ---@field desc string
 ---@field lsp? string dotted path under `vim.lsp`, e.g. 'buf.code_action'
 ---@field args? any[] arguments for the `lsp`/`fn` function
----@field cmd? string ex-command to run instead of an `lsp` call
 ---@field picker? string a `snacks.picker` source name, e.g. 'lsp_references'
 ---@field fn? ucw.lsp.ActionFn a `require(mod).fn` entry point outside `vim.lsp`
 ---@field mode? string|string[] defaults to normal mode
@@ -73,11 +72,11 @@ M.actions = {
     fn = { mod = 'snacks.words', fn = 'jump' },
     args = { 1, true },
   },
-  -- diagnostics are core, not LSP, hence a plain command rather than an
-  -- `lsp` path
+  -- diagnostics are core, not LSP, hence a `fn` path (`vim.diagnostic` is a
+  -- requirable runtime module) rather than an `lsp` one
   diagnostic_float = {
     desc = 'Show diagnostics on the current line',
-    cmd = 'lua vim.diagnostic.open_float()',
+    fn = { mod = 'vim.diagnostic', fn = 'open_float' },
   },
 
   -- Picker-backed actions. Phase 5 moved these off Telescope and onto
@@ -87,7 +86,6 @@ M.actions = {
   -- `picker` is a source name resolved through `Snacks.picker` at press time,
   -- for the same reason `lsp` is a path resolved through `vim.lsp`: a source
   -- renamed upstream then fails by name instead of producing an inert key.
-  -- They cannot stay `cmd` entries - snacks has no ex-commands.
   definitions = { desc = 'Go to definition', picker = 'lsp_definitions' },
   type_definitions = { desc = 'Go to type definition', picker = 'lsp_type_definitions' },
   implementations = { desc = 'Go to implementation', picker = 'lsp_implementations' },
@@ -163,45 +161,25 @@ function M.call(name)
     return fn(unpack(action.args or {}))
   end
 
-  local fn = M.resolve(assert(action.lsp, ('LSP action %q has no `lsp` path'):format(name)))
+  local fn = M.resolve(assert(action.lsp, ('LSP action %q has no entry point'):format(name)))
   if type(fn) ~= 'function' then
     error(('LSP action %q: vim.lsp.%s is not a function'):format(name, action.lsp))
   end
   return fn(unpack(action.args or {}))
 end
 
----The right-hand side to bind for an action: an ex-command string for the
----`cmd` kind, a closure for the `lsp`, `picker` and `fn` kinds.
+---The right-hand side to bind for an action: a closure that resolves the
+---entry point at press time.
 ---@param name string
----@return string|function
+---@return function
 function M.rhs(name)
   local action = M.actions[name]
   if not action then
     error(('unknown LSP action %q'):format(name))
   end
-  if action.cmd then
-    return ('<cmd>%s<cr>'):format(action.cmd)
-  end
   return function()
     return M.call(name)
   end
-end
-
----Build a which-key v3 spec entry for `lhs` bound to the named action.
----@param lhs string
----@param name string
----@param opts? table extra which-key fields (e.g. `buffer`)
----@return table
-function M.wk(lhs, name, opts)
-  local action = M.actions[name]
-  if not action then
-    error(('unknown LSP action %q'):format(name))
-  end
-  local entry = vim.tbl_extend('error', { lhs, M.rhs(name), desc = action.desc }, opts or {})
-  if action.mode then
-    entry.mode = action.mode
-  end
-  return entry
 end
 
 return M

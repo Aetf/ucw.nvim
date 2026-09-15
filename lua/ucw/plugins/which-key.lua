@@ -55,12 +55,18 @@ local function config()
   -- document-highlight pair (`lh`/`l<C-L>`) is replaced by automatic
   -- reference highlighting (snacks.words, see snacks.lua).
   local lsp_actions = require('ucw.lsp.actions')
+  -- One which-key entry per named action: rhs and desc from the table, and
+  -- the action's own mode where it has one (`code_action`/`format` are n+x).
+  local function act(lhs, name)
+    local action = assert(lsp_actions.actions[name], ('unknown LSP action %q'):format(name))
+    return { lhs, lsp_actions.rhs(name), desc = action.desc, mode = action.mode }
+  end
   wk.add {
     { '<leader>c', group = 'code', mode = { 'n', 'x' }, icon = { icon = '', color = 'orange' } },
-    lsp_actions.wk('<leader>ca', 'code_action'),
-    lsp_actions.wk('<leader>cr', 'rename'),
-    lsp_actions.wk('<leader>cf', 'format'),
-    lsp_actions.wk('<leader>cl', 'codelens_run'),
+    act('<leader>ca', 'code_action'),
+    act('<leader>cr', 'rename'),
+    act('<leader>cf', 'format'),
+    act('<leader>cl', 'codelens_run'),
   }
 
   -- `<leader>s` = search (Phase 9, D3). Most members are `keys =` entries in
@@ -75,10 +81,10 @@ local function config()
     { '<leader>f', group = 'find', mode = { 'n', 'x' }, icon = { icon = '', color = 'green' } },
     { '<leader>r', group = 'repl', mode = { 'n', 'x' }, icon = { icon = '', color = 'red' } },
     { '<leader>s', group = 'search', mode = { 'n', 'x' }, icon = { icon = '', color = 'green' } },
-    lsp_actions.wk('<leader>ss', 'document_symbols'),
-    lsp_actions.wk('<leader>sS', 'workspace_symbols'),
-    lsp_actions.wk('<leader>sd', 'diagnostics'),
-    lsp_actions.wk('<leader>sD', 'diagnostics_all'),
+    act('<leader>ss', 'document_symbols'),
+    act('<leader>sS', 'workspace_symbols'),
+    act('<leader>sd', 'diagnostics'),
+    act('<leader>sD', 'diagnostics_all'),
   }
 
   -- `<leader>u` = toggle/ui (Phase 9, D4): every on/off state in the
@@ -123,10 +129,10 @@ local function config()
   -- where a client is attached); these four replace native *mappings* and
   -- so are global like the defaults they shadow.
   wk.add {
-    lsp_actions.wk('grr', 'references'),
-    lsp_actions.wk('gri', 'implementations'),
-    lsp_actions.wk('grt', 'type_definitions'),
-    lsp_actions.wk('gO', 'document_symbols'),
+    act('grr', 'references'),
+    act('gri', 'implementations'),
+    act('grt', 'type_definitions'),
+    act('gO', 'document_symbols'),
   }
 
   -- Git group headers; the keys are `keys =` entries in `gitsigns.lua`,
