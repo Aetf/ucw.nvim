@@ -4,10 +4,10 @@
 -- fails when the checked-in tables differ from a fresh render, the same way
 -- CI fails on a drifted `lazy-lock.json`.
 --
--- "This config defines" = present after boot and absent from `nvim --clean`,
--- so Neovim's own defaults (`[b`, `gcc`, `<C-W>d`, ...) are not listed and a
--- default this config *shadows* is. `<Plug>` mappings are plugin-internal and
--- skipped. Buffer-local keys (LSP, python cells, neogit, help/quickfix) never
+-- "This config defines" = present after boot and not identical (mode, lhs,
+-- desc, rhs) to a mapping in `nvim --clean`, so Neovim's own defaults (`[b`,
+-- `gcc`, `<C-W>d`, ...) are not listed and a default this config rebinds
+-- (`grr`, `gO`) is. `<Plug>` mappings are plugin-internal and skipped. Buffer-local keys (LSP, python cells, neogit, help/quickfix) never
 -- reach `nvim_get_keymap` and are the hand-written half of `docs/keys.md`.
 --
 -- Run inside a booted instance with which-key loaded (the `<leader>` group
@@ -17,13 +17,19 @@
 
 local MODES = { 'n', 'x', 's', 'o', 'i', 'c', 't' }
 
--- Every (mode, lhs) a bare Neovim already has.
+-- Every mapping a bare Neovim already has, as the same key `collect` uses.
+local function identity(m)
+  local rhs = type(m.callback) == 'function' and '' or (m.rhs or '')
+  return table.concat({ m.mode, m.lhs, m.desc or '', rhs }, '\t')
+end
+
 local function baseline()
   local script = table.concat({
     'local out = {}',
     'for _, mode in ipairs({ "n", "x", "s", "o", "i", "c", "t" }) do',
     '  for _, m in ipairs(vim.api.nvim_get_keymap(mode)) do',
-    '    out[#out + 1] = m.mode .. "\\t" .. m.lhs',
+    '    local rhs = type(m.callback) == "function" and "" or (m.rhs or "")',
+    '    out[#out + 1] = table.concat({ m.mode, m.lhs, m.desc or "", rhs }, "\\t")',
     '  end',
     'end',
     'io.stdout:write(table.concat(out, "\\n"))',
@@ -45,7 +51,7 @@ local function collect(base)
   local rows, order = {}, {}
   for _, query in ipairs(MODES) do
     for _, m in ipairs(vim.api.nvim_get_keymap(query)) do
-      if not m.lhs:find('<Plug>', 1, true) and not base[m.mode .. '\t' .. m.lhs] then
+      if not m.lhs:find('<Plug>', 1, true) and not base[identity(m)] then
         local desc = m.desc or ''
         local rhs = type(m.callback) == 'function' and '' or (m.rhs or '')
         local key = m.lhs .. '\t' .. desc .. '\t' .. rhs
@@ -88,8 +94,18 @@ local function groups()
   return labels
 end
 
+-- A code span for an lhs: a leading space is `<leader>`, a lone space is
+-- `<Space>`, and a backtick inside the key needs the double-backtick form.
 local function md(s)
-  return '`' .. s:gsub('|', '\\|') .. '`'
+  s = s:gsub('|', '\\|')
+  if s:find('`', 1, true) then
+    return '`` ' .. s .. ' ``'
+  end
+  return '`' .. s .. '`'
+end
+
+local function lhs_md(lhs)
+  return md((lhs:gsub('^ ', '<leader>'):gsub(' ', '<Space>')))
 end
 
 local function table_for(rows)
@@ -105,7 +121,7 @@ local function table_for(rows)
     if does == '' then
       does = r.rhs ~= '' and ('→ ' .. md(r.rhs)) or '*(no description)*'
     end
-    lines[#lines + 1] = ('| %s | %s | %s |'):format(md(r.lhs:gsub('^ ', '<leader>')), r.mode, does)
+    lines[#lines + 1] = ('| %s | %s | %s |'):format(lhs_md(r.lhs), r.mode, does)
   end
   return table.concat(lines, '\n')
 end
@@ -149,7 +165,7 @@ local function render()
     if not label and #leader[first] == 1 then
       label = leader[first][1].desc
     end
-    out[#out + 1] = ('### `<leader>%s` — %s'):format(first == ' ' and '<space>' or first, label or '')
+    out[#out + 1] = ('### %s — %s'):format(lhs_md(' ' .. first), label or '')
     out[#out + 1] = ''
     out[#out + 1] = table_for(leader[first])
     out[#out + 1] = ''

@@ -1,65 +1,62 @@
 # AGENTS.md — working in `ucw.nvim`
 
-Guidance for AI agents (and humans) editing this Neovim config. Read this first.
-`docs/architecture.md` is the map of the code, `docs/extending.md` the
-reference for changing it (recipes, module APIs, test helpers, tooling),
-`docs/features.md` and `docs/keys.md` what it does and which key does it;
-this file is the short rulebook. The reasoning behind a rule is in the
-phase design document it cites under `docs/design/`.
+The rules for changing this Neovim config, for agents and humans. Read this
+first. The reference behind each rule is elsewhere: `docs/architecture.md`
+is the code map, `docs/extending.md` the extension points (recipes, module
+APIs, test helpers, tooling), `docs/features.md` and `docs/keys.md` what the
+editor does and which key does it, `docs/testing.md` the suite's mechanics.
+The reasoning behind a rule is in the design document it cites under
+`docs/design/`.
 
 ## What this is
 
-A personal Neovim config on **`lazy.nvim`**, one spec file per plugin under
+A personal Neovim config on **lazy.nvim**, one spec file per plugin under
 `lua/ucw/plugins/`, with LSP on Neovim's native `vim.lsp.config` /
-`vim.lsp.enable` layers. There is no plugin engine, no logger and no framework
-of its own; the config's own code is options, keys, and the seams between
-plugins that no plugin owns (`lua/ucw/git.lua`, `lua/ucw/lsp/attach.lua`, …).
-
-Boot: `init.lua` → `require('ucw').boot()` (`lua/ucw/init.lua`) loads the
-plugin-free modules (`options`, `builtin-plugins`, `keys`, `extras`), installs
-the `LspAttach` handler, bootstraps lazy.nvim at the commit `lazy-lock.json`
-pins, and imports `ucw.plugins` then `ucw.plugins.user`. Context predicates for
-spec `cond` live in `lua/ucw/targets.lua` (`is_gui/is_firenvim/is_vscode/
-is_full_ui`).
+`vim.lsp.enable` layers. There is no plugin engine, no logger and no
+framework of its own. Boot order is `docs/architecture.md` § Boot; the
+`LspAttach` handler is installed before lazy.nvim on purpose. Context
+predicates for spec `cond` are `lua/ucw/targets.lua`
+(`is_gui/is_firenvim/is_vscode/is_full_ui`).
 
 ## Layout
 
 - `lua/ucw/plugins/*.lua` — one lazy.nvim spec per plugin, including its keys.
 - `lua/ucw/plugins/user/` — a same-named file here merges over the base spec
-  (lazy.nvim merges specs per plugin, later import wins). Empty today.
-- `lua/ucw/{options,keys,extras,toggles,utils,git,health,gui}.lua`,
-  `lua/ucw/keys/actions.lua` — the config's own code.
+  (later import wins). Empty today.
+- `lua/ucw/{options,builtin-plugins,keys,extras,targets,toggles,utils,git,health,gui}.lua`,
+  `lua/ucw/keys/actions.lua`, `lua/ucw/neotree/`, `lua/ucw/textobjects/` —
+  the config's own code.
 - `lua/ucw/lsp/` — `servers.lua` (the server list), `init.lua`
   (enable/filetypes), `attach.lua` (`LspAttach`), `actions.lua`, `vscode.lua`,
   `ltex_dict.lua`, `texlab_sync.lua`, `utils.lua`.
 - `after/lsp/<server>.lua` — per-server settings Neovim discovers itself.
 - `ftplugin/<ft>.lua` — filetype options and `conform` formatters.
-- `scripts/` — `keymap-snapshot.lua`, `luarc-lint-config.lua`, `tui-drive.sh`.
+- `scripts/` — `keymap-snapshot.lua`, `keys-doc.lua`, `luarc-lint-config.lua`,
+  `tui-drive.sh`.
 - `tests/`, `docs/`, `justfile`, `mise.toml`, `.luarc.json`, `lazy-lock.json`.
 
 ## How to add or change a plugin
 
 One file, `lua/ucw/plugins/<plugin>.lua`, returning a lazy.nvim spec. Start
 from a neighbour (`gitsigns.lua` for an eager plugin with keys, `codediff.lua`
-for a lazy one, `lspconfig.lua` for `ft`-triggered). What the spec must get
-right, each of which fails silently:
+for a lazy one, `lspconfig.lua` for `ft`-triggered). Each of these fails
+silently when wrong:
 
 - **`keys =` makes the spec lazy.** A plugin that has to exist from startup
   (gutter, tabline, session autosave, formatter) needs an explicit
   `lazy = false` next to its keys, and a line in `tests/test_keys.lua`'s eager
-  census (the census is an explicit list; extend it when you add one).
+  census (an explicit list; extend it when you add one).
 - **`cond = require('ucw.targets').is_full_ui`** on anything with a UI surface
   of its own. A spec with `cond` false does not exist in lazy.nvim's plugin
-  table at all — its keys are not registered, `require`ing it errors — so code
-  reaching into it from another spec must `pcall` or gate the same way.
-- **Order between eager specs is only guaranteed by `dependencies`.** Two
-  `lazy = false` specs load in an order you do not control.
+  table at all, so code reaching into it from another spec must `pcall` or
+  share the gate.
+- **Order between eager specs is only guaranteed by `dependencies`.**
 - **`opts` is a table, `config` is a function**; anything that has to run
   after `setup()` (Snacks.toggle registration, buffer-local overrides) goes in
   `config`.
 - **`lazy-lock.json` is checked in and CI fails if it drifts.** Update through
   `:Lazy update`; never hand-edit. `:Lazy! install` does not downgrade an
-  installed plugin — to A/B an older version, `git -C <plugin dir> checkout
+  installed plugin; to A/B an older version, `git -C <plugin dir> checkout
   <sha>` or `:Lazy! restore`.
 - **Keys go under the prefix `docs/design/phase9-keybindings.md` §5 assigns**,
   not the plugin's README defaults. A new namespace claims a free prefix, gets
@@ -70,125 +67,98 @@ right, each of which fails silently:
 
 Removing a plugin: delete the spec, run `:Lazy clean`, commit the lockfile
 change. `just lint` reads its library list from the lockfile, so a plugin
-left on disk but out of the spec no longer leaks its globals into the lint.
+left on disk but out of the spec does not leak its globals into the lint.
 
 ## Key idioms
 
 - **Autocmds** — `vim.api.nvim_create_autocmd` with a named, cleared
   `augroup`; no DSL. `BufModifiedSet` is gone in 0.13; use `OptionSet` with
   pattern `modified`.
-- **Keymaps** — a plugin's keys live in *its own spec* as lazy.nvim
+- **Keys** — a plugin's keys live in *its own spec* as lazy.nvim
   `keys = { { lhs, rhs, desc = '...', silent = true }, ... }` entries;
   `lua/ucw/plugins/which-key.lua` keeps only group headers and core editor
   keys; toggles are `Snacks.toggle` objects (`lua/ucw/toggles.lua` for the
   editor's own, the plugin's spec for its own) so which-key shows live
-  state — never a plain `<cmd>` rhs. Named actions in `keys/actions.lua`, LSP
+  state, never a plain `<cmd>` rhs. Named actions in `keys/actions.lua`, LSP
   ones in `lua/ucw/lsp/actions.lua` as *paths* (so a renamed API fails a
-  test instead of leaving a dead key); low-level remaps via
-  `require('ucw.utils').map` in `keys.lua`.
-  **Two traps.** ① In both `wk.add` and `keys =` the rhs is the *second
-  array element*; an entry with no rhs is accepted silently, so
-  `{ lhs, desc = '<cmd>...<cr>' }` is a key that does nothing and a popup
-  entry that reads like code; `tests/test_keys.lua` fails on any `desc` that
-  looks like a rhs, in any mechanism. ② The global keymap snapshot
-  (`scripts/keymap-snapshot.lua`) sees only global maps; anything registered
-  on `LspAttach`, `FileType` or `BufWinEnter` (`[r`/`]r`, `[h`/`]h`, neogit's
-  `<CR>`, help/quickfix `q`) is buffer-local and needs its own
+  test instead of leaving a dead key).
+- **A `desc` that looks like a rhs** (`{ lhs, desc = '<cmd>...<cr>' }`) is a
+  key that does nothing and a popup entry that reads like code; in both
+  `wk.add` and `keys =` the rhs is the second array element and a missing one
+  is accepted silently. `tests/test_keys.lua` fails on it.
+- **The keymap snapshot sees only global maps.** Anything registered on
+  `LspAttach`, `FileType` or `BufWinEnter` is buffer-local and needs its own
   `nvim_buf_get_keymap` assertion, both halves (present where it should be,
   absent where it should not).
 - **Previous/next is `[`/`]` + a category letter**, count-aware where native
   (`[d`, `[q`). `g` never means a direction; `g[`/`g]` are mini.ai's edge
-  motions. `]]`/`[[` are not remapped (native section motions).
-- **`q` closes a read-only window**; `<Esc>` never does (it clears
-  highlight/notifications and cancels input UIs). Terminal-style windows close
-  with the key that opened them. `docs/design/phase9.5-trial-period.md` §7.3.
-- **Toggles are global unless the state is inherently per buffer.**
-  `Snacks.toggle.inlay_hints()` is per-buffer (`bufnr = 0`); the config's own
-  `toggles.lua` entry drives the global flag and `attach.lua` mirrors it into
-  each buffer. `Snacks.toggle.get(id)` returns a factory for unknown ids, so a
-  census over the registry must `rawget`.
-- **Options** — plain `vim.opt.*` in `options.lua`, heavily commented with
-  *why*. Take `vim.opt.X` into a `---@type vim.Option` local before `:append`
-  so lua_ls does not infer the field's type from some plugin's assignment.
-- **LSP** — there is no framework to learn; use Neovim's native layers.
-  To add a server: one line in `lua/ucw/lsp/servers.lua` (`name = { filetypes }`),
-  which drives `vim.lsp.enable()`, Mason's `ensure_installed` and the lazy `ft`
-  trigger at once; add `after/lsp/<name>.lua` only if it needs settings, and
-  keep that file **table-only** (function fields replace nvim-lspconfig's
-  outright instead of composing). Per-buffer behaviour goes in an `LspAttach`
-  autocmd — `lua/ucw/lsp/attach.lua` for anything general, or the plugin's own
-  spec for anything server-specific. LSP starts by itself on the filetype of a
-  supported buffer; nothing is eager and there is no enable keybinding.
-  See `docs/design/phase3-lsp-redesign.md`.
+  motions. `]]`/`[[` are not remapped.
+- **`q` closes a read-only window**; `<Esc>` never does. Terminal-style
+  windows close with the key that opened them
+  (`docs/design/phase9.5-trial-period.md` §7.3).
+- **Toggles are global unless the state is inherently per buffer.** The
+  inlay-hint toggle drives the global flag and `attach.lua` mirrors it into
+  each buffer (the per-buffer `Snacks.toggle.inlay_hints()` factory is the
+  trap; `docs/extending.md` § `ucw.toggles`).
+- **Options** — plain `vim.opt.*` in `options.lua`, commented with *why*.
+  Take `vim.opt.X` into a `---@type vim.Option` local before `:append` so
+  lua_ls does not infer the field's type from some plugin's assignment.
+- **LSP** — use Neovim's native layers. To add a server: one line in
+  `lua/ucw/lsp/servers.lua` (`name = { filetypes }`), which drives
+  `vim.lsp.enable()`, Mason's `ensure_installed` and the lazy `ft` trigger at
+  once; add `after/lsp/<name>.lua` only if it needs settings, and keep that
+  file **table-only** (function fields replace nvim-lspconfig's outright
+  instead of composing). Per-buffer behaviour goes in an `LspAttach` autocmd:
+  `lua/ucw/lsp/attach.lua` for anything general, the plugin's own spec for
+  anything server-specific. Nothing is eager and there is no enable key.
+  `docs/design/phase3-lsp-redesign.md`.
 
-  Invariants that are easy to break silently, most of them first found by an
-  acceptance review:
+  Invariants that break silently:
   - **A spec that starts a language server must `dependencies` on
-    `mason.nvim`.** Mason's `setup()` is what puts the server binaries on
-    `PATH`; without it a client simply never starts, and says so nowhere —
-    not in `:messages`, not in `lsp.log`.
-  - **`ucw.lsp.vscode` is the only writer of `client.settings`.** It rebuilds
-    them from an attach-time snapshot on every `.vscode/` change, so a second
-    writer is silently overwritten. Anything file-backed belongs in that
-    module's `SIDECAR_KEYS` instead: `<dir>/<key>.<variant>.txt` is unioned into
-    `settings[<key>][<variant>]`, which is how the ltex dictionaries work.
-    `ucw.lsp.ltex_dict` writes those files and calls `vscode.reload()`; it never
-    touches `client.settings`. See
-    `docs/design/phase3-settings-composition.md`.
-  - **A toggle and the thing it toggles must agree on scope.**
-    `vim.lsp.inlay_hint`'s global flag is the user preference; `attach.lua`
-    mirrors it per buffer. Enabling a capability with a literal `true` at
-    attach makes any toggle over it appear to need two presses and forget
-    itself on the next file.
-  - **`vim.lsp.buf.hover` asks every client that declares hover and reports
-    each empty answer.** A server that declares it but returns nothing
-    (ruff) gets `hoverProvider` cleared at attach, in `attach.lua`'s
-    per-server table — not by editing `after/lsp/`.
+    `mason.nvim`.** Mason's `setup()` puts the server binaries on `PATH`;
+    without it the client never starts and nothing reports it.
+  - **`ucw.lsp.vscode` is the only writer of `client.settings`.** Anything
+    file-backed is a sidecar in that module, never a second writer
+    (`docs/extending.md` § `ucw.lsp.vscode`,
+    `docs/design/phase3-settings-composition.md`).
+  - **A toggle and the thing it toggles must agree on scope.** Enabling a
+    capability with a literal `true` at attach makes any toggle over it
+    appear to need two presses and forget itself on the next file.
+  - **Per-server capability edits go in `attach.lua`'s table**, not in
+    `after/lsp/` (ruff's `hoverProvider` is declined there).
   - **`vim.lsp.config` merge semantics**: tables deep-merge, lists replace
     whole, a function field at the top level replaces the lower layer's.
 - **Formatting** — `conform`; `formatters_by_ft` is set per filetype in
   `ftplugin/<ft>.lua`. A server that self-reports formatting but must not
-  format (`lua_ls`, `texlab`) needs `lsp_format = 'never'` there.
-  `docs/design/phase6-format-lint.md`.
+  format (`lua_ls`, `texlab`) needs `lsp_format = 'never'` there, in every
+  filetype the server attaches to. `docs/design/phase6-format-lint.md`.
 - **Anything that runs a `BufWrite` or auto-installs at boot is gated on
-  `is_full_ui`** (format-on-save, treesitter parser install): under firenvim
-  a write is the push back to the page, and embedded contexts attach a UI
-  too, so `#nvim_list_uis() > 0` alone is not the gate.
-- **Binaries resolve through `PATH`, Mason appended last.** The project's
-  toolchain wins; `:checkhealth ucw` prints what each declared binary
-  resolved to. A broken binary on `PATH` fails silently everywhere else.
+  `is_full_ui`** (format-on-save, treesitter parser install);
+  `#nvim_list_uis() > 0` alone is not the gate, embedded contexts attach a
+  UI too.
+- **Binaries resolve through `PATH`, Mason appended last.** `:checkhealth ucw`
+  prints what each declared binary resolved to; a broken binary on `PATH`
+  fails silently everywhere else.
 
 ## Testing
 
-Harness is **mini.test** (fetched into `deps/`, gitignored — a test-only
-copy, separate from the mini.nvim lazy.nvim manages at runtime). Recipes
-(`justfile`):
-
-```sh
-just deps      # pinned binaries (mise.toml) + mini.nvim into deps/, at lazy-lock.json's commit
-just unit      # unit tests   (tag: unit)
-just int       # integration tests (tag: integration; full config boot + install)
-just all       # everything
-just ci        # everything, do not stop on error
-```
-
+Harness is **mini.test**; `just unit` / `just int` / `just all` / `just ci`.
 Run tests only through `just` or with `mise exec --` in front: the formatters
-`tests/test_format.lua` drives are the versions `mise.toml` pins, and without
-them a third of that file goes red for reasons unrelated to your change.
-
-Two-stage model: a headless *driver* nvim runs each `tests/test_*.lua`; each test
-spawns a clean *child* nvim per case. Write tests with `H.new_unit_test()` (cwd
-+ mini.test only) or `H.new_integration_test()` (full config). See
-`docs/testing.md` for the child's traps (feedkeys, hit-enter, noice routing).
+`tests/test_format.lua` drives are the versions `mise.toml` pins. Write tests
+with `H.new_unit_test()` (pure modules) or `H.new_integration_test()` (the
+booted config); the helper API and the child's traps are in
+`docs/extending.md` § Testing and `docs/testing.md`.
 
 A guard is not done until it has been reverse-verified: reinstate the bug it
-covers and watch it go red. Every acceptance review so far has found at least
-one instrument that stops exactly where the phase's attention stopped.
+covers and watch it go red.
+
+Judge what the config draws, not only its logs: `docs/tui-observation.md`
+(`child.get_screenshot()` in tests, `just tui …` ad hoc; asynchronous views
+need a state poll before a capture).
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every push and pull request, and it only ever
-calls `just` — the gates are recipes, so "reproduce CI locally" is one line:
+`.github/workflows/ci.yml` only ever calls `just`, so reproducing CI is:
 
 ```sh
 just ci          # the suite (matrix: neovim stable + nightly, nightly advisory)
@@ -197,89 +167,38 @@ just fmt-check   # stylua --check
 git diff --exit-code lazy-lock.json   # after `just ci`: the lockfile did not drift
 ```
 
-Two things about `just lint` that are easy to undo by accident, because both
-fail *quietly* — a weaker lua_ls config looks exactly like a working one:
+Three things that fail quietly when undone:
 
-- `.luarc.json` is **checked in** so the editor applies the same rules while you
-  type (that is the whole reason it is not generated). Its `runtime.path` and
-  `runtime.pathStrict` travel together: an explicit `path` carrying `lua/?.lua`
-  without `pathStrict` makes `require('snacks')` resolve to this repo's own
-  `lua/ucw/plugins/snacks.lua`, which drops three real findings and invents a
-  false one. `tests/test_luarc.lua` asserts they stay together, and that the
-  globals here cover `after/lsp/lua_ls.lua`'s.
-- The recipe supplies `$VIMRUNTIME`, the installed plugins' `lua/` directories
-  (enumerated from `lazy-lock.json`, so a plugin left on disk after removal
-  is not a library) and `deps/mini.nvim`, and **errors** rather than checking
-  less if it cannot. A locked plugin that is not installed is *not* an error
-  (`cond`-gated plugins are locked but never installed in CI). Don't
-  "simplify" any of them away. Isolating a lint finding means whole-repo
-  `--check .` with `VIMRUNTIME` exported; a single-file check has a different
-  workspace and hides it.
-- `just test`/`just plugins`/`just lint` set `XDG_CONFIG_HOME` + `NVIM_APPNAME`
-  so this checkout *is* the config directory Neovim loads. On this machine that
-  is a no-op (the repo already is `~/.config/nvim`); on a runner it is the whole
-  difference between working and not. **`rtp` is not a substitute** — lazy.nvim
-  resets `rtp` to `stdpath('config')` before importing specs, which is why the
-  integration suite needs this too even though the harness puts `getcwd()` on
-  the child's `rtp` explicitly. Simulating a runner means copying the tree *out
-  of* `~/.config` **and** giving it an empty `XDG_CONFIG_HOME`; the copy alone
-  still falls back to your real `~/.config/nvim` and passes.
-
-Reproducing the lockfile-drift gate locally:
-
-```sh
-MISE_DATA_DIR=$HOME/.local/share/mise XDG_DATA_HOME=/tmp/scratch XDG_CONFIG_HOME=~/.config NVIM_APPNAME=nvim \
-  mise exec -- nvim --headless '+Lazy! install' +qa && git diff --exit-code lazy-lock.json
-```
-
-`MISE_DATA_DIR` must be pinned alongside `XDG_DATA_HOME`, or mise's own
-plugin directory moves with it and mise errors.
+- `.luarc.json`'s `runtime.path` and `runtime.pathStrict` travel together
+  (`tests/test_luarc.lua`); without `pathStrict`, `require('snacks')` resolves
+  to this repo's own `snacks.lua` spec and the lint hides real findings.
+- `just lint` errors rather than checking less when an input (`$VIMRUNTIME`,
+  the plugin library, `deps/mini.nvim`) is missing. Do not remove the checks.
+- `just test`/`plugins`/`lint`/`keys-doc` set `XDG_CONFIG_HOME` +
+  `NVIM_APPNAME` so this checkout *is* the config Neovim loads; `rtp` is not
+  a substitute. Simulating a runner needs a copy *and* an empty config
+  directory (`docs/testing.md` § CI).
 
 Suppressions are `---@diagnostic disable-next-line: <code>` with a comment
 naming the evidence; the ones deliberately left are listed in
 `docs/design/phase7-ci.md` §7.
 
-## Observing the rendered TUI
+## Conventions
 
-You can inspect what the config *actually draws* (screen text, colors, floats,
-cursor) — not just logs. Three tiers, detailed in **`docs/tui-observation.md`**:
-
-- **Tests**: `child.get_screenshot()` in mini.test (see `tests/test_tui_screenshot.lua`).
-- **Ad-hoc**: `scripts/tui-drive.sh` drives a real nvim in a detached tmux session
-  and reads the screen back (`start` / `send` / `cmd` / `capture` / `messages` / …).
-  Start and stop it from `/tmp` (an auto-session suppressed dir), or stopping
-  overwrites the session saved for this repo.
-- **Reference**: `vim.api.nvim__screenshot(path)` (internal; underlies the above).
-
-Asynchronous views (codediff, neogit) are not on screen the moment the command
-returns: judge by state read over RPC (`codediff.ui.lifecycle.get_session`,
-neogit's real content rather than its 4-line skeleton), then `redraw!` and
-capture.
-
-## Conventions & gotchas
-
-- **Style**: stylua (`stylua.toml`: 2-space indent, single quotes, `NoSingleTable`),
-  everywhere including `tests/` (`.git-blame-ignore-revs` hides the one-shot
-  reformat). `just fmt` writes, `just fmt-check` is the gate. If you are
-  editing by hand rather than through Neovim's `format_on_save`, run
-  `just fmt` before committing.
-- **Comments and design docs are as-built**: what the code does now and why,
-  not what was tried. A phase document is the record of its own phase; when
-  a later phase supersedes it, the earlier document says so inline and points
-  forward, and this file plus `docs/architecture.md` describe the present.
-  The phase series is closed (the 2026 modernization is complete). A new
-  feature - the debugger and AI integration Phase 9 reserved `<leader>d` /
-  `<leader>a` for, or anything else - lands as one ordinary change: spec,
-  keys, tests, and the edits to this file and `docs/architecture.md`
-  together. Write a design document only when reopening a recorded decision.
+- **Style**: stylua (`stylua.toml`), everywhere including `tests/`;
+  `just fmt` writes, `just fmt-check` is the gate.
+- **Comments and docs are as-built**: what the code does now and why, never
+  what was tried. A new feature — including the debugger under `<leader>d`
+  and AI integration under `<leader>a`, both reserved — lands as one ordinary
+  change: spec, keys, tests, and the edits to this file,
+  `docs/architecture.md`, `docs/features.md`, `docs/keys.md` and
+  `docs/extending.md` together. Write a design document under `docs/design/`
+  only when reopening a recorded decision.
 - **No logger.** Use `vim.notify`; everything it emits is retrievable
-  afterwards from `<leader>n` (noice history).
-- **`VAR=x just …` does not reach the recipe.** `just` here is a zinit wrapper
-  with a `#!/usr/bin/env zsh` shebang, and zsh's own startup reassigns the `XDG_*`
-  variables on the way through — so `XDG_DATA_HOME=/tmp/scratch just lint` runs
-  against your real plugin directory and looks like it worked. To exercise a
-  recipe against a scratch environment, run its commands directly with the
-  variable set on the actual process.
+  afterwards from `<leader>n`.
+- **`VAR=x just …` does not reach the recipe** (the `just` wrapper is a zsh
+  script that resets `XDG_*`); set variables on the actual process
+  (`docs/testing.md` § CI).
 - **Mason experiments use a scratch `XDG_DATA_HOME`**; never write into the
   real `~/.local/share/nvim` from a test.
 - **After a Neovim upgrade, update nvim-treesitter and `:TSUpdate` together.**

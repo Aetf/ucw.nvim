@@ -3,9 +3,8 @@
 The extension points of `ucw.nvim`: which file to touch for each kind of
 change, what the config-owned modules export, and the tooling around it.
 `AGENTS.md` is the short rulebook (the traps); this is the reference behind
-it. Everything named here has a test or a gate that fails when it is broken
-(the *guard* column), so the second half of every change is knowing which
-one to run.
+it. Everything named here has a test or gate that fails when it is broken;
+the *guard* column names it.
 
 ## Recipes
 
@@ -58,15 +57,17 @@ path. `rhs(name)` returns the closure to bind; `call(name)` runs it.
 
 ### `ucw.lsp.attach` — per client, per buffer
 
-`setup()` installs the one `LspAttach`/`LspDetach` pair (called from
-`ucw.boot`, before any plugin, so clients rustaceanvim starts without
-nvim-lspconfig are covered). The buffer-local key table (action names)
+`setup()` seeds the global inlay-hint flag, calls `ucw.lsp.vscode.setup()`
+(which installs the `LspDetach` half) and installs the `LspAttach` autocmd
+(called from `ucw.boot`, before any plugin, so clients rustaceanvim starts
+without nvim-lspconfig are covered). The buffer-local key table (action names)
 and the per-server capability edits (`ruff = { 'hoverProvider' }`) are
 locals at the top of the file; there is no other API.
 
 ### `ucw.lsp.vscode` — workspace settings
 
-The only writer of `client.settings`. `attach(client)` snapshots the
+The only writer of `client.settings`. `setup()` installs the `LspDetach`
+handler (called from `ucw.lsp.attach.setup()`). `attach(client)` snapshots the
 client's settings, loads `<root>/.vscode/settings.json` plus the user-scope
 directory (`global_dir()`), composes them over the snapshot and watches
 both directories; `reload(client)` recomposes; `detach(client_id)` stops the
@@ -149,16 +150,9 @@ helper API in `tests/aux/lua/helpers.lua`:
   integration child as an embedded context; the marker has to exist before
   `ucw.boot()` because `cond` is evaluated while `init.lua` sources.
 
-Conventions the suite relies on: the child is headless with no UI
-(`#nvim_list_uis() == 0`), so anything gated on a UI does not run there and
-`get_screenshot()` reads the internal screen; type with
-`nvim_feedkeys(keys, 'nt', false)` followed by an RPC round trip, never
-`vim.wait` (it does not consume typeahead); after `nvim_buf_set_lines`
-clear `modified` before asserting it; drive noice with
-`require('noice.message.router').update()` before reading the notifier
-history; wait on a state predicate (`Snacks.picker.get()`, a filetype plus
-real content) rather than a duration; a guard is finished only after the
-bug it covers has been reinstated and seen to fail it.
+The child's traps (feedkeys, hit-enter, noice routing, waiting on state
+rather than time) are in `docs/testing.md`; the rules for what a test must
+prove are in `../AGENTS.md`.
 
 ## Tooling
 
@@ -184,4 +178,12 @@ bug it covers has been reinstated and seen to fail it.
 - CI (`.github/workflows/ci.yml`): `just ci` on stable and nightly
   (nightly advisory), the lockfile-drift check, `just lint`, `just fmt-check`.
   Reproduce any job locally with the same recipe; `VAR=x just …` does not
-  reach a recipe (the `just` wrapper is a zsh script that resets `XDG_*`).
+  reach a recipe (`docs/testing.md`). The lockfile-drift check locally:
+
+  ```sh
+  MISE_DATA_DIR=$HOME/.local/share/mise XDG_DATA_HOME=/tmp/scratch XDG_CONFIG_HOME=~/.config NVIM_APPNAME=nvim \
+    mise exec -- nvim --headless '+Lazy! install' +qa && git diff --exit-code lazy-lock.json
+  ```
+
+  `MISE_DATA_DIR` must be pinned alongside `XDG_DATA_HOME`, or mise's own
+  store moves with it and mise reinstalls everything first.

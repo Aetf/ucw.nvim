@@ -6,9 +6,11 @@ in `extending.md`.
 
 ## Editing defaults
 
-- 4-space indent with `expandtab`, `smartindent`; `textwidth` 80 with no
-  hard wrap (`wrap` off, `linebreak` on for the files that wrap themselves);
-  tabs, trailing and non-breaking spaces drawn (`list`).
+- 4-space indent with `expandtab`, `smartindent`; typed text hard-wraps at
+  `textwidth` 80 (`tex` and `just` files turn this off); long lines are not
+  soft-wrapped (`wrap` off), and where a filetype turns `wrap` on the break
+  is at a word boundary (`linebreak`); tabs, trailing and non-breaking
+  spaces are drawn (`list`).
 - Relative line numbers, cursor line, a sign column that is always there, a
   one-column fold gutter; 24-bit colour, `base16-eighties`.
 - Search ignores case unless the pattern has capitals; `:s` previews in a
@@ -17,7 +19,8 @@ in `extending.md`.
   and insert mode with a popup right-click menu; `h`/`l` and the arrows
   wrap across lines.
 - Persistent undo (`undodir` under the data directory), a large `shada`,
-  file encodings that also try the common Chinese and Japanese ones.
+  file encodings that also try the common Chinese, Japanese and Korean
+  ones (`cp936`, `gb18030`, `big5`, `euc-jp`, `euc-kr`).
 - `<leader>` timeout 500 ms; `updatetime` 300 ms (drives `CursorHold`).
 
 ## What happens by itself
@@ -26,7 +29,7 @@ in `extending.md`.
   yanked text.
 - **Files changed on disk** are reloaded: `autoread` is on and `:checktime`
   runs on focus, buffer enter, idle and leaving a terminal, so a formatter or
-  a `git checkout` shows up within `updatetime` without a keypress. A
+  a `git checkout` appears within `updatetime`, without a keypress. A
   modified buffer is never overwritten (Neovim's W12 prompt instead), and
   every reload says so in a notification; a file deleted underneath you is
   left alone.
@@ -53,21 +56,22 @@ is nothing to enable. Mason installs the binaries on first use
 (`:Mason` shows them); a binary the project itself provides (a virtualenv,
 `mise`, `nix develop`) wins over Mason's, because Mason's `bin/` is appended
 to `PATH`, never prepended. `:checkhealth ucw` prints which copy of each
-declared binary is actually running and flags anything installed that
-nothing declares, or declared and not installed.
+declared binary is actually running, flags anything installed that nothing
+declares or declared and not installed, checks that the `tree-sitter` CLI is
+reachable and that Mason is last on `PATH`.
 
 | filetype | server(s) | formatter | notes |
 |---|---|---|---|
 | lua | lua_ls | stylua | lua_ls's own formatter is blocked; lazydev types the Neovim API |
 | python | basedpyright, ruff | ruff | ruff's hover is declined (it answers nothing); `# %%` cells, see *REPL* |
-| c, cpp, cuda, objc | clangd | (clangd) | clangd_extensions |
+| c, cpp, objc, objcpp, cuda (and the `.doxygen` variants) | clangd | (clangd) | clangd_extensions |
 | rust | rust-analyzer (rustaceanvim) | rustfmt via the server | rustaceanvim owns the client; grouped code actions on `<leader>ca` |
 | tex, plaintex, bib | texlab, ltex_plus | none | texlab's formatter is blocked; `formatexpr` reflows one sentence per line; SyncTeX forward search and zathura backward search |
 | markdown | marksman, ltex_plus | prettier (if installed) | |
 | toml | taplo | taplo | |
 | json, jsonc | jsonls | | |
 
-Once a client is attached (`keys.md` § buffer-local): `gd`/`gD`, code
+Once a client is attached (`keys.md`, *Buffer-local keys*): `gd`/`gD`, code
 actions on `<M-CR>`, the diagnostic float on `<C-k>`, references highlighted
 automatically with `[r`/`]r` to walk them; inlay hints and codelens on;
 `K` hovers; `grr`/`gri`/`grt`/`gO` open pickers; `<leader>c*` is rename,
@@ -76,7 +80,7 @@ symbols and diagnostics.
 
 **Diagnostics** show as signs and in the float; virtual lines are off by
 default and `<leader>uv` turns them on for the current line. `[d`/`]d`
-walk them, `<leader>sd`/`sD` list them.
+walk them, `<leader>sd`/`<leader>sD` list them.
 
 **Workspace settings** come from the project's `.vscode/settings.json`
 (and the user-scope directory): whatever a server reads under its
@@ -116,25 +120,26 @@ snacks.picker for everything: `<C-p>` opens files by frecency (recent first,
 current directory boosted), `<leader>f*` files / recent / git files,
 `<leader>s*` grep, buffer lines, word under cursor (or the selection),
 command history, keymaps, help, messages, and `<leader>s<Space>` lists every
-picker. `<leader>bb` is the buffer list (closing a buffer from inside it
-goes through the same jumplist-aware close as `<leader>bd`); `\`/`|` the
-file tree.
+picker. `<leader>bb` is the buffer list (`dd`, `<C-x>` or `<C-d>` inside it
+close a buffer through the same jumplist-aware close as `<leader>bx`);
+`\`/`|` the file tree.
 
 ## REPL
 
-iron.nvim under `<leader>r`: `rr` opens the REPL for the current filetype
-(ipython for python), `rs` sends a motion or the visual selection, `rl` a
-line, `rf` the file, `<C-CR>` the current `# %%` cell (`<S-CR>` then moves
-to the next one). When the REPL binary is missing the keys warn once and do
+iron.nvim under `<leader>r`: `<leader>rr` opens the REPL for the current
+filetype (ipython for python), `<leader>rs` sends a motion or the visual
+selection, `<leader>rl` a line, `<leader>rf` the file, `<C-CR>` the current
+`# %%` cell (`<S-CR>` then moves to the next one). When the REPL binary is missing the keys warn once and do
 nothing.
 
 ## Windows, tabs, terminal
 
 `<M-h/j/k/l>` move between windows (and tmux panes, through Navigator);
 `<leader>w*` splits with the `<C-w>` letters; `<leader>t*` tabs, `<M-n>`/
-`<M-p>` next/previous tab; `Tab`/`S-Tab` cycle buffers (bufferline), the
+`<M-p>` next/previous tab; `Tab`/`S-Tab` cycle buffers (bufferline, the
+tabline), the
 jumplist stays on `<C-o>`/`<C-i>` and steps a whole file at a time with
-Shift. `` <C-` > `` is a floating terminal.
+Shift. `` <C-`> `` is a floating terminal.
 
 ## Embedded contexts
 
@@ -146,10 +151,3 @@ Shift. `` <C-` > `` is a floating terminal.
   the LSP stack and which-key do not load (VSCode owns all of that);
   motions, textobjects, surround, comments, the pickers and the core keys
   still work.
-
-## Health
-
-`:checkhealth ucw` reports, per declared binary, where on `PATH` it
-resolved (project copy or Mason's floor), what is declared versus installed
-versus the registry's version, whether the `tree-sitter` CLI is reachable,
-and that Mason is last on `PATH`.

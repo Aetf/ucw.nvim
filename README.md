@@ -12,8 +12,9 @@ the whole thing headless.
 - `docs/architecture.md` — the map: boot order, layout, what owns what.
 - `docs/testing.md`, `docs/tui-observation.md` — the suite and how to look
   at the rendered TUI from outside.
-- `docs/design/` — one design document and one independent acceptance
-  review per phase of the 2026 modernization (complete); the reasoning
+- `docs/design/` — the design document and, for most phases, the
+  independent acceptance review of each phase of the 2026 modernization
+  (complete; the table in `docs/architecture.md` lists them). The reasoning
   behind every decision above lives there.
 
 ## Working on it
@@ -28,13 +29,3 @@ just fmt-check  # stylua
 `mise.toml` pins the binaries the repo needs to work on itself; Neovim finds
 the same ones through `PATH`, with Mason's copies as the fallback, and
 `:checkhealth ucw` prints which one won.
-
-## Notable pieces
-
-- Workspace LSP settings from `.vscode/settings.json`, including ltex
-  dictionaries, rebuilt on every change (`lua/ucw/lsp/vscode.lua`).
-- Keys follow native vocabulary first (`gr*` for LSP, `[`/`]` + letter for
-  previous/next), then LazyVim's `<leader>` namespaces; the placement rule
-  for a new plugin is a table in `docs/design/phase9-keybindings.md` §5.
-- The neogit ↔ codediff seam (`lua/ucw/git.lua`): `<CR>` on any commit opens
-  it in codediff; `<leader>gm` shows the commit message from either side.

@@ -1,8 +1,9 @@
 # Keys
 
-The key reference for `ucw.nvim`. `<leader>` is `<Space>`; press it and wait
-for the which-key popup to see any of this in the editor, or `<leader>sk` to
-search it.
+The key reference for `ucw.nvim`. `<leader>` is `<Space>`; press it and wait:
+the which-key popup shows all of this in the editor, and `<leader>sk` searches
+it. How a key is registered and tested: `extending.md` (recipes) and
+`../AGENTS.md` (rules).
 
 The grammar, before the tables:
 
@@ -30,8 +31,9 @@ The grammar, before the tables:
 ## Global keys
 
 Generated from a real boot by `just keys-doc` (`scripts/keys-doc.lua`):
-every mapping that exists after startup and does not exist in `nvim --clean`,
-grouped by `<leader>` namespace, then by mode. `tests/test_keys_doc.lua` fails
+every key that exists after startup and is not identical to one in
+`nvim --clean` (so a rebound default such as `grr` is listed, an untouched
+one such as `gcc` is not), grouped by `<leader>` namespace, then by mode. `tests/test_keys_doc.lua` fails
 when these tables and the config disagree, so edit the config, not the tables.
 A `→` row is a plugin's own mapping shown by its right-hand side.
 
@@ -42,11 +44,11 @@ A `→` row is a plugin's own mapping shown by its right-hand side.
 |---|---|---|
 | `<leader>?` | n | Buffer-local keymaps (which-key) |
 
-### `<leader>`` — Go to alternate buffer
+### `` <leader>` `` — Go to alternate buffer
 
 | key | mode | does |
 |---|---|---|
-| `<leader>`` | n | Go to alternate buffer |
+| `` <leader>` `` | n | Go to alternate buffer |
 
 ### `<leader>b` — buffer
 
@@ -134,7 +136,7 @@ A `→` row is a plugin's own mapping shown by its right-hand side.
 
 | key | mode | does |
 |---|---|---|
-| `<leader>s ` | n | All pickers |
+| `<leader>s<Space>` | n | All pickers |
 | `<leader>sD` | n | Diagnostics for the whole workspace |
 | `<leader>sS` | n | Symbols in the current workspace |
 | `<leader>sb` | n | Search lines in file |
@@ -197,11 +199,11 @@ A `→` row is a plugin's own mapping shown by its right-hand side.
 | `<C-S-I>` | n | Jump forward to the next file (jumplist) |
 | `<C-S-O>` | n | Jump back to the previous file (jumplist) |
 | `<C-S>` | n | Write file |
-| `<C-S>` | v | Write file |
+| `<C-S>` | v i | Write file |
 | `<C-U>` | n x s | Scroll half a page up (smooth) |
 | `<C-Y>` | n x s | Scroll the view up a little (smooth) |
 | `<C-_>` | n | Toggle comment on this line |
-| `<C-`>` | n | Toggle Terminal |
+| `` <C-`> `` | n | Toggle Terminal |
 | `<CR>` | n | → `Fold_cycle_is_quick_fix_or_commandline() ? "\<CR>" : "<Plug>(fold-cycle-open)"` |
 | `<Esc>` | n | Clear search highlight and notifications |
 | `<M-Bar>` | n | Go to last tab |
@@ -226,7 +228,7 @@ A `→` row is a plugin's own mapping shown by its right-hand side.
 | `<X1Mouse>` | n v | Jump back (jumplist) |
 | `<X2Mouse>` | n v | Jump forward (jumplist) |
 | `F` | n x o | → `<Plug>Lightspeed_F` |
-| `K` | n | Hover over symbol |
+| `K` | n | Peek the fold under the cursor, else hover |
 | `S` | n x | → `<Plug>Lightspeed_S` |
 | `T` | n x o | → `<Plug>Lightspeed_T` |
 | `[c` | n | Prev hunk |
@@ -240,9 +242,13 @@ A `→` row is a plugin's own mapping shown by its right-hand side.
 | `dsl` | n | Delete previous surrounding |
 | `dsn` | n | Delete next surrounding |
 | `f` | n x o | → `<Plug>Lightspeed_f` |
+| `gO` | n | Symbols in the current buffer |
 | `gS` | n | → `<Plug>Lightspeed_gS` |
 | `g[` | n x o | Move to left "around" |
 | `g]` | n x o | Move to right "around" |
+| `gri` | n | Go to implementation |
+| `grr` | n | Find references |
+| `grt` | n | Go to type definition |
 | `gs` | n | → `<Plug>Lightspeed_omni_gs` |
 | `j` | n | Down (visual line, or physical with a count) |
 | `k` | n | Up (visual line, or physical with a count) |
@@ -267,9 +273,11 @@ A `→` row is a plugin's own mapping shown by its right-hand side.
 | `<M-L>` | x | Move right |
 | `a` | x o | Around textobject |
 | `al` | x o | Around last textobject |
+| `an` | x o | Around next textobject |
 | `i` | x o | Inside textobject |
 | `ic` | x o | Select hunk (change)  |
 | `il` | x o | Inside last textobject |
+| `in` | x o | Inside next textobject |
 | `s` | x | → `<Plug>Lightspeed_s` |
 | `ys` | x | Add surrounding to selection |
 
@@ -288,7 +296,7 @@ A `→` row is a plugin's own mapping shown by its right-hand side.
 |---|---|---|
 | `<C-R>` | i | Paste a register literally (no autoindent) |
 | `<C-R><C-O>` | i | Paste a register as typed |
-| `<C-`>` | i | Toggle Terminal |
+| `` <C-`> `` | i | Toggle Terminal |
 | `<X1Mouse>` | i | Jump back (jumplist) |
 | `<X2Mouse>` | i | Jump forward (jumplist) |
 
@@ -373,18 +381,17 @@ Beyond neo-tree's defaults:
 |---|---|
 | `h` / `l` | Move out of / into a directory (close / open it) |
 | `J` / `K` | First / last sibling |
-| `oh` / `ov` | Open in a horizontal / vertical split |
+| `oh` / `ov` | Open in a vertical (side-by-side) / horizontal (stacked) split |
 | `O` | Open with the system handler |
 | `s` / `S` | lightspeed jump inside the tree |
-| `H` | Toggle hidden files |
 | `zo zO zc zC za zA zx zX zm zM zr zR` | Vim fold keys, emulated over the tree (`zR` expands everything, `zm` steps back) |
 
 `\` toggles the tree and `|` toggles it with focus (global keys).
 
 ### Terminal
 
-`` <C-` > `` toggles the floating terminal from any mode (toggleterm); inside it
-`<Esc><Esc>` leaves terminal mode and `` <C-` > `` closes it again. The REPL
+`` <C-`> `` toggles the floating terminal from any mode (toggleterm); inside it
+`<Esc><Esc>` leaves terminal mode and `` <C-`> `` closes it again. The REPL
 window is `<leader>rr`.
 
 ### Completion (blink.cmp, `enter` preset)

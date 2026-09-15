@@ -5,9 +5,6 @@ still render nothing, draw a broken statusline, or leave a blocking prompt. This
 describes how to observe what Neovim *actually draws* — screen text, colors, floating
 windows, the cursor — both interactively and in tests.
 
-All commands below were verified on this machine (nvim 0.12, tmux 3.7, mini.test via
-`just deps`).
-
 There are three tiers, most-to-least recommended by use case.
 
 ---
@@ -43,7 +40,7 @@ Working example: **`tests/test_tui_screenshot.lua`** — one case checks buffer 
 screen, another screenshots a floating window. Run just that file:
 
 ```sh
-nvim --headless --clean -u tests/aux/driver_init.lua \
+mise exec -- nvim --headless --clean -u tests/aux/driver_init.lua \
   -c "lua MiniTest.run_file('tests/test_tui_screenshot.lua')" -c "qa!"
 ```
 

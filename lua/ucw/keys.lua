@@ -49,7 +49,7 @@ end, { expr = true, silent = true, desc = 'Up (visual line, or physical with a c
 -- jumps in `mini.lua` cover the same ground without shadowing anything.
 
 -- folding and lsp
-vim.keymap.set('n', 'K', actions.hoverK, { desc = 'Hover over symbol', silent = true })
+vim.keymap.set('n', 'K', actions.hoverK, { desc = 'Peek the fold under the cursor, else hover', silent = true })
 
 -- Commenting is Neovim's own since 0.10: `gc` (operator + textobject) and `gcc`
 -- (line, honours a count), with 'commentstring' resolved through treesitter

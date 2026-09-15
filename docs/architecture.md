@@ -23,12 +23,12 @@ in this order:
    filetype) and from rustaceanvim (which starts its own client without
    nvim-lspconfig ever loading), and only an autocmd installed before either
    covers both.
-4. `bootstrap_lazy()`: clone lazy.nvim if absent, checked out at the commit
-   `lazy-lock.json` pins for it. lazy.nvim records itself in the lockfile but
-   cannot install itself, so cloning a moving branch (`stable`) made every
-   fresh install write back a different commit than the one checked in, which
-   the CI "lockfile did not drift" gate then failed on. Updating lazy.nvim is
-   `:Lazy update`, same as any plugin.
+4. `bootstrap_lazy()`: clone lazy.nvim if absent and check it out at the
+   commit `lazy-lock.json` pins for it. lazy.nvim records its own commit in
+   the lockfile but cannot install itself; a clone of a moving branch would
+   make every fresh install write a different commit than the one checked in
+   and fail the CI lockfile-drift gate. Updating lazy.nvim is `:Lazy update`,
+   same as any plugin.
 5. `require('lazy').setup` with two imports, in order: `ucw.plugins`, then
    `ucw.plugins.user`. lazy.nvim merges specs that share a plugin across
    imports, later import winning, so a same-named file under `plugins/user/`
@@ -54,7 +54,7 @@ lua/ucw/git.lua               neogit <-> codediff seam, commit-message float
 lua/ucw/health.lua            :checkhealth ucw
 lua/ucw/gui.lua               Neovide options
 lua/ucw/lsp/                  see "LSP"
-lua/ucw/neotree/              neo-tree helpers used by its spec
+lua/ucw/neotree/              neo-tree's `config` (its mapping table) and helpers
 lua/ucw/textobjects/          ipython cell textobject/motions
 lua/ucw/plugins/*.lua         one lazy.nvim spec per plugin
 lua/ucw/plugins/user/         same-named overrides (empty)
@@ -66,17 +66,17 @@ tests/                        mini.test suite (see testing.md)
 
 ## Targets
 
-`lua/ucw/targets.lua` is what is left of the old "target" idea: four
-predicates — `is_gui`, `is_firenvim`, `is_vscode`, `is_full_ui` —
-used as `cond = ...` on specs. `is_full_ui` (not firenvim, not vscode-neovim)
-gates the tabline, the gutter, sessions, folding, indent guides and the whole
-LSP stack (lspconfig, mason, lazydev, lsp_progress, rustaceanvim, clangd
-extensions); which-key is gated narrower, on `not is_vscode` (it stays under
-firenvim); the statusline, file tree and picker load everywhere. A spec with
-`cond` false is
-absent from lazy.nvim's plugin table entirely — its `keys =` are not
-registered, `:Lazy` does not list it — so code that reaches into such a
-plugin from an embedded context must not assume it exists.
+`lua/ucw/targets.lua` holds four predicates — `is_gui`, `is_firenvim`,
+`is_vscode`, `is_full_ui` — used as `cond = ...` on specs. `is_full_ui` (not
+firenvim, not vscode-neovim) gates the tabline, the gutter, sessions,
+folding, indent guides and the LSP stack (lspconfig, mason-lspconfig,
+mason-tool-installer, lazydev, lsp_progress, rustaceanvim, clangd
+extensions; mason.nvim itself is `cmd`-lazy and ungated); which-key is gated
+narrower, on `not is_vscode` (it stays under firenvim); the statusline, file
+tree and picker load everywhere. A spec with `cond` false is absent from
+lazy.nvim's plugin table entirely — its `keys =` are not registered, `:Lazy`
+does not list it — so code that reaches into such a plugin from an embedded
+context must not assume it exists.
 
 The same predicate gates two autocmd-driven behaviours outside any spec:
 format-on-save (under firenvim a `BufWrite` is the push back to the web page,
@@ -88,8 +88,8 @@ notifies once and skips).
 
 One file per plugin under `lua/ucw/plugins/`, returning a lazy.nvim spec. The
 file is the plugin's whole configuration: its `opts`/`config`, its
-`dependencies`, its `cond`, and **its keys**. Phase 8 moved every plugin's
-keymaps into its own spec's `keys =`; `which-key.lua` keeps only the
+`dependencies`, its `cond`, and **its keys**. Every plugin's keys are in its
+own spec's `keys =`; `which-key.lua` keeps only the
 `<leader>` group headers, the core editor keys, and the few leaves that
 belong to the editor rather than a plugin. Toggles are `Snacks.toggle`
 objects (editor-level ones in `toggles.lua`, plugin-owned ones in the
@@ -106,7 +106,8 @@ Conventions the suite enforces, each with the reason it exists:
 - **Prefix placement** follows the table in `design/phase9-keybindings.md` §5,
   not the plugin's README defaults.
 
-The **`<leader>` map** as built (Phase 9, trial-adjusted in 9.5):
+The **`<leader>` map** (`design/phase9-keybindings.md` §3, adjusted by
+`design/phase9.5-trial-period.md` §1):
 `c` code · `f` find (files) · `s` search (everything else) · `g` git
 (`go` octo) · `u` toggles · `r` REPL · `q` quit/session · `b` buffer ·
 `w` window · `t` tab · `n` notifications · `l` `:Lazy` · `?` buffer-local
@@ -158,20 +159,18 @@ replaces nvim-lspconfig's rather than composing with it.
   **mini** supplies `ai` textobjects (`g[`/`g]` are mini.ai's edge motions,
   not directions), `surround`, `move`, `icons`; **autopairs** is its own spec.
 - **blink.cmp** completes with the pure-Lua fuzzy matcher (the Rust matcher
-  has an open upstream SIGSEGV) and owns signature help on `<C-k>`.
+  segfaults; upstream issue open) and owns signature help on `<C-k>`.
 - **snacks** owns `vim.ui.input`, `vim.ui.select`, every picker key, and the
   notification renderer that **noice** (which wraps `vim.notify`) draws
   through. Its picker config silently drops unknown keys; check the field
   name before assuming a setting did nothing.
 - **treesitter** is on the rewritten `main` API (no `configs.setup`);
-  parsers auto-install at boot under the gate above. After a Neovim upgrade,
-  update nvim-treesitter and `:TSUpdate` together — a query/runtime mismatch
-  kills the async parse coroutine and every redraw errors until `:e!`.
+  parsers auto-install at boot under the gate above.
 
 ## Git
 
 **neogit** for status/log/commit, **codediff** for every diff view (diffview
-is out: its hand-rolled async re-enters libuv through nested `vim.wait()` and
+is not used: its hand-rolled async re-enters libuv through nested `vim.wait()` and
 segfaults), **gitsigns** for the gutter and hunk keys. `lua/ucw/git.lua` is
 the seam neither plugin has: `<CR>` on a commit in any neogit buffer opens it
 in codediff (bound buffer-locally on `BufWinEnter`, because neogit's own
@@ -217,13 +216,5 @@ decision → as-built) and an independent acceptance review under `design/`:
 | 9.5 | trial-period tuning | `phase9.5-trial-period.md` | (covered by the Phase 9 review) |
 
 A design document is the record of its own phase; where a later phase
-superseded a decision, the earlier document says so inline and points
-forward. This file and `AGENTS.md` are the current description.
-
-What comes next is not a phase. The two features Phase 9 reserved prefixes
-for — a debugger under `<leader>d` and AI integration under `<leader>a` —
-and anything else that gets added, land as ordinary changes: the spec, its
-keys, its tests and the update to this file and `AGENTS.md` in the same
-change. A design document under `design/` is warranted only when a change
-reopens a recorded decision; the placement rule for its keys is
-`design/phase9-keybindings.md` §5.
+superseded a decision, the earlier document says so inline. How new work is
+added is in `../AGENTS.md`.

@@ -5,8 +5,8 @@ expands the short note in `../tests/README.md`.
 
 ## Running
 
-Prerequisites: `nvim`, `git`, `just`, and **`mise`** — the last one since Phase 6.5,
-which pins this repo's own binaries (`stylua`, `lua-language-server`, `ruff`, `taplo`)
+Prerequisites: `nvim`, `git`, `just`, and **`mise`**, which pins this repo's own
+binaries (`stylua`, `lua-language-server`, `ruff`, `taplo`)
 in `mise.toml` the way any project pins its tools. Nothing needs `mise trust`; the file
 is deliberately kept to plain `[tools]` with literal versions.
 
@@ -31,9 +31,9 @@ mise exec -- nvim --headless --clean \
 
 The `mise exec --` is not decoration. `just deps` installs into mise's store but puts
 nothing on `PATH`, and a shell only has the project's tools if `mise activate` ran in
-it — one measurably had not. Dropping the prefix runs the formatter tests against
-whatever the ambient shell happens to have: 7 of the 15 cases in
-`tests/test_format.lua` go red on a shell with no `stylua`/`ruff`/`taplo`.
+it. Dropping the prefix runs the formatter tests against whatever the ambient
+shell happens to have: the CLI-formatter cases in `tests/test_format.lua` go red
+on a shell with no `stylua`/`ruff`/`taplo`.
 See `design/phase6.5-binary-deps.md` §2.3a.
 
 `g:TestTags` is a space-separated tag filter (`tests/aux/driver_run.lua` keeps only
@@ -106,7 +106,7 @@ H.boot_embedded(child, 'vscode')
   never races the installer. Everything is `lazy.nvim`-lazy in the child, so a
   test that needs a plugin loads it explicitly
   (`require('lazy').load({ plugins = { 'nvim-lspconfig' } })`). Example:
-  `tests/test_boot.lua` is a smoke test that just boots without error.
+  `tests/test_boot.lua` is a smoke test: boots without error.
 
 ### Common child patterns
 
@@ -127,51 +127,38 @@ normal mode (`child.ensure_normal_mode()`) and/or raise `cmdheight`.
 
 Drop a `tests/test_<name>.lua` returning a `MiniTest.new_set()` (the helpers return
 one). It is picked up automatically and tagged unit/integration by the helper you use.
-Tests under `tests/` use 4-space indent (match the sibling files).
+Formatting is stylua's, the same as the rest of the repo (`just fmt`).
 
-## Rules earned the hard way
+## Rules
 
-Each of these comes from a bug that shipped green, recorded in
-`docs/design/phase*-acceptance-review.md`. They cost nothing to follow and each
-one has already caught something.
+The reasoning behind each is in `docs/design/phase*-acceptance-review.md`.
 
 - **Verify a regression test in reverse.** After fixing a bug, revert the fix and
   confirm *that* test — and ideally only that test — goes red. A test written
-  from the same mental model as the fix passes either way otherwise; Phase 4's
-  fold tests were green both with and without the bug they were meant to pin.
-- **Test the seams, not just the modules.** Every Phase 3 finding was between two
-  modules, never inside one: two owners of one flag, two authors of one settings
-  table, one plugin depending on another's side effect. Per-module tests cannot
-  see any of that by construction — assert the *combined* end state.
+  from the same mental model as the fix passes either way.
+- **Test the seams, not just the modules.** Two owners of one flag, two authors
+  of one settings table, one plugin depending on another's side effect: none of
+  it is visible to a per-module test. Assert the *combined* end state.
 - **Never leave a test racing an async subsystem.** No sleeps and no retries:
-  find the call that makes it synchronous. Notably, `vim.treesitter.start()` only
-  arms the highlighter — injected language trees do not exist until something
-  parses, so a test touching injections needs an explicit
-  `vim.treesitter.get_parser(0):parse(true)`. Without it `tests/test_comment.lua`
-  passed about two runs in three, which is worse than failing.
+  find the call that makes it synchronous. `vim.treesitter.start()` only arms
+  the highlighter; a test touching injections needs an explicit
+  `vim.treesitter.get_parser(0):parse(true)`.
 - **Run the suite twice before believing it.** A single green run does not
   distinguish "correct" from "lucky".
-- **Green is not acceptance.** Two Phase 3 bugs and two Phase 4 bugs were found
-  only by driving a real TUI (`docs/tui-observation.md`) while the whole suite
-  was green. Assert on what is actually on screen or in `:messages`.
-- **Capture the "before" before changing anything.** A regression only looks like
-  one next to a baseline. Phase 5 dropped a session hook on the strength of an
-  upstream option covering it, and the restored layout that came back with an
-  extra window looked perfectly plausible on its own — the pre-change recording
-  of the same save/restore cycle is the only reason it was caught.
-- **An option's default is not a call site.** `close_unsupported_windows`
-  defaults to `true`, which says nothing about *when* it runs — it is invoked
-  from the autosave path only. Reading a config table is the same class of
-  mistake as grepping for a function name; trace it to where it is called.
+- **Green is not acceptance.** Drive a real TUI (`docs/tui-observation.md`) and
+  assert on what is on screen or in `:messages`; the suite cannot see either.
+- **Capture the "before" before changing anything.** A regression only looks
+  like one next to a baseline recording of the same operation.
+- **An option's default is not a call site.** Trace an option to where it is
+  read; a config table says nothing about *when* the code that reads it runs.
 - **When a probe reports something startling, suspect the probe.** An RPC
-  `nvim_exec_lua` runs in whatever buffer is current, and a picker that has just
-  closed still is — which made a buffer-local keymap read like a broken global
-  one. Check `maparg().buffer`, and use `bufname('%')`: `bufname(0)` asks for
-  buffer number 0, which does not exist, and answers `''`.
+  `nvim_exec_lua` runs in whatever buffer is current (a picker that has just
+  closed still is); check `maparg().buffer`, and use `bufname('%')` — `bufname(0)`
+  answers `''`.
 
 ## CI
 
-`.github/workflows/ci.yml` (Phase 7) runs on every push and pull request. Three jobs,
+`.github/workflows/ci.yml` runs on every push and pull request. Three jobs,
 each of which only calls `just`, so every gate is reproducible locally by copying one
 line:
 
