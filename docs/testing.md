@@ -64,9 +64,9 @@ mise exec -- nvim --headless --clean -u tests/aux/driver_init.lua \
    runs each `tests/test_*.lua`.
 2. **Child** — each test spawns a fresh child nvim per case
    (`MiniTest.new_child_neovim()`), driven over RPC. The child is `--headless` with
-   **no UI attached**: `#vim.api.nvim_list_uis()` is `0`, which `tests/test_lsp.lua`
-   and `tests/test_treesitter.lua` both assert as a precondition, because two
-   subsystems skip their automatic installs when nothing is attached.
+   **no UI attached**: `#vim.api.nvim_list_uis()` is `0`, which
+   `tests/test_treesitter.lua` asserts as a precondition, because the automatic
+   parser install skips itself when nothing is attached.
 
    Screenshots do not come from a UI. mini.test starts the child with
    `--cmd 'set lines=24 columns=80'` and `child.get_screenshot()` reads
@@ -81,7 +81,7 @@ mise exec -- nvim --headless --clean -u tests/aux/driver_init.lua \
 
 ## Writing tests
 
-Two helpers in `tests/aux/lua/helpers.lua`:
+Three helpers in `tests/aux/lua/helpers.lua`:
 
 ```lua
 local H = require('helpers')
@@ -91,6 +91,10 @@ local T, child = H.new_unit_test()
 
 -- Integration: boots the whole ucw.nvim config. Auto-tagged "integration".
 local T, child = H.new_integration_test()
+
+-- Reboot an integration child as firenvim / vscode-neovim (sets the marker
+-- global before the config loads), for the embedded-context cases.
+H.boot_embedded(child, 'vscode')
 ```
 
 - **Unit tests** are for pure modules — require the module in the child and assert on

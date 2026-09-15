@@ -1,6 +1,7 @@
--- snacks.nvim owns three things here: `vim.ui.input`, the fuzzy picker
--- (`vim.ui.select` and every explicit picker keybinding), and `vim.notify`
--- rendering.
+-- snacks.nvim owns four things here: `vim.ui.input`, the fuzzy picker
+-- (`vim.ui.select` and every explicit picker keybinding), `vim.notify`
+-- rendering, and `snacks.words` (automatic LSP reference highlighting plus
+-- the `[r`/`]r` jumps).
 --
 -- Phase 5 made the picker part load-bearing. Before it, `picker.ui_select`
 -- was already routing every `vim.ui.select` through snacks while Telescope

@@ -66,11 +66,14 @@ tests/                        mini.test suite (see testing.md)
 
 ## Targets
 
-`lua/ucw/targets.lua` is what is left of the old "target" idea: five
-predicates — `is_tui`, `is_gui`, `is_firenvim`, `is_vscode`, `is_full_ui` —
+`lua/ucw/targets.lua` is what is left of the old "target" idea: four
+predicates — `is_gui`, `is_firenvim`, `is_vscode`, `is_full_ui` —
 used as `cond = ...` on specs. `is_full_ui` (not firenvim, not vscode-neovim)
-gates everything with a UI surface of its own: tabline, statusline, file
-tree, gutter, picker, which-key, the LSP stack. A spec with `cond` false is
+gates the tabline, the gutter, sessions, folding, indent guides and the whole
+LSP stack (lspconfig, mason, lazydev, lsp_progress, rustaceanvim, clangd
+extensions); which-key is gated narrower, on `not is_vscode` (it stays under
+firenvim); the statusline, file tree and picker load everywhere. A spec with
+`cond` false is
 absent from lazy.nvim's plugin table entirely — its `keys =` are not
 registered, `:Lazy` does not list it — so code that reaches into such a
 plugin from an embedded context must not assume it exists.

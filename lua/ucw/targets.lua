@@ -14,10 +14,6 @@ function M.is_vscode()
   return vim.g.vscode == true
 end
 
-function M.is_tui()
-  return not M.is_gui() and not M.is_firenvim() and not M.is_vscode()
-end
-
 -- the "full" editing UI (tabs/statusline/tree/etc) - everything except the
 -- embedded/minimal contexts (firenvim, vscode-neovim)
 function M.is_full_ui()

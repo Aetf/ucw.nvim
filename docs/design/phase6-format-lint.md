@@ -1,5 +1,10 @@
 # Phase 6 design: formatting and linting
 
+> **Key names in this document are the Phase-6 originals.** Phase 9
+> (`phase9-keybindings.md`) renamed the `<leader>` namespaces wholesale:
+> `<leader>lf` is `<leader>cf` (D2). This document is the record of its own phase and is not rewritten.
+
+
 > Revision history
 >
 > * **r1** (2026-08-05) — proposal. Everything under "What is actually

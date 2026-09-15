@@ -1,1 +1,0 @@
-{"rule":"LC_AFTER_PERIOD","sentence":"^\\QSee systemd.unit for details.\\E$"}

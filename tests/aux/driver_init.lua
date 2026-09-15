@@ -2,7 +2,7 @@
 -- subprocess, the driver init intentionally does nothing and load no
 -- dependencies.
 
--- Set up 'mini.test' only when calling headless Neovim (like with `make test`)
+-- Set up 'mini.test' only when calling headless Neovim (`just test`)
 if #vim.api.nvim_list_uis() ~= 0 then
   error('Test driver init.lua called from non-headless nvim instance')
 end

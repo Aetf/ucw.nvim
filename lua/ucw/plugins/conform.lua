@@ -37,7 +37,7 @@ return {
   opts = {
     -- Conform's own default is `lsp_format = 'never'`: a filetype with no
     -- `formatters_by_ft` entry and no override gets no formatting at all,
-    -- which would regress `<leader>lf` for every filetype this phase didn't
+    -- which would regress `<leader>cf` for every filetype this phase didn't
     -- touch (clangd, ltex, rust-analyzer, ...) versus today's
     -- `vim.lsp.buf.format()`, which reaches whatever attached client offers
     -- it. `'fallback'` (try LSP only when no formatter is configured) keeps
@@ -71,7 +71,7 @@ return {
     -- `format_on_save` puts `prettier` between the user's prose and the
     -- comment box on every sync. vscode-neovim likewise owns its own save
     -- pipeline (and its own format-on-save setting). Neither is a place for
-    -- this config to rewrite text unasked; `<leader>lf` still formats there,
+    -- this config to rewrite text unasked; `<leader>cf` still formats there,
     -- which is the difference between explicit and automatic.
     -- See docs/design/phase6-format-lint.md r6.
     format_on_save = function(_bufnr)

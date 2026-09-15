@@ -785,5 +785,6 @@ divert and both halves of `<leader>gm`. The `file-granular jumplist` set in
 - **`<leader>e`/`E` are free.** So are `a d h i j k m o p v x y z` and most
   capitals (§3 of Phase 9); `d` and `a` stay reserved for the debugger and AI
   goals.
-- **rustaceanvim's buffer-local `<leader>a`** is still squatting the reserved AI
-  letter (carried over from Phase 9 §7).
+- ~~**rustaceanvim's buffer-local `<leader>a`** is still squatting the reserved AI
+  letter (carried over from Phase 9 §7).~~ Resolved 2026-09-14: it is a
+  buffer-local `<leader>ca` override now (Phase 9 §7 r4).

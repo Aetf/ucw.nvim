@@ -7,7 +7,7 @@ In the driver stage, the vim instance is initialized with
 The driver vim is the environment that executes all testing scripts
 `test_*.lua`.
 The driver instance has clean runtime path without any user config.
-From there, the following three entries are added to the runtime path:
+From there, two entries are added to the runtime path:
 
 * suitable path to require `mini.test`.
 * path to test helper (`tests/aux`).

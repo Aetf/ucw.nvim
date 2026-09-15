@@ -460,3 +460,6 @@ Divergences and findings from construction, none changing a decision:
   predates this phase and only exists per-buffer, but it sits on the
   letter §3 reserves for AI integration — resolve it when that goal
   lands (candidate: fold into `<leader>ca` as a buffer-local override).
+  **(r4)** Resolved 2026-09-14 along the candidate line: Rust buffers
+  override `<leader>ca` buffer-locally with the grouped version;
+  `<leader>a` is free.

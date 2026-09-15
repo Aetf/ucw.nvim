@@ -9,10 +9,6 @@ function M.bufdelete(bufnr, force)
   return utils.bufdelete(bufnr, force)
 end
 
-function M.bufwipeout(bufnr, force)
-  return utils.bufwipeout(bufnr, force)
-end
-
 -- `vim.cmd` is a callable *table*, not a function, so `pcall`'s `fun(...)`
 -- parameter type rejects it while `pcall` itself is perfectly happy with
 -- anything that has a `__call`. Same suppression on `bufprev` below.

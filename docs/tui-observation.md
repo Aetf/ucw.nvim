@@ -5,8 +5,8 @@ still render nothing, draw a broken statusline, or leave a blocking prompt. This
 describes how to observe what Neovim *actually draws* — screen text, colors, floating
 windows, the cursor — both interactively and in tests.
 
-All commands below were verified on this machine: nvim 0.12.3, tmux 3.7b, mini.test
-via `just deps`.
+All commands below were verified on this machine (nvim 0.12, tmux 3.7, mini.test via
+`just deps`).
 
 There are three tiers, most-to-least recommended by use case.
 
@@ -14,8 +14,8 @@ There are three tiers, most-to-least recommended by use case.
 
 ## Tier A — reproducible screenshots in tests (mini.test child)
 
-The test harness already spawns a child Neovim with a real UI attached, and
-`child.get_screenshot()` returns the rendered grid. This is the canonical way to lock
+The test harness spawns a `--headless` child Neovim with no UI attached, and
+`child.get_screenshot()` reads its internal 24×80 screen grid back. This is the canonical way to lock
 UI behavior into the suite.
 
 ```lua

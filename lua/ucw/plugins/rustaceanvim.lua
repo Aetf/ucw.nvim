@@ -42,7 +42,10 @@ return {
         if not client or client.name ~= 'rust-analyzer' then
           return
         end
-        vim.keymap.set('n', '<leader>a', function()
+        -- The same door as everywhere else (`<leader>ca`), buffer-locally
+        -- swapped for rustaceanvim's grouped version. `<leader>a` is reserved
+        -- for AI (phase9-keybindings.md §5) and is not squatted here.
+        vim.keymap.set({ 'n', 'x' }, '<leader>ca', function()
           vim.cmd.RustLsp('codeAction') -- supports rust-analyzer's grouping
         end, { silent = true, buffer = args.buf, desc = 'Code actions (rust-analyzer groups)' })
       end,

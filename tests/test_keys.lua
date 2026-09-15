@@ -557,14 +557,23 @@ end
 T['eager specs'] = new_set()
 
 -- The trap Phase 8 itself discovered: `keys =` on a spec silently makes it
--- lazy, so five eager plugins carry an explicit `lazy = false` that nothing
--- else guards (acceptance review, R3). Measured before this case existed:
+-- lazy, so every eager plugin with keys carries an explicit `lazy = false`
+-- that nothing else guards (acceptance review, R3). The list below is every
+-- such spec; a new one goes here too. Measured before this case existed:
 -- deleting bufferline's line left the suite 150/150 green while a real TUI
 -- booted with no tabline; a lazy auto-session never arms session autosave.
 -- gitsigns alone failed a test, and only because its toggles happen to
 -- register in `config()`.
 T['eager specs']['every keys-bearing eager plugin really loads at boot'] = function()
-  for _, name in ipairs { 'gitsigns.nvim', 'bufferline.nvim', 'auto-session', 'Navigator.nvim', 'iron.nvim' } do
+  for _, name in ipairs {
+    'gitsigns.nvim',
+    'bufferline.nvim',
+    'auto-session',
+    'Navigator.nvim',
+    'iron.nvim',
+    'snacks.nvim',
+    'noice.nvim',
+  } do
     eq(
       { name, child.lua_get(([[require('lazy.core.config').plugins[%q]._.loaded ~= nil]]):format(name)) },
       { name, true }

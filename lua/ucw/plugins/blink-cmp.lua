@@ -70,14 +70,11 @@ return {
     -- actually implements (snippets, resolve support, label details, ...) to
     -- every server.
     --
-    -- Deliberately NOT done through `ucw.lsp.register_on_server_setup`, which
-    -- is what cmp-nvim-lsp used: that hook is installed by monkey-patching
-    -- `lspconfig.util.on_setup`, but servers are enabled by mason-lspconfig's
-    -- `automatic_enable`, which calls native `vim.lsp.enable()` and never goes
-    -- through lspconfig's setup path. Verified empirically - the hook fires
-    -- zero times with clients attached - so cmp-nvim-lsp's capability merge
-    -- had silently stopped taking effect. `vim.lsp.config('*', ...)` is the
-    -- native lowest-priority layer that `vim.lsp.enable()` does honour.
+    -- `vim.lsp.config('*', ...)` is the native lowest-priority layer that
+    -- `vim.lsp.enable()` honours. cmp-nvim-lsp used to merge through the
+    -- pre-Phase-3 `ucw.lsp.register_on_server_setup` hook, which monkey-
+    -- patched `lspconfig.util.on_setup` - a path `vim.lsp.enable()` never
+    -- takes, so that merge fired zero times once servers came up natively.
     --
     -- Passing include_nvim_defaults=true matters: blink only returns its own
     -- completion-related capabilities otherwise, which would drop everything

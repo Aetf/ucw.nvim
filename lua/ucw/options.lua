@@ -1,5 +1,4 @@
 local au = require('au')
-local utils = require('ucw.utils')
 local targets = require('ucw.targets')
 
 -- UI elements
@@ -130,7 +129,7 @@ vim.opt.shada = [[!,'1000,<500,s100,h,/100,:100,f1]]
 
 -- more info to save in session (required by auto-session)
 vim.opt.sessionoptions:append('winpos,terminal,localoptions')
--- saving options may interference with packer.nvim lazy loading
+-- saved options interfere with lazy.nvim's lazy loading on restore
 vim.opt.sessionoptions:remove('options')
 
 -- Reload a file changed outside nvim, as long as it has no unsaved changes

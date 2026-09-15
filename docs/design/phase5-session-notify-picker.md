@@ -1,5 +1,10 @@
 # Phase 5 design: sessions, notifications, and the picker
 
+> **Key names in this document are the Phase-5 originals.** Phase 9
+> (`phase9-keybindings.md`) renamed the `<leader>` namespaces wholesale:
+> sessions moved from `<leader>s*` to `<leader>q*`, the `<leader>T` picker tree to `<leader>s`/`<leader>f`, and the `<leader>n*` notification tree dissolved into `<leader>n` (D3/D7). This document is the record of its own phase and is not rewritten.
+
+
 > Revision history
 >
 > * **r1** (2026-08-02) — proposal. Everything under "What is actually running

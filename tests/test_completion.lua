@@ -198,11 +198,11 @@ end
 T['lsp'] = new_set()
 
 -- Guards the bug this phase actually uncovered: cmp-nvim-lsp merged its
--- capabilities through `ucw.lsp.register_on_server_setup`, which is installed by
--- monkey-patching `lspconfig.util.on_setup`. Servers are enabled via
--- mason-lspconfig's `automatic_enable`, i.e. native `vim.lsp.enable()`, which
--- never goes through that path - so the hook fired zero times and the merge had
--- silently stopped happening. blink registers on `vim.lsp.config('*')` instead.
+-- capabilities through the old `ucw.lsp.register_on_server_setup` hook, which
+-- monkey-patched `lspconfig.util.on_setup`. Servers come up through native
+-- `vim.lsp.enable()` (`ucw.lsp.setup()`), which never takes that path, so the
+-- hook fired zero times and the merge had silently stopped happening. blink
+-- registers on `vim.lsp.config('*')` instead.
 T['lsp']['completion capabilities are advertised to every server'] = function()
   local caps = child.lua_get([[vim.lsp.config['*'].capabilities]])
   eq(caps.textDocument.completion.completionItem.snippetSupport, true)

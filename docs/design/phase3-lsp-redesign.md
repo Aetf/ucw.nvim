@@ -1,5 +1,10 @@
 # Phase 3 design: LSP subsystem redesign
 
+> **Key names in this document are the Phase-3 originals.** Phase 9
+> (`phase9-keybindings.md`) renamed the `<leader>` namespaces wholesale:
+> the `<leader>l` LSP tree is `<leader>c` and the goto/list keys are the native `gr*` shapes (D1/D2); `<leader>lI` is `<leader>uh` (D4). This document is the record of its own phase and is not rewritten.
+
+
 Status: **revision 5 — implemented, reviewed twice, findings fixed** (commits "Phase 3:
 replace the LSP hook framework with Neovim's native config layers",
 "Phase 3: pyright -> basedpyright", and the acceptance fixes). Revision 2

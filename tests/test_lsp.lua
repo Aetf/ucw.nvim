@@ -422,7 +422,7 @@ T['attach']['handlers work without nvim-lspconfig ever loading'] = function()
 
   eq(child.lua_get([[require('lazy.core.config').plugins['nvim-lspconfig']._.loaded ~= nil]]), false)
   eq(child.lua_get([[vim.fn.maparg('gd', 'n', false, true).buffer]]), 1)
-  eq(child.lua_get([[vim.fn.maparg(' a', 'n', false, true).buffer]]), 1)
+  eq(child.lua_get([[vim.fn.maparg(' ca', 'n', false, true).buffer]]), 1)
   eq(child.lua_get([[vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })]]), true)
 end
 
@@ -433,12 +433,16 @@ end
 -- nothing would have said so.
 T['attach']['rustaceanvim keymap matches the hyphenated client name'] = function()
   start_fake('rust-analyzer')
-  eq(child.lua_get([[vim.fn.maparg(' a', 'n', false, true).buffer]]), 1)
+  eq(child.lua_get([[vim.fn.maparg(' ca', 'n', false, true).buffer]]), 1)
+  eq(child.lua_get([[vim.fn.maparg(' ca', 'n', false, true).desc]]), 'Code actions (rust-analyzer groups)')
+  -- the reserved AI letter stays free
+  eq(child.lua_get([[vim.fn.maparg(' a', 'n') == '']]), true)
 end
 
 T['attach']['a differently named client does not get the rust keymap'] = function()
   start_fake('not-rust')
-  eq(child.lua_get([[vim.tbl_isempty(vim.fn.maparg(' a', 'n', false, true))]]), true)
+  -- the global `<leader>ca` is still there; no buffer-local override is
+  eq(child.lua_get([[vim.fn.maparg(' ca', 'n', false, true).buffer or 0]]), 0)
 end
 
 T['attach']['inlay hints and codelens are enabled per buffer'] = function()

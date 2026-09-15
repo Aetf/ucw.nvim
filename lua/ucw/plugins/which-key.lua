@@ -143,7 +143,7 @@ local function config()
   -- Window and Buffer: core-editor keys only. Plugin-owned ones moved to
   -- their specs (Phase 8, D1): window/tab *navigation* to `navigator.lua`,
   -- `<C-PageDown/Up>` + `<leader>bd` to `bufferline.lua`, `<leader>bb` to
-  -- `snacks.lua`, `<leader>s*` session keys to `auto-session.lua`.
+  -- `snacks.lua`, `<leader>q*` session keys to `auto-session.lua`.
   --
   -- `<Tab>`/`<S-Tab>` stay: `ucw.keys.actions.bufnext/bufprev` *prefer*
   -- bufferline but fall back to `:bnext`/`:bprev`, so they are not owned by

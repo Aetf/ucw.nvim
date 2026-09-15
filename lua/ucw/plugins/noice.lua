@@ -54,7 +54,7 @@ return {
         -- `basedpyright` cards over the buffer text (measured: 27 LspProgress
         -- events in the six seconds after one `:edit`).
         progress = { enabled = false },
-        -- override markdown rendering so that **cmp** and other plugins use **Treesitter**
+        -- override markdown rendering so that hover/signature docs render through Treesitter
         override = {
           ['vim.lsp.util.convert_input_to_markdown_lines'] = true,
           ['vim.lsp.util.stylize_markdown'] = true,

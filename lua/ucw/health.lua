@@ -40,7 +40,7 @@ end
 -- Availability is therefore *reported*, not assumed - and not re-derived from
 -- `ucw.targets` either. Asking "is this a full UI?" here would make this file
 -- a second owner of a rule the specs already own, which is exactly the seam
--- that made `<leader>lf` throw `module 'conform' not found` under firenvim
+-- that made the format key (then `<leader>lf`) throw `module 'conform' not found` under firenvim
 -- (docs/design/phase6-acceptance-review.md R1).
 ---@return table? registry mason-registry
 ---@return table? mappings mason-lspconfig.mappings

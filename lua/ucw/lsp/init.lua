@@ -3,9 +3,10 @@
 -- There is no framework here any more. Neovim 0.12's native four-layer config
 -- (`vim.lsp.config('*')` -> `<rtp>/lsp/<name>.lua` -> `<rtp>/after/lsp/<name>.lua`
 -- -> explicit `vim.lsp.config(name, ...)`) plus `LspAttach` covers everything
--- `ucw.lsp.hooks` used to hand-roll, so this module is only three things: the
--- server list, the filetypes derived from it, and one `setup()` that installs
--- the attach handlers and calls `vim.lsp.enable()`.
+-- `ucw.lsp.hooks` used to hand-roll, so this module is only two derived lists
+-- over `ucw.lsp.servers` (names, filetypes) and one `setup()` that sets the
+-- `'*'` position encoding and calls `vim.lsp.enable()`. The attach handlers
+-- are installed from `ucw.boot`, not here (see `setup()`).
 --
 -- See docs/design/phase3-lsp-redesign.md for the measurements behind that.
 

@@ -76,7 +76,7 @@ au.group('CloseWithQ', {
     'FileType',
     { 'help', 'qf' },
     function()
-      -- `buffer = 0`, not an event argument: `ucw.au` registers through the
+      -- `buffer = 0`, not an event argument: `au` registers through the
       -- `:autocmd` string form, so the callback takes none. `FileType` fires
       -- with the buffer it is about already current.
       vim.keymap.set('n', 'q', '<C-w>q', {

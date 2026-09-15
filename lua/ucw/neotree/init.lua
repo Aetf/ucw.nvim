@@ -3,8 +3,8 @@ local M = {}
 function M.config()
   local helpers = require('ucw.neotree.helpers')
   -- Termcode escaping for the two lightspeed mappings below. This used to be
-  -- missing entirely: `t` is a local in lua/ucw/keys/actions.lua and was never
-  -- imported here, so `s`/`S` in the tree window raised "attempt to call a nil
+  -- missing entirely: `t` was an un-imported local, so `s`/`S` in the tree
+  -- window raised "attempt to call a nil
   -- value" instead of jumping. Found by `just lint`, not by using the editor,
   -- which is the argument for having the gate at all (phase7-ci.md §1.5).
   local t = require('ucw.utils').t
@@ -12,7 +12,7 @@ function M.config()
   require('neo-tree').setup {
     close_if_last_window = true,
     hide_root_node = true,
-    -- use vim.ui.input for inputs, which will be dressed up by dressing.vim
+    -- use vim.ui.input for inputs, which snacks.input renders
     use_popups_for_input = false,
     event_handlers = {
       {

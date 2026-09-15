@@ -1,16 +1,7 @@
 local L = vim.loop
-local o_s = vim.o
 local map_key = vim.api.nvim_set_keymap
-local au = require('au')
 
 local M = {}
-
-M.opt = function(o, v, scopes)
-  scopes = scopes or { o_s }
-  for _, s in ipairs(scopes) do
-    s[o] = v
-  end
-end
 
 M.map = function(modes, lhs, rhs, opts)
   opts = opts or {}
@@ -25,26 +16,6 @@ end
 
 M.is_gui = function()
   return vim.g.neovide or vim.g.nvui
-end
-
-local pager_mode = nil
-function M.is_pager_mode()
-  if pager_mode ~= nil then
-    return pager_mode
-  end
-  -- `vim.fn.argv()` is annotated `string|string[]` because the zero-argument
-  -- form returns the list and the one-argument form returns a single name;
-  -- called with none, as here, it is always the list `next` wants.
-  ---@diagnostic disable-next-line: param-type-mismatch
-  local opened_with_args = next(vim.fn.argv()) ~= nil -- Neovim was opened with args
-
-  pager_mode = pager_mode or opened_with_args
-  return pager_mode
-end
-
-function M.is_dir(path)
-  local stats = L.fs_stat(path)
-  return stats and stats.type == 'directory'
 end
 
 -- 1-based wraping
@@ -188,7 +159,7 @@ local function buf_kill(kill_cmd, bufnr, force)
       -- try to use the window's alternate buffer first
       if next_buffer == nil then
         local alt_buf = vim.api.nvim_win_call(win, function()
-          vim.fn.bufnr('#')
+          return vim.fn.bufnr('#')
         end)
         if alt_buf and is_normal_buffer(alt_buf) then
           next_buffer = alt_buf
@@ -215,10 +186,6 @@ M.win_jump_other_buf = win_jump_other_buf
 
 M.bufdelete = function(bufnr, force)
   return buf_kill('bd', bufnr, force)
-end
-
-M.bufwipeout = function(bufnr, force)
-  return buf_kill('bw', bufnr, force)
 end
 
 ---Get the property `prop` specified as dot separated path from `obj`, creating empty table for
@@ -368,24 +335,5 @@ function M.FileWatcher:close()
   self.watcher:close()
   self.timer:stop()
 end
-
-local setup_done = false
-local function setup()
-  if setup_done then
-    return
-  end
-  au.group('Stdin', {
-    {
-      'StdinReadPre',
-      '*',
-      function()
-        pager_mode = true
-      end,
-    },
-  })
-  setup_done = true
-end
-
-setup()
 
 return M

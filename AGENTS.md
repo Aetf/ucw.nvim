@@ -17,8 +17,8 @@ Boot: `init.lua` → `require('ucw').boot()` (`lua/ucw/init.lua`) loads the
 plugin-free modules (`options`, `builtin-plugins`, `keys`, `extras`), installs
 the `LspAttach` handler, bootstraps lazy.nvim at the commit `lazy-lock.json`
 pins, and imports `ucw.plugins` then `ucw.plugins.user`. Context predicates for
-spec `cond` live in `lua/ucw/targets.lua` (`is_tui/is_gui/is_firenvim/
-is_vscode/is_full_ui`).
+spec `cond` live in `lua/ucw/targets.lua` (`is_gui/is_firenvim/is_vscode/
+is_full_ui`).
 
 ## Layout
 
@@ -45,8 +45,8 @@ right, each of which fails silently:
 
 - **`keys =` makes the spec lazy.** A plugin that has to exist from startup
   (gutter, tabline, session autosave, formatter) needs an explicit
-  `lazy = false` next to its keys. `tests/test_keys.lua`'s eager census fails
-  when one is dropped.
+  `lazy = false` next to its keys, and a line in `tests/test_keys.lua`'s eager
+  census (the census is an explicit list; extend it when you add one).
 - **`cond = require('ucw.targets').is_full_ui`** on anything with a UI surface
   of its own. A spec with `cond` false does not exist in lazy.nvim's plugin
   table at all — its keys are not registered, `require`ing it errors — so code

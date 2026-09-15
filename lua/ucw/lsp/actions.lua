@@ -1,6 +1,6 @@
 -- Every LSP action this config exposes, declared once.
 --
--- Two consumers bind these: `ucw.lsp.attach` (buffer-local `g`-prefixed keys,
+-- Two consumers bind these: `ucw.lsp.attach` (buffer-local keys,
 -- only while a client is attached) and `ucw.plugins.which-key` (the global
 -- `<leader>c` tree). Before this table they each carried their own copy of the
 -- same `<cmd>lua vim.lsp...<cr>` strings, which is how two of them rotted away
@@ -171,7 +171,7 @@ function M.call(name)
 end
 
 ---The right-hand side to bind for an action: an ex-command string for the
----`cmd` kind, a closure for the `lsp` and `picker` kinds.
+---`cmd` kind, a closure for the `lsp`, `picker` and `fn` kinds.
 ---@param name string
 ---@return string|function
 function M.rhs(name)

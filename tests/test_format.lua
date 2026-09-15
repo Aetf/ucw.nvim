@@ -220,6 +220,19 @@ T['lsp_format blocking']['tex stays unformatted rather than falling back to texl
   eq(lines(), { '\\documentclass{article}' })
 end
 
+-- texlab attaches to three filetypes (ucw.lsp.servers); the block has to
+-- exist for each, or `.bib` files get reformatted through texlab's native
+-- BibTeX formatter on every save while `.tex` stays untouched.
+T['lsp_format blocking']['bib and plaintex are blocked the same way as tex'] = function()
+  for _, ft in ipairs { 'bib', 'plaintex' } do
+    local id = start_fake_formatter('texlab', ft, 'FORMATTED_BY_FAKE')
+    eq({ ft, id ~= vim.NIL and id ~= nil }, { ft, true })
+    set_lines { '@article{k, title={t}}' }
+    do_format()
+    eq({ ft, lines() }, { ft, { '@article{k, title={t}}' } })
+  end
+end
+
 -- The positive control: an *unlisted* filetype (no `ftplugin/rust.lua`, no
 -- `formatters_by_ft.rust` entry at all) must still reach its LSP client via
 -- `default_format_opts.lsp_format = 'fallback'` - this is what makes Rust's
@@ -286,21 +299,21 @@ end
 
 T['real CLI formatters'] = new_set()
 
-T['real CLI formatters']['stylua formats a lua buffer via <leader>lf'] = function()
+T['real CLI formatters']['stylua formats a lua buffer via the format action'] = function()
   child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'lua']])
   set_lines { 'local x=1' }
   do_format()
   eq(lines(), { 'local x = 1' })
 end
 
-T['real CLI formatters']['ruff_format formats a python buffer via <leader>lf'] = function()
+T['real CLI formatters']['ruff_format formats a python buffer via the format action'] = function()
   child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'python']])
   set_lines { 'x=1' }
   do_format()
   eq(lines(), { 'x = 1' })
 end
 
-T['real CLI formatters']['taplo formats a toml buffer via <leader>lf'] = function()
+T['real CLI formatters']['taplo formats a toml buffer via the format action'] = function()
   child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'toml']])
   set_lines { '[a]', 'x=1' }
   do_format()
@@ -371,7 +384,7 @@ end
 -- or `snacks.nvim`, which has no such gate - stays available either way),
 -- the `fn` action kind `require()`s its target by name and errors on
 -- failure, on purpose (lua/ucw/lsp/actions.lua). With conform gated,
--- `<leader>lf` under firenvim/vscode-neovim did not just fail to format - it
+-- `<leader>cf` under firenvim/vscode-neovim did not just fail to format - it
 -- raised "module 'conform' not found", replacing the graceful "no matching
 -- language servers" `vim.lsp.buf.format()` gave before Phase 6.
 --
@@ -389,7 +402,7 @@ local function boot_embedded(marker)
   H.boot_embedded(child, marker)
 end
 
-T['embedded contexts']['<leader>lf does not hard-error under vscode-neovim'] = function()
+T['embedded contexts']['the format action does not hard-error under vscode-neovim'] = function()
   boot_embedded('vscode')
   child.lua([[vim.cmd('enew!'); vim.bo.filetype = 'lua']])
   local ok = child.lua_get([[(pcall(function()
@@ -430,7 +443,7 @@ end
 -- first line, so a gated conform did not merely disable formatting in the
 -- embedded contexts - it threw `E5113` out of the FileType autocmd on the
 -- first `.lua`/`.md`/`.py`/`.toml`/`.tex` buffer opened there, before any
--- key was pressed. Nothing bound `<leader>lf` to that; opening a file was
+-- key was pressed. Nothing bound `<leader>cf` to that; opening a file was
 -- enough.
 -- Opens real files rather than setting `vim.bo.filetype` on a scratch
 -- buffer, and the difference is the whole test: an error raised by an
@@ -477,7 +490,7 @@ end
 -- one path automatic and one explicit. Asserting only the first would pass
 -- just as well if conform had been turned off wholesale, which is the R1
 -- regression coming back.
-T['embedded contexts']['format_on_save is off, <leader>lf still formats'] = function()
+T['embedded contexts']['format_on_save is off, the format action still formats'] = function()
   boot_embedded('started_by_firenvim')
   local path = vim.fn.tempname() .. '.lua'
   child.lua(([[vim.cmd.edit(%q)]]):format(path))
