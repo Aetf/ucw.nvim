@@ -1,0 +1,5 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Everything except the plugins. lazy-lock.json names each plugin but not the repository it comes from, so Renovate cannot read it; .github/workflows/lazy-update.yml updates the plugins instead.",
+  "extends": ["config:recommended"]
+}

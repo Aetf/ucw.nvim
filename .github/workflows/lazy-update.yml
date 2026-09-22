@@ -1,0 +1,62 @@
+# The plugin half of dependency updates; renovate.json covers the rest.
+# Renovate cannot read lazy-lock.json: it names each plugin but not the
+# repository it comes from. This job runs `:Lazy update` on a bare runner and
+# opens (or refreshes) one PR with the new lockfile.
+#
+# Plugins whose `cond` is false headless (firenvim) are not installed here, so
+# lazy.nvim keeps their lockfile entries unchanged; update those from a GUI.
+name: lazy-update
+
+on:
+  schedule:
+    - cron: '23 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+      - uses: extractions/setup-just@v4
+      - uses: jdx/mise-action@v4
+        with:
+          version: 2026.7.11
+
+      - run: just update-plugins
+      # docs/keys.md is rendered from a real boot and tests/test_keys_doc.lua
+      # fails when it drifts, so a plugin that changes its default mappings
+      # needs the regenerated tables in the same PR.
+      - run: just keys-doc
+
+      - id: pr
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: lazy-update
+          delete-branch: true
+          add-paths: |
+            lazy-lock.json
+            docs/keys.md
+          commit-message: 'lazy-lock: update plugins'
+          title: 'lazy-lock: update plugins'
+          body: |
+            `just update-plugins` and `just keys-doc` on a bare runner, from
+            `.github/workflows/lazy-update.yml`. CI runs on this branch through
+            `workflow_dispatch`.
+
+      # A PR opened with GITHUB_TOKEN triggers no workflows on its own;
+      # workflow_dispatch is the exception, and its check runs land on the PR's
+      # head commit.
+      - if: steps.pr.outputs.pull-request-operation == 'created' || steps.pr.outputs.pull-request-operation == 'updated'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --ref lazy-update

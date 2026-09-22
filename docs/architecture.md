@@ -27,8 +27,11 @@ in this order:
    commit `lazy-lock.json` pins for it. lazy.nvim records its own commit in
    the lockfile but cannot install itself; a clone of a moving branch would
    make every fresh install write a different commit than the one checked in
-   and fail the CI lockfile-drift gate. Updating lazy.nvim is `:Lazy update`,
-   same as any plugin.
+   and fail the CI lockfile-drift gate. Updating lazy.nvim is `:Lazy update`
+   (or the weekly `lazy-update` workflow), same as any plugin.
+   `force_files_ref_format()` runs first: lazy.nvim reads commits straight
+   from `.git/refs`, which a reftable repository does not have, so every clone
+   it makes is forced to the `files` ref format.
 5. `require('lazy').setup` with two imports, in order: `ucw.plugins`, then
    `ucw.plugins.user`. lazy.nvim merges specs that share a plugin across
    imports, later import winning, so a same-named file under `plugins/user/`

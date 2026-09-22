@@ -98,6 +98,25 @@ plugins:
         -c 'lua local ok, lazy = pcall(require, "lazy") if not ok then io.stderr:write("just plugins: this config did not load - lazy.nvim is not on rtp\n") vim.cmd("cquit 1") end local missing = {} for _, p in ipairs(lazy.plugins()) do if not vim.uv.fs_stat(p.dir) then table.insert(missing, p.name) end end if #missing > 0 then io.stderr:write("just plugins: not installed: " .. table.concat(missing, " ") .. "\n") vim.cmd("cquit 1") end io.write(("%d plugins present\n"):format(#lazy.plugins()))' \
         +qa
 
+# Move every plugin, lazy.nvim included, to the newest commit its spec allows
+# and rewrite `lazy-lock.json` - what `:Lazy update` does from the editor.
+# `.github/workflows/lazy-update.yml` runs it weekly and opens a PR, because
+# Renovate cannot read the lockfile: it names each plugin but not the
+# repository it comes from.
+#
+# Checks its own postcondition, for the same reason `plugins` does: headless
+# Neovim exits 0 after an error - including an error in this check, hence the
+# `pcall`s - and lazy.nvim truncates the lockfile *before* writing it, so a
+# failure halfway through leaves `{` and a green recipe. Every plugin lazy.nvim
+# loaded must come out with a commit in the lockfile.
+update-plugins:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    {{ nvim_config_env }} {{ mise }} nvim --headless \
+        '+Lazy! update' \
+        -c 'lua local ok, lazy = pcall(require, "lazy") if not ok then io.stderr:write("just update-plugins: this config did not load - lazy.nvim is not on rtp\n") vim.cmd("cquit 1") end local okl, lock = pcall(function() return vim.json.decode(table.concat(vim.fn.readfile(vim.fs.joinpath(vim.fn.stdpath("config"), "lazy-lock.json")), "\n")) end) if not okl or type(lock) ~= "table" then io.stderr:write("just update-plugins: lazy-lock.json is not a valid lockfile\n") vim.cmd("cquit 1") end local bad = {} for _, p in ipairs(lazy.plugins()) do local e = lock[p.name] if not p._.is_local and not (type(e) == "table" and type(e.commit) == "string") then table.insert(bad, p.name) end end if #bad > 0 then io.stderr:write("just update-plugins: no locked commit for: " .. table.concat(bad, " ") .. "\n") vim.cmd("cquit 1") end io.write(("%d plugins locked\n"):format(#lazy.plugins()))' \
+        +qa
+
 # Static-check this repo's Lua. This is the `lint` CI job.
 #
 # Four things have to be true for this to be the check phase7-ci.md §1.5
