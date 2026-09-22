@@ -12,7 +12,24 @@ local function locked_lazy_commit()
   return type(entry) == 'table' and type(entry.commit) == 'string' and entry.commit or nil
 end
 
+-- Every clone lazy.nvim makes must use the `files` ref format. lazy.nvim reads
+-- commits straight out of `.git/HEAD`, `.git/refs/` and `.git/packed-refs`; a
+-- reftable repository has none of those (HEAD reads `ref: refs/heads/.invalid`),
+-- so the commit comes back nil and the lockfile write asserts halfway through -
+-- after it has already truncated `lazy-lock.json`. Git 3.0 makes reftable the
+-- default, and `feature.experimental=true` already does
+-- (folke/lazy.nvim#2046). Passed through `GIT_CONFIG_*` so it outranks any
+-- gitconfig, appended so entries already in the environment survive. It only
+-- affects repositories created from inside this nvim.
+local function force_files_ref_format()
+  local n = tonumber(vim.env.GIT_CONFIG_COUNT) or 0
+  vim.env['GIT_CONFIG_KEY_' .. n] = 'init.defaultRefFormat'
+  vim.env['GIT_CONFIG_VALUE_' .. n] = 'files'
+  vim.env.GIT_CONFIG_COUNT = tostring(n + 1)
+end
+
 local function bootstrap_lazy()
+  force_files_ref_format()
   local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
   if not (vim.uv or vim.loop).fs_stat(lazypath) then
     -- Checked out at the commit in the lockfile, not at whatever `stable`
