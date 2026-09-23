@@ -168,16 +168,14 @@ line:
 | `lint` | `just lint` | needs **Neovim** (for `$VIMRUNTIME`), the **plugins** (`just plugins`) and **`deps/mini.nvim`** (`just deps`) — it depends on both recipes. Each silently weakens the check when absent, so the recipe refuses instead. |
 | `format` | `just fmt-check` | no `stylua-action`: `mise.toml` pins stylua, so CI and this machine run the same binary by construction. |
 
-`ci.yml` also accepts `workflow_dispatch`, which is how the plugin-update PR gets tested.
-
 ### Dependency updates
 
 - **Plugins**: `.github/workflows/lazy-update.yml` runs weekly (and on demand).
   It runs `just update-plugins` and `just keys-doc` on a bare runner and opens or
-  refreshes one PR from the `lazy-update` branch. That PR is opened with
-  `GITHUB_TOKEN`, which triggers no `pull_request` workflows, so the job dispatches
-  `ci.yml` on the branch itself. Plugins whose `cond` is false on a headless runner
-  (firenvim) keep their locked commit; update those from a GUI.
+  refreshes one PR from the `lazy-update` branch. GitHub holds `ci.yml` on a PR
+  that GitHub Actions opened until someone approves the run, so the job approves it
+  itself; those are the checks the PR shows. Plugins whose `cond` is false on a
+  headless runner (firenvim) keep their locked commit; update those from a GUI.
 - **Everything else**: Renovate (`renovate.json`) covers `mise.toml` and the
   actions in both workflows, including the `jdx/mise-action` version pin. It cannot
   read `lazy-lock.json`, which names each plugin but not its repository.
