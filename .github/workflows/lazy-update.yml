@@ -50,13 +50,26 @@ jobs:
           title: 'lazy-lock: update plugins'
           body: |
             `just update-plugins` and `just keys-doc` on a bare runner, from
-            `.github/workflows/lazy-update.yml`. CI runs on this branch through
-            `workflow_dispatch`.
+            `.github/workflows/lazy-update.yml`.
 
-      # A PR opened with GITHUB_TOKEN triggers no workflows on its own;
-      # workflow_dispatch is the exception, and its check runs land on the PR's
-      # head commit.
+      # GitHub holds `pull_request` runs on a PR that GitHub Actions opened
+      # until someone approves them (the run sits at `action_required`), and
+      # only those runs report on the PR. Approve the ones for this head commit.
+      # The loop waits for GitHub to register the run, bounded at five minutes.
       - if: steps.pr.outputs.pull-request-operation == 'created' || steps.pr.outputs.pull-request-operation == 'updated'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run ci.yml --ref lazy-update
+          SHA: ${{ steps.pr.outputs.pull-request-head-sha }}
+        run: |
+          for _ in $(seq 60); do
+            ids=$(gh run list --commit "$SHA" --event pull_request --status action_required --json databaseId --jq '.[].databaseId')
+            [ -n "$ids" ] && break
+            sleep 5
+          done
+          if [ -z "$ids" ]; then
+            echo "no held pull_request run for $SHA" >&2
+            exit 1
+          fi
+          for id in $ids; do
+            gh api -X POST "repos/$GITHUB_REPOSITORY/actions/runs/$id/approve"
+          done

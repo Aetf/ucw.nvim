@@ -7,9 +7,6 @@ name: CI
 on:
   push:
   pull_request:
-  # lazy-update.yml dispatches this on the PR it opens: a PR created with
-  # GITHUB_TOKEN triggers no `pull_request` or `push` workflows.
-  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
