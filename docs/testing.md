@@ -178,7 +178,10 @@ line:
   headless runner (firenvim) keep their locked commit; update those from a GUI.
 - **Everything else**: Renovate (`renovate.json`) covers `mise.toml` and the
   actions in both workflows, including the `jdx/mise-action` version pin. It cannot
-  read `lazy-lock.json`, which names each plugin but not its repository.
+  read `lazy-lock.json`, which names each plugin but not its repository. Renovate
+  merges its own PRs once every check on them is green, `test (nightly)` included.
+  It does that itself (`platformAutomerge: false`) because `main` has no required
+  checks, and GitHub's native auto-merge would merge without waiting for any.
 
 The bare-runner contract is `checkout` + `nvim` + `just` + `mise`, then `just deps`.
 `jdx/mise-action` is version-pinned, because `mise.toml`'s "no `mise trust` needed"
