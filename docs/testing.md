@@ -170,7 +170,7 @@ line:
 
 ### Dependency updates
 
-- **Plugins**: `.github/workflows/lazy-update.yml` runs weekly (and on demand).
+- **Plugins**: `.github/workflows/lazy-update.yml` runs monthly (and on demand).
   It runs `just update-plugins` and `just keys-doc` on a bare runner and opens or
   refreshes one PR from the `lazy-update` branch. GitHub holds `ci.yml` on a PR
   that GitHub Actions opened until someone approves the run, so the job approves it

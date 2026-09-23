@@ -100,7 +100,7 @@ plugins:
 
 # Move every plugin, lazy.nvim included, to the newest commit its spec allows
 # and rewrite `lazy-lock.json` - what `:Lazy update` does from the editor.
-# `.github/workflows/lazy-update.yml` runs it weekly and opens a PR, because
+# `.github/workflows/lazy-update.yml` runs it monthly and opens a PR, because
 # Renovate cannot read the lockfile: it names each plugin but not the
 # repository it comes from.
 #
