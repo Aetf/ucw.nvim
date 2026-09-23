@@ -20,6 +20,6 @@
 # Adding tasks, templates or tool options would make trust load-bearing again.
 [tools]
 stylua = "2.5.2"
-lua-language-server = "3.18.2"
+lua-language-server = "3.19.1"
 ruff = "0.16.8"
 taplo = "0.10.0"
