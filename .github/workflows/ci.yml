@@ -42,7 +42,7 @@ jobs:
       # command on a fresh checkout - is measured against one specific mise, and
       # its own header comment says which. An unpinned action is a second copy
       # of a version this repo already decided, drifting on its own. D13.
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@v5
         with:
           version: 2026.9.16
 
@@ -78,7 +78,7 @@ jobs:
           neovim: true
           version: stable
       - uses: extractions/setup-just@v4
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@v5
         with:
           version: 2026.9.16
       # `just lint` depends on `just plugins` and `just deps`, because the
@@ -99,7 +99,7 @@ jobs:
       # No `stylua-action`: mise.toml pins `stylua = "2.5.2"` and `just
       # fmt-check` runs under `mise exec`, so CI and this machine run the same
       # binary by construction rather than by keeping two pins in agreement.
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@v5
         with:
           version: 2026.9.16
       - run: just fmt-check
