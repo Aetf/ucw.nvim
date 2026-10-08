@@ -30,7 +30,7 @@ jobs:
       - uses: extractions/setup-just@v4
       - uses: jdx/mise-action@v5
         with:
-          version: 2026.10.4
+          version: 2026.10.5
 
       - run: just update-plugins
       # docs/keys.md is rendered from a real boot and tests/test_keys_doc.lua
