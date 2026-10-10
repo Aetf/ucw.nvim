@@ -21,5 +21,5 @@
 [tools]
 stylua = "2.5.2"
 lua-language-server = "3.19.1"
-ruff = "0.16.10"
+ruff = "0.17.0"
 taplo = "0.10.0"
