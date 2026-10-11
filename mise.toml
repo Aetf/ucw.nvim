@@ -19,7 +19,7 @@
 # one command and a fresh checkout — or a CI runner — has nothing to authorize.
 # Adding tasks, templates or tool options would make trust load-bearing again.
 [tools]
-stylua = "2.5.2"
+stylua = "2.6.0"
 lua-language-server = "3.19.1"
 ruff = "0.17.0"
 taplo = "0.10.0"
